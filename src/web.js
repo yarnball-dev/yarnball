@@ -37,6 +37,10 @@ define(['./node_id'], function(node_id) {
     this._notifyNodeNames([{id: id, name: name}]);
   }
   
+  Web.prototype.hasNodeName = function(id) {
+    return this.nodeNames.has(node_id.toMapKey(id));
+  }
+  
   Web.prototype.getNodeName = function(id) {
     if (!this.nodeNames.has(node_id.toMapKey(id))) {
       throw "Could not find name for " + node_id.toHex(id);

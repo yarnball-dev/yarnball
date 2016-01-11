@@ -38,7 +38,12 @@ gulp.task('socket.io', function() {
     .pipe(gulp.dest('dist/socket.io-client'));
 });
 
-gulp.task('default', ['html', 'js', 'styles', 'svg', 'bower', 'socket.io']);
+gulp.task('node_names', function() {
+  gulp.src('src/node_names.txt')
+    .pipe(gulp.dest('dist/'));
+});
+
+gulp.task('default', ['html', 'js', 'styles', 'svg', 'bower', 'socket.io', 'node_names']);
 
 gulp.task('watch', function() {
   gulp.watch('src/*.html', ['html']);

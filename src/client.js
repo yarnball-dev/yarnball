@@ -36,6 +36,9 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
       web.setNodeName(id, name);
       socket.emit('setNodeName', {id: id, name: name});
     },
+    hasNodeName: function(id) {
+      return web.hasNodeName(id);
+    },
     getNodeName: function(id) {
       return web.getNodeName(id);
     }
