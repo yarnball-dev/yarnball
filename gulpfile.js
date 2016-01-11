@@ -43,8 +43,8 @@ gulp.task('default', ['html', 'js', 'styles', 'svg', 'bower', 'socket.io']);
 gulp.task('watch', function() {
   gulp.watch('src/**/*.html', ['html']);
   gulp.watch('src/**/*.js',   ['js']);
-  gulp.watch('src/**.sass',   ['styles']);
-  gulp.watch('src/**/*.sass', ['styles']);
+  gulp.watch('src/*.sass',    ['styles']);
+  gulp.watch('src/widgets/**/*.sass', ['styles']);
   gulp.watch('src/**/*.svg',  ['svg']);
 });
 
