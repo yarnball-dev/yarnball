@@ -1,0 +1,61 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="node.html">
+
+<dom-module id="yb-list">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <div>
+      <template is="dom-repeat" items="{{nodes}}">
+        <yb-node node-id="{{item}}"></yb-node>
+      </template>
+    </div>
+    <paper-button on-tap="button_handler">Add Node</paper-button>
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-list',
+        properties: {
+          nodes: {
+            type: Array
+          }
+        },
+        created: function() {
+          var self = this;
+          require(['client', 'node_id'], function(client, node_id) {
+          
+            self.client = client;
+            
+            var nodes = client.web.getNodes().map(function(id) {
+              return node_id.toHex(id);
+            });
+            self.set('nodes', nodes);
+            
+            client.web.onNodeNames(function(nodes) {
+              nodes.forEach(function(node) {
+                var hasNode = self.nodes.some(function(existingNode) { return existingNode === node_id.toHex(node.id); });
+                if (!hasNode) {
+                  self.push('nodes', node_id.toHex(node.id));
+                }
+              });
+            });
+          });
+        },
+        button_handler: function() {
+          var name = 'space cookie';
+          var node = this.client.web.addNewNode(name);
+          this.client.socket.emit('setNodeName', node);
+        }
+      });
+    })();
+  </script>
+
+</dom-module>

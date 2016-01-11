@@ -1,0 +1,24 @@
+{
+  "name": "yarnball",
+  "description": "",
+  "homepage": "https://github.com/yarnball-dev/yarnball",
+  "repository": "https://github.com/yarnball-dev/yarnball.git",
+  "license": "MIT",
+  "authors": [
+    "Joshua Shone"
+  ],
+  "main": "",
+  "moduleType": [],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.2.0",
+    "paper-elements": "PolymerElements/paper-elements#^1.0.1",
+    "requirejs": "requirejs-bower#~2.1.22"
+  }
+}

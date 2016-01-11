@@ -1,0 +1,75 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="node-styles.html">
+
+<dom-module id="yb-node">
+  <style include="node-styles"></style>
+  <template>
+    <template is="dom-if" if="{{!isEditing}}">
+      <span>{{node-id}}</span>
+      <span>{{name}}</span>
+    </template>
+    <template is="dom-if" if="{{isEditing}}">
+      <input type="text" value="hello" on-change="handleChange">
+    </template>
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-node',
+        properties: {
+          name: {
+            type: String,
+          },
+          'node-id': {
+            type: String,
+          },
+          isEditing: {
+            type: Boolean,
+            value: false,
+          }
+        },
+        created: function() {
+          var self = this;
+          require(['client', 'node_id'], function(client, node_id) {
+            self.client = client;
+            self.id_ = node_id.fromHex(self['node-id']);
+            self.set('name', client.getNodeName(self.id_));
+            client.web.onNodeNames(function(nodes) {
+              nodes.forEach(function(node) {
+                if (node_id.equal(node.id, self.id_)) {
+                  self.set('name', node.name);
+                }
+              });
+            });
+          });
+        },
+        listeners: {
+          mousedown: 'mousedown',
+          dblclick: 'dblclick',
+        },
+        mousedown: function(event) {
+          if (!this.isEditing) {
+            event.preventDefault();
+            return false;
+          }
+        },
+        dblclick: function(event) {
+          if (!this.isEditing) {
+            this.set('isEditing', true);
+            event.preventDefault();
+            return false;
+          }
+        },
+        handleChange: function(event) {
+          this.client.setNodeName(this.id_, event.srcElement.value);
+          this.set('isEditing', false);
+        }
+      });
+    })();
+  </script>
+
+</dom-module>

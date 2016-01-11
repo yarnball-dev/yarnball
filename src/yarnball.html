@@ -1,0 +1,36 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="widgets/list.html">
+
+<dom-module id="yb-main">
+
+  <template>
+    <div>
+      Yarnball
+      <yb-list></yb-list>
+    </div>
+  </template>
+  
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-main',
+        properties: {
+          socket: {
+            value: null
+          }
+        },
+        created: function() {
+          console.log('yb-main created');
+          
+          require(['client'], function(client) {
+          
+
+          });
+        }
+      });
+    })();
+  </script>
+  
+</dom-module>
