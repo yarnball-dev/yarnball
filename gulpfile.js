@@ -43,7 +43,12 @@ gulp.task('node_names', function() {
     .pipe(gulp.dest('dist/'));
 });
 
-gulp.task('default', ['html', 'js', 'styles', 'svg', 'bower', 'socket.io', 'node_names']);
+gulp.task('links', function() {
+  gulp.src('src/links.txt')
+    .pipe(gulp.dest('dist/'));
+});
+
+gulp.task('default', ['html', 'js', 'styles', 'svg', 'bower', 'socket.io', 'node_names', 'links']);
 
 gulp.task('watch', function() {
   gulp.watch('src/*.html', ['html']);

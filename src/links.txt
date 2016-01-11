@@ -1,0 +1,3 @@
+0e70f592a2d4cd5b52af9955f89bcd1d 52f9cf0e223d559931856acc98400f21 5c4d67cf88fd9c5dbc841dee378b6b4b Lunar Cookie   -> Is -> Cookie
+77fec6ccd5028139194d1e974d56e69a 52f9cf0e223d559931856acc98400f21 5c4d67cf88fd9c5dbc841dee378b6b4b Martian Cookie -> Is -> Cookie
+7914d1c25c704c9c93561b682ffa002a 52f9cf0e223d559931856acc98400f21 5c4d67cf88fd9c5dbc841dee378b6b4b Earth Cookie -> Is -> Cookie

@@ -17,16 +17,35 @@ app.use(express.static('.'));
 var web = web_();
 
 var nodeNamesStream = fs.createReadStream('node_names.txt');
-var lineReader = readline.createInterface({
+var nodeNamesReader = readline.createInterface({
   input: nodeNamesStream,
   output: process.stdout,
   terminal: false
 });
 
-lineReader.on('line', function(line) {
+nodeNamesReader.on('line', function(line) {
   var hexString = line.slice(0, 32);
   var name = line.slice(33);
   web.setNodeName(node_id.fromHex(hexString), name);
+});
+
+var linksStream = fs.createReadStream('links.txt');
+var linksReader = readline.createInterface({
+  input: linksStream,
+  output: process.stdout,
+  terminal: false
+});
+
+linksReader.on('line', function(line) {
+  var fromString = line.slice(0, 32);
+  var viaString  = line.slice(32 + 1, 32 + 1 + 32);
+  var toString   = line.slice(32 + 1 + 32 + 1, 32 + 1 + 32 + 1 + 32);
+  console.log(fromString + ' -> ' + viaString + ' -> ' + toString);
+//   var name = line.slice(33);
+//   web.setNodeName(node_id.fromHex(hexString), name);
+  web.setLink(node_id.fromHex(fromString),
+              node_id.fromHex(viaString),
+              node_id.fromHex(toString));
 });
 
 io.on('connection', function(socket) {
@@ -37,6 +56,7 @@ io.on('connection', function(socket) {
   });
   
   socket.emit('setNodeNames', web.getNodeNames());
+  socket.emit('setLinks',     web.getLinks());
   
   socket.on('setNodeName', function(node) {
     console.log('Setting ' + node_id.toHex(node.id) + ' name to "' + node.name + '"');

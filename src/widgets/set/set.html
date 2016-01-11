@@ -1,0 +1,55 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<dom-module id="yb-set">
+
+  <template>
+    <span>
+      Via: <yb-node node-id="{{via}}"></yb-node>
+    </span>
+    <span>
+      To: <yb-node node-id="{{to}}"></yb-node>
+    </span>
+    <template is="dom-repeat" items="{{nodes}}">
+      <yb-node node-id="{{item}}"></yb-node>
+    </template>
+  </template>
+  
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-set',
+        properties: {
+          via: {
+            type: String,
+          },
+          to: {
+            type: String,
+          },
+          nodes: {
+            type: Array,
+            value: []
+          }
+        },
+        created: function() {
+          var self = this;
+          require(['client', 'node_id'], function(client, node_id) {
+            function handleLinks(links) {
+              links.forEach(function(link) {
+                if (node_id.toHex(link.via) === self.via &&
+                    node_id.toHex(link.to)  === self.to) {
+                  
+                  self.push('nodes', node_id.toHex(link.from));
+                }
+              });
+            }
+            handleLinks(client.web.getLinks());
+            client.web.onLinks(handleLinks);
+          });
+        }
+      });
+    })();
+  </script>
+
+</dom-module>

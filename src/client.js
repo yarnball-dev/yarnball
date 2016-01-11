@@ -25,6 +25,10 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     web.setNodeNames(nodes);
   });
   
+  socket.on('setLinks', function(links) {
+    web.setLinks(links);
+  });
+  
   socket.on('setNodeName', function(node) {
     web.setNodeName(node.id, node.name);
   });

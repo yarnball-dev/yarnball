@@ -6,9 +6,10 @@ define(['./node_id'], function(node_id) {
   
   function Web() {
     this.nodeNames = new Map();
-    this.links = [];
+    this.links     = new Set();
     
     this._onNodeNames = new Set();
+    this._onLinks     = new Set();
   }
   
   Web.prototype.getNodes = function() {
@@ -60,6 +61,40 @@ define(['./node_id'], function(node_id) {
     this._onNodeNames.add(callback);
   }
   
+  Web.prototype.setLink = function(from, via, to) {
+    this.links.add(node_id.toHex(from) +
+                   node_id.toHex(via) +
+                   node_id.toHex(to));
+  }
+  
+  Web.prototype.hasLink = function(from, via, to) {
+    return this.links.has(node_id.toHex(from) +
+                          node_id.toHex(via) +
+                          node_id.toHex(to));
+  }
+  
+  Web.prototype.getLinks = function() {
+    return Array.from(this.links.values(), function(key) {
+      return {
+        from: node_id.fromHex(key.slice(0, 32)),
+        via:  node_id.fromHex(key.slice(32, 32 + 32)),
+        to:   node_id.fromHex(key.slice(32 + 32)),
+      }
+    });
+  }
+  
+  Web.prototype.setLinks = function(links) {
+    var self = this;
+    links.forEach(function(link) {
+      self.setLink(link.from, link.via, link.to);
+    });
+    self._notifyLinks(links);
+  }
+  
+  Web.prototype.onLinks = function(callback) {
+    this._onLinks.add(callback);
+  }
+  
   Web.prototype._notifyNodeNames = function(nodes) {
     if (typeof nodes === 'undefined') {
       nodes = this.getNodeNames();
@@ -67,6 +102,16 @@ define(['./node_id'], function(node_id) {
     var callbacks = new Set(this._onNodeNames);
     callbacks.forEach(function(callback) {
       callback(nodes);
+    });
+  }
+  
+  Web.prototype._notifyLinks = function(links) {
+    if (typeof links === 'undefined') {
+      links = this.getLinks();
+    }
+    var callbacks = new Set(this._onLinks);
+    callbacks.forEach(function(callback) {
+      callback(links);
     });
   }
   
