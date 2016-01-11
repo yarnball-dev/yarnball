@@ -1,0 +1,31 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="link-styles.html">
+
+<link rel="import" href="../node/node.html">
+
+<dom-module id="yb-link">
+
+  <style include="link-styles"></style>
+  
+  <template>
+    <yb-node node-id="{{from}}"></yb-node>
+    <yb-node node-id="{{via}}"></yb-node>
+    <yb-node node-id="{{to}}"></yb-node>
+  </template>
+  
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-link',
+        properties: {
+          from: { type: String },
+          via:  { type: String },
+          to:   { type: String },
+        }
+      });
+    })();
+  </script>
+</dom-module>
