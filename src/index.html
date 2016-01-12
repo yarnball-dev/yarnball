@@ -24,12 +24,10 @@
   
     <yb-main>
   
-      <div class="title-section">
-        <div class="title-group">
-          <img class="title-logo" src="logo.svg" />
-          <div class="title">yarnball</div>
-          <div class="title-description">Woven Data</div>
-        </div>
+      <div class="title-group">
+        <img class="title-logo" src="logo.svg" />
+        <div class="title">yarnball</div>
+        <div class="title-description">Woven Data</div>
       </div>
       
       <div class="intro-section">
@@ -60,6 +58,50 @@
             </span>
           </div>
         </div>
+      </div>
+      
+      <div class="sections">
+      
+        <section>
+          <div class="annotation-group">
+            <yb-node node-id="1e436f8bb0da1c31e9382450fdd51eaa"></yb-node>
+            <div class="annotation">
+              <div>A node is a randomly generated number.</div>
+              <div>It can represent things, concepts, or anything.</div>
+            </div>
+          </div>
+          <div class="annotation-group">
+            <div class="annotation">
+              <div>For convenience, a node can be given a name. For example:</div>
+            </div>
+            <yb-node node-id="5c4d67cf88fd9c5dbc841dee378b6b4b"></yb-node>
+          </div>
+        </section>
+        
+        <section>
+          <div class="annotation-group">
+            <yb-link
+              from="1e436f8bb0da1c31e9382450fdd51eaa"
+              via ="ac1bbe77ed038accd45f7e906d4257d2"
+              to  ="a0f9922a65546eacd04b910998744300">
+            </yb-link>
+            <div class="annotation">
+              <div>A link connects three nodes together.</div>
+              <div>It connects <strong>from</strong> the first node, <strong>via</strong> the second node, <strong>to</strong> the last node.</div>
+            </div>
+          </div>
+        </section>
+        
+        <section>
+          <div class="annotation-group">
+            <img src="web.svg" />
+            <div class="annotation">
+              <div>A collection of links is called a web.</div>
+              <div>A web can represent any kind of information, structured in any arbitrary way.</div>
+            </div>
+          </div>
+        </section>
+        
       </div>
   
     </yb-main>
