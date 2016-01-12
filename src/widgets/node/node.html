@@ -13,9 +13,7 @@
         <span>{{name}}</span>
       </template>
     </template>
-    <template is="dom-if" if="{{isEditing}}">
-      <input type="text" value="hello" on-change="handleChange">
-    </template>
+    <input id="input_box" class="hidden" type="text" value="{{name}}" on-blur="onBlur" on-keypress="onKeypress">
   </template>
 
   <script>
@@ -71,13 +69,29 @@
         dblclick: function(event) {
           if (!this.isEditing) {
             this.set('isEditing', true);
+            this.startEditing();
             event.preventDefault();
             return false;
           }
         },
-        handleChange: function(event) {
-          this.client.setNodeName(this.id_, event.srcElement.value);
+        startEditing: function() {
+          this.$.input_box.style.width = this.clientWidth + 'px';
+          this.$.input_box.classList.remove('hidden');
+          this.$.input_box.select();
+          this.updateStyles();
+        },
+        finishEditing: function() {
+          this.client.setNodeName(this.id_, this.$.input_box.value);
+          this.$.input_box.classList.add('hidden');
           this.set('isEditing', false);
+        },
+        onBlur: function(event) {
+          this.finishEditing();
+        },
+        onKeypress: function(event) {
+          if (event.which === 13) {
+            this.finishEditing();
+          }
         }
       });
     })();
