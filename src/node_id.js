@@ -36,7 +36,7 @@ define(function() {
   }
   
   function toMapKey(id) {
-    return new Uint8Array(id).toString();
+    return Array.from(new Uint8Array(id)).toString();
   }
   
   function fromMapKey(key) {
