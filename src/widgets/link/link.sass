@@ -1,7 +1,16 @@
 :host
-  display: inline-block
-  border: 1px solid #ddd
-  padding: 5px
-  margin: 2px
-  background: url(link_background.svg) repeat-x
-  background-size: contain
+  display: flex
+  align-items: center
+  
+  yb-node
+    display: inline-block
+    margin-right: 0
+    margin-left:  0
+  
+  .link-connector
+    display: inline-block
+    min-width: 20px
+    height: 45px
+    background: url(link_connector.svg)
+    background-repeat: no-repeat
+    background-size: cover
