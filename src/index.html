@@ -7,8 +7,9 @@
     
     <title>Yarnball</title>
     
-<!--     <link rel="stylesheet" href="yarnball.css"> -->
-    <link href='https://fonts.googleapis.com/css?family=Alegreya+Sans' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="style.css">
+    <link href='https://fonts.googleapis.com/css?family=Lora' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
     
     <script src="bower_components/requirejs/require.js"></script>
     
@@ -19,7 +20,48 @@
   </head>
 
   <body>
-    <yb-main></yb-main>
+  
+    <yb-main>
+  
+      <div class="title-section">
+        <div class="title-group">
+          <img src="logo.svg" />
+          <div class="title">yarnball</div>
+          <div class="title-description">Woven Data</div>
+        </div>
+      </div>
+      
+      <div class="intro-section">
+        <div class="intro-container">
+          <div class="intro-caption">Yarnball defines three things:</div>
+          <div class="card-container">
+            <span class="intro-card node-intro-card">
+              <div class="card-content">
+                <yb-node node-id="1e436f8bb0da1c31e9382450fdd51eaa"></yb-node>
+              </div>
+              <div class="card-title">Node</div>
+            </span>
+            <span class="intro-card link-intro-card">
+              <div class="card-content">
+                <yb-link
+                  from="1e436f8bb0da1c31e9382450fdd51eaa"
+                  via ="ac1bbe77ed038accd45f7e906d4257d2"
+                  to  ="a0f9922a65546eacd04b910998744300">
+                </yb-link>
+              </div>
+              <div class="card-title">Link</div>
+            </span>
+            <span class="intro-card web-intro-card">
+              <div class="card-content">
+                <img src="web.svg" />
+              </div>
+              <div class="card-title">Web</div>
+            </span>
+          </div>
+        </div>
+      </div>
+  
+    </yb-main>
   </body>
   
 </html>

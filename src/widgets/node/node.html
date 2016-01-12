@@ -7,7 +7,7 @@
   <template>
     <template is="dom-if" if="{{!isEditing}}">
       <template is="dom-if" if="{{!name}}" restamp="true">
-        <span>{{node-id}}</span>
+        <pre class="node-id">{{node-id-broken}}</pre>
       </template>
       <template is="dom-if" if="{{name}}">
         <span>{{name}}</span>
@@ -30,10 +30,20 @@
           'node-id': {
             type: String,
           },
+          'node-id-broken': {
+            type: String,
+            computed: 'makeBrokenId(node-id)'
+          },
           isEditing: {
             type: Boolean,
             value: false,
           },
+        },
+        makeBrokenId: function() {
+          return this['node-id'].slice(0, 8) + '\n' +
+                 this['node-id'].slice(8, 8 + 8) + '\n' +
+                 this['node-id'].slice(8 + 8, 8 + 8 + 8) + '\n' +
+                 this['node-id'].slice(8 + 8 + 8);
         },
         created: function() {
         

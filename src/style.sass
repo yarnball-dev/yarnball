@@ -1,0 +1,81 @@
+.title-section
+  display: flex
+  justify-content: center
+  margin-bottom: 20px
+  
+  .title-group
+    text-align: center
+    
+    .title
+      font-size: 35px
+      font-family: 'Lora', serif
+      color: #333
+      
+.intro-section
+  border-top:    1px solid #ddd
+  border-bottom: 1px solid #ddd
+  
+  padding-top:    5px
+  padding-bottom: 8px
+  
+  display: flex
+  flex-direction: row
+  flex-wrap: nowrap
+  justify-content: center
+  align-items: flex-end
+  align-content: center
+  
+  .intro-caption
+    color: #555
+    font-family: 'Open Sans', sans-serif;
+    padding-left: 30px
+    margin-top: 6px
+    margin-bottom: 10px
+  
+  .intro-container
+    width: 700px
+  
+    .intro-caption
+      width: 100%
+    .card-container
+      width: 100%
+      display: flex
+      flex-direction: row
+      flex-wrap: wrap
+      @media screen and (max-width: 716px)
+        flex-direction: column
+        .intro-card
+          flex-basis: auto
+          margin-top: 25px;
+        .node-intro-card
+          flex-basis: auto
+
+.intro-card
+  flex-basis: 200px
+  flex-grow: 1
+  text-align: center
+  display: flex
+  flex-direction: column
+  justify-content: flex-end
+  align-items: center
+  
+  .card-content
+    flex-grow: 1
+    display: flex;
+    align-items: center;
+  
+  .card-title
+    padding-top: 8px
+    text-align: center
+    font-family: 'Open Sans', sans-serif;
+    font-weight: bold
+    color: #aaa
+
+.node-intro-card
+  flex-basis: 200px
+
+.link-intro-card
+  flex-basis: 300px
+
+.web-intro-card
+  flex-basis: 200px
