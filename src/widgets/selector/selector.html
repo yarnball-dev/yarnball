@@ -1,0 +1,30 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="selector-styles.html">
+
+<dom-module id="yb-selector">
+
+  <style include="selector-styles"></style>
+
+  <template>
+    <template is="dom-if" if="{{node-id}}">
+      <yb-node node-id="{{node-id}}"></yb-node>
+    </template>
+  </template>
+  
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-selector',
+        properties: {
+          'node-id': {
+            type: String,
+          }
+        }
+      });
+    })();
+  </script>
+
+</dom-module>

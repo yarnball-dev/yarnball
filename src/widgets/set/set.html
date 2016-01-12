@@ -1,17 +1,26 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="set-styles.html">
+
+<link rel="import" href="../selector/selector.html">
+
 <dom-module id="yb-set">
 
+  <style include="set-styles"></style>
+
   <template>
-    <span>
-      Via: <yb-node node-id="{{via}}"></yb-node>
-    </span>
-    <span>
-      To: <yb-node node-id="{{to}}"></yb-node>
-    </span>
-    <template is="dom-repeat" items="{{nodes}}">
-      <yb-node node-id="{{item}}"></yb-node>
-    </template>
+    <div class="header">
+      <yb-selector node-id="{{from}}"></yb-selector>
+      <yb-selector node-id="{{via}}"></yb-selector>
+      <yb-selector node-id="{{to}}"></yb-selector>
+<!--       <yb-node node-id="{{via}}"></yb-node> -->
+<!--       <yb-node node-id="{{to}}"></yb-node> -->
+    </div>
+    <div class="content">
+      <template is="dom-repeat" items="{{nodes}}">
+        <yb-node node-id="{{item}}"></yb-node>
+      </template>
+    </div>
   </template>
   
   <script>
