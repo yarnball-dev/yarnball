@@ -1,0 +1,102 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/iron-dropdown/iron-dropdown.html">
+<link rel="import" href="../../bower_components/paper-menu/paper-menu.html">
+<link rel="import" href="../../bower_components/paper-item/paper-item.html">
+
+<link rel="import" href="surface-styles.html">
+
+<dom-module id="yb-surface">
+
+  <style include="surface-styles"></style>
+
+  <template>
+    <iron-dropdown id="dropdown" horizontal-align="left" vertical-align="top">
+      <div class="dropdown-content">
+        <paper-menu>
+          <paper-item on-tap="menuItem_CreateNode">Create Node</paper-item>
+          <paper-item>Create Link</paper-item>
+          <paper-item on-tap="menuItem_CreateSet">Create Set</paper-item>
+        </paper-menu>
+      </div>
+    </iron-dropdown>
+  </template>
+  
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-surface',
+        created: function() {
+          var self = this;
+          require(['client', 'node_id'], function(client, node_id) {
+            self.client  = client;
+            self.node_id = node_id;
+          });
+        },
+        ready: function() {
+          this.oncontextmenu = function(event) {
+            event.preventDefault();
+            if (!this.$.dropdown.opened) {
+              this.lastMenuPosition = {
+                x: event.offsetX,
+                y: event.offsetY,
+              }
+              this.$.dropdown.set('horizontalOffset', event.offsetX);
+              this.$.dropdown.set('verticalOffset',   event.offsetY);
+              this.$.dropdown.open();
+            }
+            return false;
+          }
+        },
+        menuItem_CreateNode: function() {
+        
+          var self = this;
+          
+          self.$.dropdown.close();
+          
+          var nodeWidget = document.createElement('yb-node');
+          nodeWidget['node-id'] = self.node_id.makeHex();
+          nodeWidget.style.position = 'absolute';
+          nodeWidget.style.left = self.lastMenuPosition.x + 'px';
+          nodeWidget.style.top  = self.lastMenuPosition.y + 'px';
+          
+          nodeWidget.addEventListener('dragStart', function(event) {
+            var nodeOffset = event.detail;
+            var surfaceRect = self.getBoundingClientRect();
+            function handleMousemove(event) {
+              nodeWidget.style.left = ((event.pageX - surfaceRect.left) - nodeOffset.x) + 'px';
+              nodeWidget.style.top  = ((event.pageY - surfaceRect.top)  - nodeOffset.y) + 'px';
+            }
+            function handleMouseup() {
+              window.removeEventListener('mousemove', handleMousemove);
+              window.removeEventListener('mouseup',   handleMouseup);
+            }
+            window.addEventListener('mousemove', handleMousemove);
+            window.addEventListener('mouseup',   handleMouseup);
+          });
+          
+          Polymer.dom(self.root).appendChild(nodeWidget);
+        },
+        menuItem_CreateSet: function() {
+          var self = this;
+          
+          self.$.dropdown.close();
+          
+          var setWidget = document.createElement('yb-set');
+          setWidget.via = '52f9cf0e223d559931856acc98400f21';
+          setWidget.to  = '5c4d67cf88fd9c5dbc841dee378b6b4b';
+          setWidget.style.position = 'absolute';
+          setWidget.style.left = self.lastMenuPosition.x + 'px';
+          setWidget.style.top  = self.lastMenuPosition.y + 'px';
+          setWidget.style.width  = "300px";
+          setWidget.style.height = "200px";
+          
+          Polymer.dom(self.root).appendChild(setWidget);
+        }
+      });
+    })();
+  </script>
+
+</dom-module>

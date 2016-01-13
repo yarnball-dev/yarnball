@@ -55,6 +55,11 @@ define(function() {
     });
     return hexString;
   }
+  
+  function makeHex() {
+    var id = make();
+    return toHex(id);
+  }
     
   function fromHex(hexString) {
     if (hexString.length !== 16*2) {
@@ -75,6 +80,7 @@ define(function() {
     toMapKey:   toMapKey,
     fromMapKey: fromMapKey,
     toHex:      toHex,
+    makeHex:    makeHex,
     fromHex:    fromHex,
   }
 });

@@ -72,6 +72,7 @@
         },
         mousedown: function(event) {
           if (!this.isEditing) {
+            this.fire('dragStart', {x: event.offsetX, y: event.offsetY});
             event.preventDefault();
             return false;
           }
