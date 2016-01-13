@@ -1,0 +1,52 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="connector-styles.html">
+
+<dom-module id="yb-connector">
+  <style include="connector-styles"></style>
+  <template>
+    <svg id="svg"></svg>
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-connector',
+        properties: {
+          'fromPos': { type: Object, value: {x: 50, y: 50} },
+          'viaPos':  { type: Object, value: {x: 100, y: 80} },
+          'toPos':   { type: Object, value: {x: 150, y: 60} },
+        },
+        ready: function() {
+          var svgNS = "http://www.w3.org/2000/svg";
+          this.path = document.createElementNS(svgNS, "path");
+          this.path.setAttributeNS(null, 'd', this.makePathString());
+          this.path.setAttributeNS(null, 'class', 'connector-path yb-connector');
+          this.$.svg.appendChild(this.path);
+        },
+        observers: [
+          'updatePositions(fromPos, viaPos, toPos)'
+        ],
+        updatePositions: function(fromPos, viaPos, toPos) {
+          if ('path' in this) {
+            this.path.setAttributeNS(null, 'd', this.makePathString());
+          }
+        },
+        makePathString: function() {
+          var fromViaBend = (this.viaPos.x - this.fromPos.x) / 2;
+          var viaToBend   = (this.toPos.x  - this.viaPos.x) / 2;
+          return 'M' + this.fromPos.x + ',' + this.fromPos.y + ' ' +
+                 'C ' + (this.fromPos.x + fromViaBend) + ',' + this.fromPos.y + ' ' +
+                 (this.viaPos.x - fromViaBend) + ',' + this.viaPos.y + ' ' +
+                 this.viaPos.x + ',' + this.viaPos.y + ' ' +
+                 (this.viaPos.x + viaToBend) + ',' + this.viaPos.y + ' ' +
+                 (this.toPos.x - viaToBend) + ',' + this.toPos.y + ' ' +
+                 this.toPos.x + ',' + this.toPos.y;
+        }
+      });
+    })();
+  </script>
+
+</dom-module>

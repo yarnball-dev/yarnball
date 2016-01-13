@@ -4,6 +4,10 @@
 <link rel="import" href="../../bower_components/paper-menu/paper-menu.html">
 <link rel="import" href="../../bower_components/paper-item/paper-item.html">
 
+<link rel="import" href="../node/node.html">
+<link rel="import" href="../connector/connector.html">
+<link rel="import" href="../set/set.html">
+
 <link rel="import" href="surface-styles.html">
 
 <dom-module id="yb-surface">
@@ -11,6 +15,7 @@
   <style include="surface-styles"></style>
 
   <template>
+    <div id="background"></div>
     <iron-dropdown id="dropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
         <paper-menu>
@@ -36,38 +41,92 @@
           });
         },
         ready: function() {
-          this.oncontextmenu = function(event) {
+        
+          var self = this;
+        
+          require(['client', 'node_id'], function(client, node_id) {
+            self.client  = client;
+            self.node_id = node_id;
+        
+            self.oncontextmenu = function(event) {
+              event.preventDefault();
+              return false;
+            }
+            
+            self.$.background.onmousedown = function(event) {
+              self.backgroundMousedown(event);
+            }
+            
+            self.nodeWidgets = [];
+            
+            self.connectors = [];
+            self.connectorsFrom = new Map();
+            self.connectorsVia  = new Map();
+            self.connectorsTo   = new Map();
+            
+            var from = self.createNodeWidget({x: 100, y: 100});
+            var via  = self.createNodeWidget({x: 250, y: 180});
+            var to   = self.createNodeWidget({x: 450, y: 150});
+          });
+        },
+        backgroundMousedown: function(event) {
+          if (event.button === 2) {
             event.preventDefault();
+            this.lastMenuPosition = {
+              x: event.offsetX,
+              y: event.offsetY,
+            }
+            this.$.dropdown.set('horizontalOffset', event.offsetX);
+            this.$.dropdown.set('verticalOffset',   event.offsetY);
             if (!this.$.dropdown.opened) {
-              this.lastMenuPosition = {
-                x: event.offsetX,
-                y: event.offsetY,
-              }
-              this.$.dropdown.set('horizontalOffset', event.offsetX);
-              this.$.dropdown.set('verticalOffset',   event.offsetY);
               this.$.dropdown.open();
             }
             return false;
           }
         },
-        menuItem_CreateNode: function() {
+        createNodeWidget: function(position) {
         
           var self = this;
-          
-          self.$.dropdown.close();
-          
+        
           var nodeWidget = document.createElement('yb-node');
           nodeWidget['node-id'] = self.node_id.makeHex();
           nodeWidget.style.position = 'absolute';
-          nodeWidget.style.left = self.lastMenuPosition.x + 'px';
-          nodeWidget.style.top  = self.lastMenuPosition.y + 'px';
+          nodeWidget.style.left = position.x + 'px';
+          nodeWidget.style.top  = position.y + 'px';
+          nodeWidget.position = position;
           
           nodeWidget.addEventListener('dragStart', function(event) {
             var nodeOffset = event.detail;
             var surfaceRect = self.getBoundingClientRect();
             function handleMousemove(event) {
-              nodeWidget.style.left = ((event.pageX - surfaceRect.left) - nodeOffset.x) + 'px';
-              nodeWidget.style.top  = ((event.pageY - surfaceRect.top)  - nodeOffset.y) + 'px';
+            
+              var newPos = {
+                x: (event.pageX - surfaceRect.left) - nodeOffset.x,
+                y: (event.pageY - surfaceRect.top)  - nodeOffset.y,
+              }
+            
+              nodeWidget.style.left = newPos.x + 'px';
+              nodeWidget.style.top  = newPos.y + 'px';
+              nodeWidget.position = newPos;
+              
+              if (self.connectorsFrom.has(nodeWidget)) {
+                var connectorsFrom = self.connectorsFrom.get(nodeWidget);
+                connectorsFrom.forEach(function(connector) {
+                  connector.set('fromPos', newPos);
+                });
+              }
+              if (self.connectorsVia.has(nodeWidget)) {
+                var connectorsVia = self.connectorsVia.get(nodeWidget);
+                connectorsVia.forEach(function(connector) {
+                  connector.set('viaPos', newPos);
+                });
+              }
+              if (self.connectorsTo.has(nodeWidget)) {
+                var connectorsTo = self.connectorsTo.get(nodeWidget);
+                connectorsTo.forEach(function(connector) {
+                  connector.set('toPos', newPos);
+                })
+              }
             }
             function handleMouseup() {
               window.removeEventListener('mousemove', handleMousemove);
@@ -77,7 +136,120 @@
             window.addEventListener('mouseup',   handleMouseup);
           });
           
+          nodeWidget.addEventListener('rightButtonDragStart', function(event) {
+          
+            var nodeOffset = event.detail;
+            var surfaceRect = self.getBoundingClientRect();
+          
+            if (!self.draggingConnector) {
+              self.draggingConnector = document.createElement('yb-connector');
+              Polymer.dom(self.root).appendChild(self.draggingConnector);
+            }
+            self.draggingConnector.set('fromPos', nodeWidget.position);
+            
+            self.draggingConnectorNodes = {
+              from: nodeWidget,
+              via:  null,
+              to:   null,
+            }
+            
+            function handleOtherNodeMouseover(otherNodeWidget) {
+              if (!self.draggingConnectorNodes.from) {
+                self.draggingConnectorNodes.from = otherNodeWidget;
+                self.draggingConnector.set('fromPos', otherNodeWidget.position);
+              } else if (!self.draggingConnectorNodes.via) {
+                if (otherNodeWidget !== self.draggingConnectorNodes.from) {
+                  self.draggingConnectorNodes.via = otherNodeWidget;
+                  self.draggingConnector.set('viaPos', otherNodeWidget.position);
+                }
+              } else if (!self.draggingConnectorNodes.to) {
+                if (otherNodeWidget !== self.draggingConnectorNodes.via) {
+                  self.draggingConnectorNodes.to = otherNodeWidget;
+                  self.draggingConnector.set('toPos', otherNodeWidget.position);
+                }
+              }
+            }
+            
+            self.nodeWidgets.forEach(function(otherNodeWidget) {
+              if (otherNodeWidget !== nodeWidget) {
+                otherNodeWidget.addEventListener('mouseover', function(event) {
+                  handleOtherNodeMouseover(otherNodeWidget);
+                });
+              }
+            });
+            
+            function handleMousemove(event) {
+            
+              var cursorPos = {
+                x: (event.pageX - surfaceRect.left) - nodeOffset.x,
+                y: (event.pageY - surfaceRect.top)  - nodeOffset.y,
+              }
+              
+              if (!self.draggingConnectorNodes.via) {
+                self.draggingConnector.set('viaPos', cursorPos);
+              } else if(!self.draggingConnectorNodes.to) {
+                self.draggingConnector.set('toPos', cursorPos);
+              }
+            }
+            function handleMouseup(event) {
+              window.removeEventListener('mousemove', handleMousemove);
+              window.removeEventListener('mouseup',   handleMouseup);
+              
+              if (self.draggingConnectorNodes.from &&
+                  self.draggingConnectorNodes.via &&
+                  self.draggingConnectorNodes.to) {
+                self.createConnector(self.draggingConnectorNodes.from,
+                                     self.draggingConnectorNodes.via,
+                                     self.draggingConnectorNodes.to);
+              }
+              
+              Polymer.dom(self.root).removeChild(self.draggingConnector);
+              self.draggingConnector = null;
+            }
+            
+            window.addEventListener('mousemove', handleMousemove);
+            window.addEventListener('mouseup',   handleMouseup);
+          });
+          
           Polymer.dom(self.root).appendChild(nodeWidget);
+          
+          self.nodeWidgets.push(nodeWidget);
+          
+          return nodeWidget;
+        },
+        createConnector: function(fromWidget, viaWidget, toWidget) {
+          var connector = document.createElement('yb-connector');
+          Polymer.dom(this.root).appendChild(connector);
+          
+          this.connectors.push(connector);
+          
+          if (!this.connectorsFrom.has(fromWidget)) {
+            this.connectorsFrom.set(fromWidget, [connector]);
+          } else {
+            this.connectorsFrom.get(fromWidget).push(connector);
+          }
+          
+          if (!this.connectorsVia.has(viaWidget)) {
+            this.connectorsVia.set(viaWidget, [connector]);
+          } else {
+            this.connectorsVia.get(viaWidget).push(connector);
+          }
+          
+          if (!this.connectorsTo.has(toWidget)) {
+            this.connectorsTo.set(toWidget, [connector]);
+          } else {
+            this.connectorsTo.get(toWidget).push(connector);
+          }
+          
+          connector.set('fromPos', fromWidget.position);
+          connector.set('viaPos',  viaWidget.position);
+          connector.set('toPos',   toWidget.position);
+          
+          return connector;
+        },
+        menuItem_CreateNode: function() {
+          this.$.dropdown.close();
+          this.createNodeWidget(this.lastMenuPosition);
         },
         menuItem_CreateSet: function() {
           var self = this;
