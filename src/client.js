@@ -45,6 +45,9 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     },
     getNodeName: function(id) {
       return web.getNodeName(id);
+    },
+    setLink: function(from, via, to) {
+      web.setLink(from, via, to);
     }
   }
 });

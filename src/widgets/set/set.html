@@ -10,15 +10,11 @@
 
   <template>
     <div class="header">
-      <yb-selector node-id="{{from}}"></yb-selector>
-      <yb-selector node-id="{{via}}"></yb-selector>
-      <yb-selector node-id="{{to}}"></yb-selector>
+      <yb-selector id="fromSelector" node-id="{{from}}"></yb-selector>
+      <yb-selector id="viaSelector"  node-id="{{via}}"> </yb-selector>
+      <yb-selector id="toSelector"   node-id="{{to}}">  </yb-selector>
     </div>
-    <div class="content">
-      <template is="dom-repeat" items="{{nodes}}">
-        <yb-node node-id="{{item}}"></yb-node>
-      </template>
-    </div>
+    <div id="setContent"></div>
   </template>
   
   <script>
@@ -28,32 +24,69 @@
       Polymer({
         is: 'yb-set',
         properties: {
+          from: {
+            type: String,
+          },
           via: {
             type: String,
           },
           to: {
             type: String,
           },
-          nodes: {
+          selectors: {
             type: Array,
             value: []
-          }
+          },
         },
         created: function() {
           var self = this;
+          self.nodeWidgets = [];
           require(['client', 'node_id'], function(client, node_id) {
-            function handleLinks(links) {
-              links.forEach(function(link) {
-                if (node_id.toHex(link.via) === self.via &&
-                    node_id.toHex(link.to)  === self.to) {
-                  
-                  self.push('nodes', node_id.toHex(link.from));
-                }
-              });
-            }
-            handleLinks(client.web.getLinks());
-            client.web.onLinks(handleLinks);
+            self.client = client;
+            self.node_id = node_id;
+            self.updateSet();
+            client.web.onLinks(function() {
+              self.updateSet();
+            });
           });
+        },
+        ready: function() {
+          var self = this;
+          self.set('selectors', [self.$.fromSelector, self.$.viaSelector, self.$.toSelector]);
+          self.$.fromSelector.addEventListener('nodeIdChanged', function() {
+            self.updateSet();
+          });
+          self.$.viaSelector.addEventListener( 'nodeIdChanged', function() {
+            self.updateSet();
+          });
+          self.$.toSelector.addEventListener(  'nodeIdChanged', function() {
+            self.updateSet();
+          });
+        },
+        arrayItem: function(change, idx, path) {
+          return this.get(path, change.base[idx]);
+        },
+        updateSet: function() {
+        
+          var self = this;
+          
+          self.nodeWidgets.forEach(function(nodeWidget) {
+            Polymer.dom(self.$.setContent).removeChild(nodeWidget);
+          });
+          self.nodeWidgets = [];
+          
+          if (self.client) {
+            self.client.web.getLinks().forEach(function(link) {
+              if (self.node_id.toHex(link.via) === self.via &&
+                  self.node_id.toHex(link.to)  === self.to) {
+                
+                var nodeWidget = document.createElement('yb-node');
+                nodeWidget['node-id'] = self.node_id.toHex(link.from);
+                Polymer.dom(self.$.setContent).appendChild(nodeWidget);
+                self.nodeWidgets.push(nodeWidget);
+              }
+            });
+          }
         }
       });
     })();

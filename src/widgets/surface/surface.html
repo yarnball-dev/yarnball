@@ -7,6 +7,7 @@
 <link rel="import" href="../node/node.html">
 <link rel="import" href="../connector/connector.html">
 <link rel="import" href="../set/set.html">
+<link rel="import" href="../selector/selector.html">
 
 <link rel="import" href="surface-styles.html">
 
@@ -22,6 +23,7 @@
           <paper-item on-tap="menuItem_CreateNode">Create Node</paper-item>
           <paper-item>Create Link</paper-item>
           <paper-item on-tap="menuItem_CreateSet">Create Set</paper-item>
+          <paper-item on-tap="menuItem_CreateSelector">Create Selector</paper-item>
         </paper-menu>
       </div>
     </iron-dropdown>
@@ -64,10 +66,20 @@
             self.connectorsVia  = new Map();
             self.connectorsTo   = new Map();
             
-            self.createNodeWidget({x: 100, y: 100});
-            self.createNodeWidget({x: 250, y: 180});
-            self.createNodeWidget({x: 450, y: 150});
+            self.setWidgets = [];
+            
+            self.createNodeWidget({x: 100, y: 40},  '52f9cf0e223d559931856acc98400f21');
+            self.createNodeWidget({x: 100, y: 100}, '1264ed87a8274e5188f9020954811805');
+            self.createNodeWidget({x: 100, y: 160}, '5c4d67cf88fd9c5dbc841dee378b6b4b');
+            self.createNodeWidget({x: 185, y: 160}, '7e1b27583610201f8b48941d3637b13f');
           });
+        },
+        getSelectors: function() {
+          var selectors = [];
+          this.setWidgets.forEach(function(setWidget) {
+            selectors = selectors.concat(setWidget.selectors);
+          });
+          return selectors;
         },
         backgroundMousedown: function(event) {
           if (event.button === 2) {
@@ -84,12 +96,15 @@
             return false;
           }
         },
-        createNodeWidget: function(position) {
+        createNodeWidget: function(position, id) {
         
           var self = this;
         
           var nodeWidget = document.createElement('yb-node');
-          nodeWidget['node-id'] = self.node_id.makeHex();
+          if (!id) {
+            id = self.node_id.makeHex();
+          }
+          nodeWidget['node-id'] = id;
           nodeWidget.style.position = 'absolute';
           nodeWidget.style.left = position.x + 'px';
           nodeWidget.style.top  = position.y + 'px';
@@ -115,6 +130,11 @@
           nodeWidget.addEventListener('dragStart', function(event) {
             var nodeOffset = event.detail;
             var surfaceRect = self.getBoundingClientRect();
+            
+            var dragStartPosition = nodeWidget.position;
+            
+            nodeWidget.style['pointer-events'] = 'none';
+            document.body.style.cursor = '-webkit-grabbing';
             function handleMousemove(event) {
             
               var newPos = {
@@ -128,12 +148,51 @@
               
               self.updateConnectorsForNodeWidget(nodeWidget);
             }
-            function handleMouseup() {
+            
+            function finishDragging() {
               window.removeEventListener('mousemove', handleMousemove);
-              window.removeEventListener('mouseup',   handleMouseup);
+              window.removeEventListener('mouseup',   finishDragging);
+              document.body.style.cursor = 'default';
+              nodeWidget.style['pointer-events'] = 'auto';
+              
+              self.getSelectors().forEach(function(selector) {
+                selector.removeEventListener('mouseover', selectorMouseover);
+                selector.removeEventListener('mouseout',  selectorMouseout);
+                selector.removeEventListener('mouseup',   selectorMouseup);
+                selector.classList.remove('drag-ready');
+              });
             }
+            
             window.addEventListener('mousemove', handleMousemove);
-            window.addEventListener('mouseup',   handleMouseup);
+            window.addEventListener('mouseup',   finishDragging);
+            
+            function selectorMouseover(event) {
+              var selector = event.currentTarget;
+              selector.classList.add('drag-hover');
+            }
+            function selectorMouseout(event) {
+              var selector = event.currentTarget;
+              selector.classList.remove('drag-hover');
+            }
+            function selectorMouseup(event) {
+              var selector = event.currentTarget;
+              selector.classList.remove('drag-hover');
+              selector.set('node-id', nodeWidget['node-id']);
+              nodeWidget.style.left = dragStartPosition.x + 'px';
+              nodeWidget.style.top  = dragStartPosition.y + 'px';
+              nodeWidget.position = dragStartPosition;
+              console.log(nodeWidget.position);
+              this.updateStyles();
+              self.updateConnectorsForNodeWidget(nodeWidget);
+              finishDragging();
+            }
+            
+            self.getSelectors().forEach(function(selector) {
+              selector.addEventListener('mouseover', selectorMouseover);
+              selector.addEventListener('mouseout',  selectorMouseout);
+              selector.addEventListener('mouseup',   selectorMouseup);
+              selector.classList.add('drag-ready');
+            });
           });
         },
         _setupNodeWidgetConnectorDragging: function(nodeWidget) {
@@ -209,10 +268,17 @@
                 self.createConnector(self.draggingConnectorNodes.from,
                                      self.draggingConnectorNodes.via,
                                      self.draggingConnectorNodes.to);
+                self.client.setLink(
+                  self.node_id.fromHex(self.draggingConnectorNodes.from['node-id']),
+                  self.node_id.fromHex(self.draggingConnectorNodes.via['node-id']),
+                  self.node_id.fromHex(self.draggingConnectorNodes.to['node-id'])
+                )
               }
               
-              Polymer.dom(self.root).removeChild(self.draggingConnector);
-              self.draggingConnector = null;
+              if (self.draggingConnector) {
+                Polymer.dom(self.root).removeChild(self.draggingConnector);
+                self.draggingConnector = null;
+              }
             }
             
             window.addEventListener('mousemove', handleMousemove);
@@ -280,15 +346,32 @@
           
           var setWidget = document.createElement('yb-set');
           setWidget.via = '52f9cf0e223d559931856acc98400f21';
-          setWidget.to  = '5c4d67cf88fd9c5dbc841dee378b6b4b';
+          setWidget.to  = '7e1b27583610201f8b48941d3637b13f';
           setWidget.style.position = 'absolute';
           setWidget.style.left = self.lastMenuPosition.x + 'px';
           setWidget.style.top  = self.lastMenuPosition.y + 'px';
-          setWidget.style.width  = "300px";
-          setWidget.style.height = "200px";
+          setWidget.style['min-width']  = "150px";
+          setWidget.style['max-width']  = "400px";
+          setWidget.style['min-height'] = "50px";
+          
+          self.setWidgets.push(setWidget);
           
           Polymer.dom(self.root).appendChild(setWidget);
-        }
+        },
+        menuItem_CreateSelector: function() {
+          var self = this;
+          
+          self.$.dropdown.close();
+          
+          var selector = document.createElement('yb-selector');
+          selector.style.position = 'absolute';
+          selector.style.left = self.lastMenuPosition.x + 'px';
+          selector.style.top  = self.lastMenuPosition.y + 'px';
+          selector.style.width  = '100px';
+          selector.style.height = '100px';
+          
+          Polymer.dom(self.root).appendChild(selector);
+        },
       });
     })();
   </script>

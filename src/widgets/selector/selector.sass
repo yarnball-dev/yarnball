@@ -1,5 +1,24 @@
+@import ../../yarnball
+
 :host
   border: 1px solid #ddd
   display: flex
-  yb-node
+  #nodeContainer
     flex-grow: 1
+  
+  yb-node
+    display: block
+  
+  #clearButton
+    display: inline-block
+    width: 40px
+    min-width: auto
+    margin-left:  0
+    margin-right: 0
+
+:host.drag-ready
+  outline: 2px solid #aaa
+    
+:host.drag-hover
+  outline: 2px solid orange
+  background-color: $highlight-color

@@ -1,4 +1,6 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
 
 <link rel="import" href="selector-styles.html">
 
@@ -7,8 +9,12 @@
   <style include="selector-styles"></style>
 
   <template>
+    <span id="nodeContainer">
+    </span>
     <template is="dom-if" if="{{node-id}}">
-      <yb-node node-id="{{node-id}}"></yb-node>
+      <paper-button id="clearButton" on-tap="clear">
+        <iron-icon icon="icons:clear"></iron-icon>
+      </paper-button>
     </template>
   </template>
   
@@ -21,7 +27,32 @@
         properties: {
           'node-id': {
             type: String,
+            observer: 'nodeIdChanged',
+            notify: true,
+          },
+        },
+        ready: function() {
+          if (this['node-id']) {
+            this.nodeWidget = document.createElement('yb-node');
+            this.nodeWidget['node-id'] = this['node-id'];
+            Polymer.dom(this.$.nodeContainer).appendChild(this.nodeWidget);
+          } else {
+            this.nodeWidget = null;
           }
+        },
+        nodeIdChanged: function() {
+          if (this.nodeWidget) {
+            Polymer.dom(this.$.nodeContainer).removeChild(this.nodeWidget);
+          }
+          if (this['node-id']) {
+            this.nodeWidget = document.createElement('yb-node');
+            this.nodeWidget['node-id'] = this['node-id'];
+            Polymer.dom(this.$.nodeContainer).appendChild(this.nodeWidget);
+          }
+          this.fire('nodeIdChanged', this['node-id']);
+        },
+        clear: function() {
+          this.set('node-id', null);
         }
       });
     })();

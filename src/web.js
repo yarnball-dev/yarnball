@@ -65,6 +65,7 @@ define(['./node_id'], function(node_id) {
     this.links.add(node_id.toHex(from) +
                    node_id.toHex(via) +
                    node_id.toHex(to));
+    this._notifyLinks();
   }
   
   Web.prototype.hasLink = function(from, via, to) {
