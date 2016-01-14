@@ -61,6 +61,8 @@
             
             self.nodeWidgets = [];
             
+            self.selectedNodeWidgets = new Set();
+            
             self.connectors = [];
             self.connectorsFrom = new Map();
             self.connectorsVia  = new Map();
@@ -82,7 +84,11 @@
           return selectors;
         },
         backgroundMousedown: function(event) {
-          if (event.button === 2) {
+          if (event.button === 0) {
+            if (!event.ctrlKey) {
+              this.deselect();
+            }
+          } else if (event.button === 2) {
             event.preventDefault();
             this.lastMenuPosition = {
               x: event.offsetX,
@@ -114,6 +120,7 @@
             self.updateConnectorsForNodeWidget(nodeWidget);
           });
           
+          self._setupNodeWidgetSelection(nodeWidget);
           self._setupNodeWidgetDragging(nodeWidget);
           self._setupNodeWidgetConnectorDragging(nodeWidget);
           
@@ -123,30 +130,63 @@
           
           return nodeWidget;
         },
+        _setupNodeWidgetSelection: function(nodeWidget) {
+          var self = this;
+          nodeWidget.addEventListener('selected', function(event) {
+            if (!self.selectedNodeWidgets.has(nodeWidget)) {
+              if (!event.detail.ctrlKey) {
+                self.deselect();
+              }
+              self.selectedNodeWidgets.add(nodeWidget);
+              nodeWidget.set('selected', true);
+            }
+          });
+        },
+        deselect: function() {
+          this.selectedNodeWidgets.forEach(function(nodeWidget) {
+            nodeWidget.set('selected', false);
+          });
+          this.selectedNodeWidgets.clear();
+        },
         _setupNodeWidgetDragging: function(nodeWidget) {
         
           var self = this;
         
           nodeWidget.addEventListener('dragStart', function(event) {
-            var nodeOffset = event.detail;
+          
             var surfaceRect = self.getBoundingClientRect();
             
-            var dragStartPosition = nodeWidget.position;
+            var cursorStartPos = {
+              x: event.detail.pageX,
+              y: event.detail.pageY,
+            }
+            
+            self.selectedNodeWidgets.forEach(function(nodeWidget) {
+              nodeWidget.dragStartPosition = nodeWidget.position;
+            });
             
             nodeWidget.style['pointer-events'] = 'none';
             document.body.style.cursor = '-webkit-grabbing';
             function handleMousemove(event) {
             
-              var newPos = {
-                x: (event.pageX - surfaceRect.left) - nodeOffset.x,
-                y: (event.pageY - surfaceRect.top)  - nodeOffset.y,
+              var cursorOffset = {
+                x: event.pageX - cursorStartPos.x,
+                y: event.pageY - cursorStartPos.y,
               }
-            
-              nodeWidget.style.left = newPos.x + 'px';
-              nodeWidget.style.top  = newPos.y + 'px';
-              nodeWidget.position = newPos;
               
-              self.updateConnectorsForNodeWidget(nodeWidget);
+              self.selectedNodeWidgets.forEach(function(selectedNodeWidget) {
+              
+                var newPos = {
+                  x: selectedNodeWidget.dragStartPosition.x + cursorOffset.x,
+                  y: selectedNodeWidget.dragStartPosition.y + cursorOffset.y,
+                }
+            
+                selectedNodeWidget.style.left = newPos.x + 'px';
+                selectedNodeWidget.style.top  = newPos.y + 'px';
+                selectedNodeWidget.position = newPos;
+              
+                self.updateConnectorsForNodeWidget(selectedNodeWidget);
+              });
             }
             
             function finishDragging() {
@@ -178,9 +218,9 @@
               var selector = event.currentTarget;
               selector.classList.remove('drag-hover');
               selector.set('node-id', nodeWidget['node-id']);
-              nodeWidget.style.left = dragStartPosition.x + 'px';
-              nodeWidget.style.top  = dragStartPosition.y + 'px';
-              nodeWidget.position = dragStartPosition;
+              nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
+              nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
+              nodeWidget.position = nodeWidget.dragStartPosition;
               console.log(nodeWidget.position);
               this.updateStyles();
               self.updateConnectorsForNodeWidget(nodeWidget);
