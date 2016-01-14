@@ -89,10 +89,12 @@ gulp.task('browser', ['default', 'watch'], function() {
       ws: true
     },
     files: [
-      "dist/**/*.html",
-      "dist/**/*.js",
-      "dist/**/*.css",
-      "dist/**/*.svg",
+      "dist/*.html",
+      "dist/widgets/**/*.html",
+      "dist/*.js",
+      "dist/*.css",
+      "dist/*.svg",
+      "dist/widgets/**/*.svg",
     ]
   });
 });
