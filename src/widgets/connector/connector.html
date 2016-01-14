@@ -15,9 +15,9 @@
       Polymer({
         is: 'yb-connector',
         properties: {
-          'fromPos': { type: Object, value: {x: 50, y: 50} },
-          'viaPos':  { type: Object, value: {x: 100, y: 80} },
-          'toPos':   { type: Object, value: {x: 150, y: 60} },
+          fromPos: { type: Object, value: null },
+          viaPos:  { type: Object, value: null },
+          toPos:   { type: Object, value: null },
         },
         ready: function() {
           var svgNS = "http://www.w3.org/2000/svg";
@@ -35,15 +35,25 @@
           }
         },
         makePathString: function() {
-          var fromViaBend = (this.viaPos.x - this.fromPos.x) / 2;
-          var viaToBend   = (this.toPos.x  - this.viaPos.x) / 2;
-          return 'M' + this.fromPos.x + ',' + this.fromPos.y + ' ' +
-                 'C ' + (this.fromPos.x + fromViaBend) + ',' + this.fromPos.y + ' ' +
-                 (this.viaPos.x - fromViaBend) + ',' + this.viaPos.y + ' ' +
-                 this.viaPos.x + ',' + this.viaPos.y + ' ' +
-                 (this.viaPos.x + viaToBend) + ',' + this.viaPos.y + ' ' +
-                 (this.toPos.x - viaToBend) + ',' + this.toPos.y + ' ' +
-                 this.toPos.x + ',' + this.toPos.y;
+          if (this.fromPos !== null && this.viaPos !== null && this.toPos !== null) {
+            var fromViaBend = (this.viaPos.x - this.fromPos.x) / 2;
+            var viaToBend   = (this.toPos.x  - this.viaPos.x) / 2;
+            return 'M' + this.fromPos.x + ',' + this.fromPos.y + ' ' +
+                  'C ' + (this.fromPos.x + fromViaBend) + ',' + this.fromPos.y + ' ' +
+                  (this.viaPos.x - fromViaBend) + ',' + this.viaPos.y + ' ' +
+                  this.viaPos.x + ',' + this.viaPos.y + ' ' +
+                  (this.viaPos.x + viaToBend) + ',' + this.viaPos.y + ' ' +
+                  (this.toPos.x - viaToBend) + ',' + this.toPos.y + ' ' +
+                  this.toPos.x + ',' + this.toPos.y;
+          } else if (this.fromPos !== null && this.viaPos !== null) {
+            var fromViaBend = (this.viaPos.x - this.fromPos.x) / 2;
+            return 'M' + this.fromPos.x + ',' + this.fromPos.y + ' ' +
+                  'C ' + (this.fromPos.x + fromViaBend) + ',' + this.fromPos.y + ' ' +
+                  (this.viaPos.x - fromViaBend) + ',' + this.viaPos.y + ' ' +
+                  this.viaPos.x + ',' + this.viaPos.y;
+          } else {
+            return "";
+          }
         }
       });
     })();

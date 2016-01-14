@@ -38,6 +38,9 @@
             type: Boolean,
             value: false,
           },
+          dimensions: {
+            type: Object,
+          }
         },
         makeBrokenId: function() {
           return this['node-id'].slice(0, 8) + '\n' +
@@ -48,6 +51,11 @@
         created: function() {
         
           var self = this;
+          
+          self.dimensions = {
+            width:  null,
+            height: null,
+          }
           
           require(['client', 'node_id'], function(client, node_id) {
           
@@ -61,10 +69,36 @@
               nodes.forEach(function(node) {
                 if (node_id.equal(node.id, self.id_)) {
                   self.set('name', node.name);
+                  self.updateStyles();
+                  self.updateDimensions();
                 }
               });
             });
           });
+        },
+        attached: function() {
+          var self = this;
+          this.async(function() {
+            self.updateDimensions();
+          });
+        },
+        updateDimensions: function() {
+          Polymer.dom.flush();
+          var rect = this.getBoundingClientRect();
+          if (this.dimensions.width  !== rect.width ||
+              this.dimensions.height !== rect.height) {
+            this.set('dimensions', {
+              width:  rect.width,
+              height: rect.height,
+            });
+            this.fire('dimensionsChanged', this.dimensions);
+          }
+        },
+        centerPosition: function() {
+          return {
+            x: this.position.x + (this.dimensions.width  / 2),
+            y: this.position.y + (this.dimensions.height / 2),
+          }
         },
         listeners: {
           mousedown: 'mousedown',
@@ -95,11 +129,13 @@
           this.$.input_box.classList.remove('hidden');
           this.$.input_box.select();
           this.updateStyles();
+          this.updateDimensions();
         },
         finishEditing: function() {
           this.client.setNodeName(this.id_, this.$.input_box.value);
           this.$.input_box.classList.add('hidden');
           this.set('isEditing', false);
+          this.updateDimensions();
         },
         onBlur: function(event) {
           this.finishEditing();
