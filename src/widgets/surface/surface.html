@@ -41,6 +41,10 @@
             <iron-icon icon="icons:delete" item-icon></iron-icon>
             Delete
           </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_CopySelected">
+            <iron-icon icon="icons:content-copy" item-icon></iron-icon>
+            Copy
+          </paper-icon-item>
         </paper-menu>
       </div>
     </iron-dropdown>
@@ -194,6 +198,49 @@
             return !self.selectedConnectors.has(connector);
           });
           self.selectedConnectors.clear();
+        },
+        copySelected: function() {
+          var self = this;
+          
+          var newNodeWidgets = new Set();
+          var newConnectors  = new Set();
+          
+          var oldToNewNodeWidgetMap = new Map();
+          
+          self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            var newPosition = {
+              x: nodeWidget.position.x + 10,
+              y: nodeWidget.position.y + 10,
+            }
+            var newNodeWidget = self.createNodeWidget(newPosition, nodeWidget.nodeId);
+            newNodeWidgets.add(newNodeWidget);
+            
+            nodeWidget.set('selected', false);
+            newNodeWidget.set('selected', true);
+            
+            oldToNewNodeWidgetMap.set(nodeWidget, newNodeWidget);
+          });
+          
+          self.selectedConnectors.forEach(function(connector) {
+            
+            if (self.selectedNodeWidgets.has(connector.fromWidget) &&
+                self.selectedNodeWidgets.has(connector.viaWidget) &&
+                self.selectedNodeWidgets.has(connector.toWidget)) {
+              
+              var newConnector = self.createConnector(
+                oldToNewNodeWidgetMap.get(connector.fromWidget),
+                oldToNewNodeWidgetMap.get(connector.viaWidget),
+                oldToNewNodeWidgetMap.get(connector.toWidget)
+              );
+              newConnectors.add(newConnector);
+              
+              connector.set('selected', false);
+              newConnector.set('selected', true);
+            }
+          });
+          
+          self.selectedNodeWidgets = newNodeWidgets;
+          self.selectedConnectors  = newConnectors;
         },
         _setupNodeWidgetDragging: function(nodeWidget) {
         
@@ -484,6 +531,10 @@
         menuItem_DeleteSelected: function() {
           this.$.selectionDropdown.close();
           this.deleteSelected();
+        },
+        menuItem_CopySelected: function() {
+          this.$.selectionDropdown.close();
+          this.copySelected();
         }
       });
     })();
