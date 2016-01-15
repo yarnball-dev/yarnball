@@ -168,6 +168,8 @@
           
           self.$.boxSelection.classList.remove('hidden');
           
+          var alreadySelectedNodeWidgets = new Set(self.selectedNodeWidgets);
+          
           function handleMousemove(event) {
           
             var currentSelectionRect = {
@@ -182,8 +184,11 @@
             self.$.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
             self.$.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
             
-            var nodesInSelectionRect = new Set(self.getNodesInRect(currentSelectionRect));
-            self.selectNodeWidgets(nodesInSelectionRect);
+            var nodesToSelect = new Set(self.getNodesInRect(currentSelectionRect));
+            alreadySelectedNodeWidgets.forEach(function(nodeWidget) {
+              nodesToSelect.add(nodeWidget);
+            });
+            self.selectNodeWidgets(nodesToSelect);
             
             var setWidgetsInSelectionRect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
             self.selectSetWidgets(setWidgetsInSelectionRect);
