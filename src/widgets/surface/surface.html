@@ -432,39 +432,43 @@
           nodeWidget.addEventListener('rightButtonDragStart', function(event) {
           
             var surfaceRect = self.getBoundingClientRect();
-          
-            if (!self.draggingConnector) {
-              self.draggingConnector = document.createElement('yb-connector');
-              Polymer.dom(self.root).appendChild(self.draggingConnector);
-            }
-            self.draggingConnector.set('fromPos', nodeWidget.centerPosition());
             
             self.draggingConnectorNodes = {
-              from: nodeWidget,
+              from: new Set(self.selectedNodeWidgets),
               via:  null,
               to:   null,
             }
+            self.draggingConnectorNodes.from.add(nodeWidget);
+            
+            self.draggingConnectors = [];
+            self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
+              var draggingConnector = document.createElement('yb-connector');
+              draggingConnector.set('fromPos', fromNodeWidget.centerPosition());
+              Polymer.dom(self.root).appendChild(draggingConnector);
+              self.draggingConnectors.push(draggingConnector);
+            });
             
             function handleOtherNodeMouseover(event) {
               var otherNodeWidget = event.currentTarget;
-              if (!self.draggingConnectorNodes.from) {
-                self.draggingConnectorNodes.from = otherNodeWidget;
-                self.draggingConnector.set('fromPos', otherNodeWidget.centerPosition());
-              } else if (!self.draggingConnectorNodes.via) {
-                if (otherNodeWidget !== self.draggingConnectorNodes.from) {
+              if (!self.draggingConnectorNodes.via) {
+                if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                   self.draggingConnectorNodes.via = otherNodeWidget;
-                  self.draggingConnector.set('viaPos', otherNodeWidget.centerPosition());
+                  self.draggingConnectors.forEach(function(draggingConnector) {
+                    draggingConnector.set('viaPos', otherNodeWidget.centerPosition());
+                  });
                 }
               } else if (!self.draggingConnectorNodes.to) {
                 if (otherNodeWidget !== self.draggingConnectorNodes.via) {
                   self.draggingConnectorNodes.to = otherNodeWidget;
-                  self.draggingConnector.set('toPos', otherNodeWidget.centerPosition());
+                  self.draggingConnectors.forEach(function(draggingConnector) {
+                    draggingConnector.set('toPos', otherNodeWidget.centerPosition());
+                  });
                 }
               }
             }
             
             self.nodeWidgets.forEach(function(otherNodeWidget) {
-              if (otherNodeWidget !== nodeWidget) {
+              if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                 otherNodeWidget.addEventListener('mouseover', handleOtherNodeMouseover);
               }
             });
@@ -477,9 +481,13 @@
               }
               
               if (!self.draggingConnectorNodes.via) {
-                self.draggingConnector.set('viaPos', cursorPos);
+                self.draggingConnectors.forEach(function(draggingConnector) {
+                  draggingConnector.set('viaPos', cursorPos);
+                });
               } else if(!self.draggingConnectorNodes.to) {
-                self.draggingConnector.set('toPos', cursorPos);
+                self.draggingConnectors.forEach(function(draggingConnector) {
+                  draggingConnector.set('toPos', cursorPos);
+                });
               }
             }
             function handleMouseup(event) {
@@ -487,28 +495,30 @@
               window.removeEventListener('mouseup',   handleMouseup);
               
               self.nodeWidgets.forEach(function(otherNodeWidget) {
-                if (otherNodeWidget !== nodeWidget) {
+                if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                   otherNodeWidget.removeEventListener('mouseover', handleOtherNodeMouseover);
                 }
               });
               
-              if (self.draggingConnectorNodes.from &&
-                  self.draggingConnectorNodes.via &&
+              if (self.draggingConnectorNodes.via &&
                   self.draggingConnectorNodes.to) {
-                self.createConnector(self.draggingConnectorNodes.from,
-                                     self.draggingConnectorNodes.via,
-                                     self.draggingConnectorNodes.to);
-                self.client.setLink(
-                  self.node_id.fromHex(self.draggingConnectorNodes.from.nodeId),
-                  self.node_id.fromHex(self.draggingConnectorNodes.via.nodeId),
-                  self.node_id.fromHex(self.draggingConnectorNodes.to.nodeId)
-                )
+                
+                self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
+                  self.createConnector(fromNodeWidget,
+                                       self.draggingConnectorNodes.via,
+                                       self.draggingConnectorNodes.to);
+                  self.client.setLink(
+                    self.node_id.fromHex(fromNodeWidget.nodeId),
+                    self.node_id.fromHex(self.draggingConnectorNodes.via.nodeId),
+                    self.node_id.fromHex(self.draggingConnectorNodes.to.nodeId)
+                  )
+                });
               }
               
-              if (self.draggingConnector) {
-                Polymer.dom(self.root).removeChild(self.draggingConnector);
-                self.draggingConnector = null;
-              }
+              self.draggingConnectors.forEach(function(draggingConnector) {
+                Polymer.dom(self.root).removeChild(draggingConnector);
+              });
+              self.draggingConnectors = [];
             }
             
             window.addEventListener('mousemove', handleMousemove);
@@ -518,7 +528,7 @@
         _setupNodeWidgetMenu: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('contextMenu', function(event) {
-            if (!self.draggingConnector) {
+            if (!self.draggingConnectors) {
             
               if (self.$.backgroundDropdown.opened) {
                 self.$.backgroundDropdown.close();
