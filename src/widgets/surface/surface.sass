@@ -1,3 +1,5 @@
+@import ../../yarnball
+
 :host
   display: block
   position: relative
@@ -21,3 +23,11 @@
     line-height: 20px
     border-radius: 3px
     box-shadow: 0px 2px 6px #ccc
+    
+    paper-menu
+      paper-item,
+      paper-icon-item
+        cursor: pointer
+      paper-item:hover,
+      paper-icon-item:hover
+        background: $highlight-color

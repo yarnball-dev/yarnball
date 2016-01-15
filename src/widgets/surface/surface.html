@@ -3,6 +3,7 @@
 <link rel="import" href="../../bower_components/iron-dropdown/iron-dropdown.html">
 <link rel="import" href="../../bower_components/paper-menu/paper-menu.html">
 <link rel="import" href="../../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../../bower_components/paper-item/paper-icon-item.html">
 
 <link rel="import" href="../node/node.html">
 <link rel="import" href="../connector/connector.html">
@@ -22,10 +23,14 @@
     <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
         <paper-menu>
-          <paper-item on-tap="menuItem_CreateNode">Create Node</paper-item>
-          <paper-item>Create Link</paper-item>
-          <paper-item on-tap="menuItem_CreateSet">Create Set</paper-item>
-          <paper-item on-tap="menuItem_CreateSelector">Create Selector</paper-item>
+          <paper-icon-item on-tap="menuItem_CreateNode">
+            <iron-icon icon="icons:add" item-icon></iron-icon>
+            Add Node
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_CreateSet">
+            <iron-icon icon="icons:add" item-icon></iron-icon>
+            Add Set
+          </paper-icon-item>
         </paper-menu>
       </div>
     </iron-dropdown>
@@ -33,7 +38,10 @@
     <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
         <paper-menu>
-          <paper-item on-tap="menuItem_DeleteSelected">Delete</paper-item>
+          <paper-icon-item on-tap="menuItem_DeleteSelected">
+            <iron-icon icon="icons:delete" item-icon></iron-icon>
+            Delete
+          </paper-icon-item>
         </paper-menu>
       </div>
     </iron-dropdown>
