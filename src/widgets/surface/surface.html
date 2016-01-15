@@ -46,6 +46,10 @@
             <iron-icon icon="icons:visibility" item-icon></iron-icon>
             Reveal Links
           </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_HideLinks">
+            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
+            Hide Links
+          </paper-icon-item>
           <paper-icon-item on-tap="menuItem_HideSelected">
             <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
             Hide
@@ -70,7 +74,7 @@
           
           self.nodeWidgets = [];
           
-          self.connectors = [];
+          self.connectors = new Set();
           self.connectorsFrom = new Map();
           self.connectorsVia  = new Map();
           self.connectorsTo   = new Map();
@@ -459,9 +463,9 @@
               to:   self.node_id.fromHex(connector.toWidget.nodeId)
             }));
           });
-          self.connectors = self.connectors.filter(function(connector) {
+          self.connectors = new Set(Array.from(self.connectors.entries()).filter(function(connector) {
             return !connectorsToDelete.has(connector);
-          });
+          }));
           self.selectedConnectors.clear();
           
           self.selectedSetWidgets.forEach(function(setWidget) {
@@ -471,6 +475,38 @@
           self.selectedSetWidgets.clear();
           
           return affectedLinks;
+        },
+        removeConnector: function(connector) {
+          connector.fromWidget.connectorsFrom.delete(connector);
+          connector.viaWidget.connectorsVia.delete(connector);
+          connector.toWidget.connectorsTo.delete(connector);
+          Polymer.dom(this.root).removeChild(connector);
+          this.connectors.delete(connector);
+        },
+        removeSelectedConnectors: function() {
+          var self = this;
+          self.selectedConnectors.forEach(function(connector) {
+            connector.fromWidget.connectorsFrom.delete(connector);
+            connector.viaWidget.connectorsVia.delete(connector);
+            connector.toWidget.connectorsTo.delete(connector);
+            Polymer.dom(self.root).removeChild(connector);
+            self.connectors.delete(connector);
+          });
+          self.selectedConnectors.clear();
+        },
+        removeConnectorsBetweenSelectedNodeWidgets: function() {
+          var self = this;
+          self.connectors = new Set(Array.from(self.connectors).filter(function(connector) {
+            if (self.selectedNodeWidgets.has(connector.fromWidget) &&
+                self.selectedNodeWidgets.has(connector.viaWidget) &&
+                self.selectedNodeWidgets.has(connector.toWidget)) {
+              
+              self.removeConnector(connector);
+              return false;
+            } else {
+              return true;
+            }
+          }))
         },
         copySelected: function(offset) {
           var self = this;
@@ -562,7 +598,7 @@
                 nodeWidgetsVia.forEach(function(nodeWidgetVia) {
                   nodeWidgetsTo.forEach(function(nodeWidgetTo) {
                     
-                    var alreadyHasConnector = self.connectors.some(function(connector) {
+                    var alreadyHasConnector = Array.from(self.connectors).some(function(connector) {
                       return connector.fromWidget === nodeWidgetFrom &&
                              connector.viaWidget  === nodeWidgetVia &&
                              connector.toWidget   === nodeWidgetTo;
@@ -710,7 +746,7 @@
           viaWidget.connectorsVia.add(connector);
           toWidget.connectorsTo.add(connector);
           
-          self.connectors.push(connector);
+          self.connectors.add(connector);
           
           if (!self.connectorsFrom.has(fromWidget)) {
             self.connectorsFrom.set(fromWidget, [connector]);
@@ -865,7 +901,12 @@
         menuItem_RevealLinks: function() {
           this.$.selectionDropdown.close();
           this.revealLinksInSelected();
-        }
+        },
+        menuItem_HideLinks: function() {
+          this.$.selectionDropdown.close();
+          this.removeSelectedConnectors();
+          this.removeConnectorsBetweenSelectedNodeWidgets();
+        },
       });
     })();
   </script>
