@@ -34,6 +34,11 @@
             type: String,
             computed: 'getNodeId_withLinebreaks(nodeId)'
           },
+          highlighted: {
+            type: Boolean,
+            value: false,
+            observer: 'handleHighlightedChanged',
+          },
           selected: {
             type: Boolean,
             value: false,
@@ -97,6 +102,9 @@
           this.connectorsVia.forEach(function(connector)  { connectors.add(connector); });
           this.connectorsTo.forEach(function(connector)   { connectors.add(connector); });
           return connectors;
+        },
+        handleHighlightedChanged: function() {
+          this.toggleClass('highlighted', this.highlighted);
         },
         handleSelectedChanged: function() {
           this.toggleClass('selected', this.selected);

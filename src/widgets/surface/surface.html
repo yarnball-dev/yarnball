@@ -109,7 +109,7 @@
         listeners: {
           contextmenu: 'oncontextmenu'
         },
-        oncontextmenu: function() {
+        oncontextmenu: function(event) {
           event.preventDefault();
           return false;
         },
@@ -371,6 +371,7 @@
             self.updateConnectorsForNodeWidget(nodeWidget);
           });
           
+          self._setupNodeWidgetHighlighting(nodeWidget);
           self._setupNodeWidgetSelection(nodeWidget);
           self._setupNodeWidgetDragging(nodeWidget);
           self._setupNodeWidgetConnectorDragging(nodeWidget);
@@ -381,6 +382,25 @@
           self.nodeWidgets.push(nodeWidget);
           
           return nodeWidget;
+        },
+        _setupNodeWidgetHighlighting: function(nodeWidget) {
+          var self = this;
+          nodeWidget.addEventListener('mouseover', function(event) {
+            var nodeCopies = [];
+            self.nodeWidgets.forEach(function(otherNodeWidget) {
+              if (otherNodeWidget !== nodeWidget && otherNodeWidget.nodeId === nodeWidget.nodeId) {
+                nodeCopies.push(otherNodeWidget);
+                otherNodeWidget.set('highlighted', true);
+              }
+            });
+            function handleMouseout() {
+              nodeWidget.removeEventListener('mouseout', handleMouseout);
+              nodeCopies.forEach(function(nodeWidgetCopy) {
+                nodeWidgetCopy.set('highlighted', false);
+              });
+            }
+            nodeWidget.addEventListener('mouseout', handleMouseout);
+          });
         },
         _setupNodeWidgetSelection: function(nodeWidget) {
           var self = this;
