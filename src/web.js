@@ -68,6 +68,13 @@ define(['./node_id'], function(node_id) {
     this._notifyLinks();
   }
   
+  Web.prototype.unsetLink = function(from, via, to) {
+    this.links.delete(node_id.toHex(from) +
+                      node_id.toHex(via) +
+                      node_id.toHex(to));
+    this._notifyLinks();
+  }
+  
   Web.prototype.hasLink = function(from, via, to) {
     return this.links.has(node_id.toHex(from) +
                           node_id.toHex(via) +

@@ -110,6 +110,7 @@
         },
         listeners: {
           mousedown: 'mousedown',
+          mouseup:   'mouseup',
           dblclick: 'dblclick',
         },
         mousedown: function(event) {
@@ -155,6 +156,12 @@
             window.addEventListener('mousemove', handleMousemove);
             window.addEventListener('mouseup',   handleMouseup);
             return false;
+          }
+        },
+        mouseup: function(event) {
+          if (event.button === 2) {
+            this.fire('selected', event);
+            this.fire('contextMenu', event);
           }
         },
         dblclick: function(event) {

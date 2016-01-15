@@ -16,14 +16,24 @@
   <style include="surface-styles"></style>
 
   <template>
+  
     <div id="background"></div>
-    <iron-dropdown id="dropdown" horizontal-align="left" vertical-align="top">
+    
+    <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
         <paper-menu>
           <paper-item on-tap="menuItem_CreateNode">Create Node</paper-item>
           <paper-item>Create Link</paper-item>
           <paper-item on-tap="menuItem_CreateSet">Create Set</paper-item>
           <paper-item on-tap="menuItem_CreateSelector">Create Selector</paper-item>
+        </paper-menu>
+      </div>
+    </iron-dropdown>
+    
+    <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
+      <div class="dropdown-content">
+        <paper-menu>
+          <paper-item on-tap="menuItem_DeleteSelected">Delete</paper-item>
         </paper-menu>
       </div>
     </iron-dropdown>
@@ -62,6 +72,7 @@
             self.nodeWidgets = [];
             
             self.selectedNodeWidgets = new Set();
+            self.selectedConnectors  = new Set();
             
             self.connectors = [];
             self.connectorsFrom = new Map();
@@ -94,10 +105,10 @@
               x: event.offsetX,
               y: event.offsetY,
             }
-            this.$.dropdown.set('horizontalOffset', event.offsetX);
-            this.$.dropdown.set('verticalOffset',   event.offsetY);
-            if (!this.$.dropdown.opened) {
-              this.$.dropdown.open();
+            this.$.backgroundDropdown.set('horizontalOffset', event.offsetX);
+            this.$.backgroundDropdown.set('verticalOffset',   event.offsetY);
+            if (!this.$.backgroundDropdown.opened) {
+              this.$.backgroundDropdown.open();
             }
             return false;
           }
@@ -123,6 +134,7 @@
           self._setupNodeWidgetSelection(nodeWidget);
           self._setupNodeWidgetDragging(nodeWidget);
           self._setupNodeWidgetConnectorDragging(nodeWidget);
+          self._setupNodeWidgetMenu(nodeWidget);
           
           Polymer.dom(self.root).appendChild(nodeWidget);
           
@@ -147,6 +159,35 @@
             nodeWidget.set('selected', false);
           });
           this.selectedNodeWidgets.clear();
+          
+          this.selectedConnectors.forEach(function(connector) {
+            connector.set('selected', false);
+          });
+          this.selectedConnectors.clear();
+        },
+        deleteSelected: function() {
+          var self = this;
+          
+          self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            Polymer.dom(self.root).removeChild(nodeWidget);
+          });
+          self.nodeWidgets = self.nodeWidgets.filter(function(nodeWidget) {
+            return !self.selectedNodeWidgets.has(nodeWidget);
+          });
+          self.selectedNodeWidgets.clear();
+          
+          self.selectedConnectors.forEach(function(connector) {
+            Polymer.dom(self.root).removeChild(connector);
+            self.client.unsetLink(
+              self.node_id.fromHex(connector.fromWidget['node-id']),
+              self.node_id.fromHex(connector.viaWidget['node-id']),
+              self.node_id.fromHex(connector.toWidget['node-id'])
+            )
+          });
+          self.connectors = self.connectors.filter(function(connector) {
+            return !self.selectedConnectors.has(connector);
+          });
+          self.selectedConnectors.clear();
         },
         _setupNodeWidgetDragging: function(nodeWidget) {
         
@@ -221,7 +262,6 @@
               nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
               nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
               nodeWidget.position = nodeWidget.dragStartPosition;
-              console.log(nodeWidget.position);
               this.updateStyles();
               self.updateConnectorsForNodeWidget(nodeWidget);
               finishDragging();
@@ -325,33 +365,70 @@
             window.addEventListener('mouseup',   handleMouseup);
           });
         },
+        _setupNodeWidgetMenu: function(nodeWidget) {
+          var self = this;
+          nodeWidget.addEventListener('contextMenu', function(event) {
+            if (!self.draggingConnector) {
+              self.$.selectionDropdown.set('horizontalOffset', nodeWidget.position.x + event.detail.offsetX);
+              self.$.selectionDropdown.set('verticalOffset',   nodeWidget.position.y + event.detail.offsetY);
+              if (!self.$.selectionDropdown.opened) {
+                self.$.selectionDropdown.open();
+              }
+            }
+          });
+        },
         createConnector: function(fromWidget, viaWidget, toWidget) {
+        
+          var self = this;
+        
           var connector = document.createElement('yb-connector');
-          Polymer.dom(this.root).appendChild(connector);
+          Polymer.dom(self.root).appendChild(connector);
           
-          this.connectors.push(connector);
+          connector.fromWidget = fromWidget;
+          connector.viaWidget  = viaWidget;
+          connector.toWidget   = toWidget;
           
-          if (!this.connectorsFrom.has(fromWidget)) {
-            this.connectorsFrom.set(fromWidget, [connector]);
+          self.connectors.push(connector);
+          
+          if (!self.connectorsFrom.has(fromWidget)) {
+            self.connectorsFrom.set(fromWidget, [connector]);
           } else {
-            this.connectorsFrom.get(fromWidget).push(connector);
+            self.connectorsFrom.get(fromWidget).push(connector);
           }
           
-          if (!this.connectorsVia.has(viaWidget)) {
-            this.connectorsVia.set(viaWidget, [connector]);
+          if (!self.connectorsVia.has(viaWidget)) {
+            self.connectorsVia.set(viaWidget, [connector]);
           } else {
-            this.connectorsVia.get(viaWidget).push(connector);
+            self.connectorsVia.get(viaWidget).push(connector);
           }
           
-          if (!this.connectorsTo.has(toWidget)) {
-            this.connectorsTo.set(toWidget, [connector]);
+          if (!self.connectorsTo.has(toWidget)) {
+            self.connectorsTo.set(toWidget, [connector]);
           } else {
-            this.connectorsTo.get(toWidget).push(connector);
+            self.connectorsTo.get(toWidget).push(connector);
           }
           
           connector.set('fromPos', fromWidget.centerPosition());
           connector.set('viaPos',  viaWidget.centerPosition());
           connector.set('toPos',   toWidget.centerPosition());
+          
+          connector.addEventListener('selected', function(event) {
+            if (!self.selectedConnectors.has(connector)) {
+              if (!event.detail.ctrlKey) {
+                self.deselect();
+              }
+              self.selectedConnectors.add(connector);
+              connector.set('selected', true);
+            }
+          });
+          
+          connector.addEventListener('contextMenu', function(event) {
+            self.$.selectionDropdown.set('horizontalOffset', event.detail.offsetX);
+            self.$.selectionDropdown.set('verticalOffset',   event.detail.offsetY);
+            if (!self.$.selectionDropdown.opened) {
+              self.$.selectionDropdown.open();
+            }
+          });
           
           return connector;
         },
@@ -376,13 +453,13 @@
           }
         },
         menuItem_CreateNode: function() {
-          this.$.dropdown.close();
+          this.$.backgroundDropdown.close();
           this.createNodeWidget(this.lastMenuPosition);
         },
         menuItem_CreateSet: function() {
           var self = this;
           
-          self.$.dropdown.close();
+          self.$.backgroundDropdown.close();
           
           var setWidget = document.createElement('yb-set');
           setWidget.via = '52f9cf0e223d559931856acc98400f21';
@@ -401,7 +478,7 @@
         menuItem_CreateSelector: function() {
           var self = this;
           
-          self.$.dropdown.close();
+          self.$.backgroundDropdown.close();
           
           var selector = document.createElement('yb-selector');
           selector.style.position = 'absolute';
@@ -412,6 +489,10 @@
           
           Polymer.dom(self.root).appendChild(selector);
         },
+        menuItem_DeleteSelected: function() {
+          this.$.selectionDropdown.close();
+          this.deleteSelected();
+        }
       });
     })();
   </script>

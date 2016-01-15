@@ -48,6 +48,9 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     },
     setLink: function(from, via, to) {
       web.setLink(from, via, to);
+    },
+    unsetLink: function(from, via, to) {
+      web.unsetLink(from, via, to);
     }
   }
 });

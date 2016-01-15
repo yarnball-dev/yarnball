@@ -18,13 +18,28 @@
           fromPos: { type: Object, value: null },
           viaPos:  { type: Object, value: null },
           toPos:   { type: Object, value: null },
+          selected: {
+            type: Boolean,
+            value: false,
+            observer: 'handleSelectedChanged',
+          }
         },
         ready: function() {
+          
+          var self = this;
+        
           var svgNS = "http://www.w3.org/2000/svg";
-          this.path = document.createElementNS(svgNS, "path");
-          this.path.setAttributeNS(null, 'd', this.makePathString());
-          this.path.setAttributeNS(null, 'class', 'connector-path yb-connector');
-          this.$.svg.appendChild(this.path);
+          self.path = document.createElementNS(svgNS, "path");
+          self.path.setAttributeNS(null, 'd', self.makePathString());
+          self.path.setAttributeNS(null, 'class', 'connector-path yb-connector');
+          self.$.svg.appendChild(this.path);
+          
+          self.path.addEventListener('mousedown', function(event) {
+            self.fire('selected', event);
+            if (event.button === 2) {
+              self.fire('contextMenu', event);
+            }
+          });
         },
         observers: [
           'updatePositions(fromPos, viaPos, toPos)'
@@ -54,7 +69,10 @@
           } else {
             return "";
           }
-        }
+        },
+        handleSelectedChanged: function() {
+          this.toggleClass('selected', this.selected);
+        },
       });
     })();
   </script>
