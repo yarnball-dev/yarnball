@@ -281,11 +281,11 @@
           });
           
           self.selectedConnectors.forEach(function(connector) {
-            self.client.unsetLink(
-              self.node_id.fromHex(connector.fromWidget.nodeId),
-              self.node_id.fromHex(connector.viaWidget.nodeId),
-              self.node_id.fromHex(connector.toWidget.nodeId)
-            )
+            self.client.unsetLink({
+              from: self.node_id.fromHex(connector.fromWidget.nodeId),
+              via:  self.node_id.fromHex(connector.viaWidget.nodeId),
+              to:   self.node_id.fromHex(connector.toWidget.nodeId)
+            });
           });
           self.connectors = self.connectors.filter(function(connector) {
             return !connectorsToDelete.has(connector);
@@ -507,11 +507,11 @@
                   self.createConnector(fromNodeWidget,
                                        self.draggingConnectorNodes.via,
                                        self.draggingConnectorNodes.to);
-                  self.client.setLink(
-                    self.node_id.fromHex(fromNodeWidget.nodeId),
-                    self.node_id.fromHex(self.draggingConnectorNodes.via.nodeId),
-                    self.node_id.fromHex(self.draggingConnectorNodes.to.nodeId)
-                  )
+                  self.client.setLink({
+                    from: self.node_id.fromHex(fromNodeWidget.nodeId),
+                    via:  self.node_id.fromHex(self.draggingConnectorNodes.via.nodeId),
+                    to:   self.node_id.fromHex(self.draggingConnectorNodes.to.nodeId)
+                  });
                 });
               }
               

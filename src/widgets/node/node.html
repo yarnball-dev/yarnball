@@ -191,10 +191,13 @@
           this.updateDimensions();
         },
         finishEditing: function() {
-          this.client.setNodeName(this.id_, this.$.input_box.value);
-          this.$.input_box.classList.add('hidden');
-          this.set('isEditing', false);
-          this.updateDimensions();
+          var newName = this.$.input_box.value;
+          if (this.client.getNodeName(this.id_) !== newName) {
+            this.client.setNodeName(this.id_, newName);
+            this.$.input_box.classList.add('hidden');
+            this.set('isEditing', false);
+            this.updateDimensions();
+          }
         },
         onBlur: function(event) {
           this.finishEditing();

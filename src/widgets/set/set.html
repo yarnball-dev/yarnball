@@ -40,53 +40,93 @@
         },
         created: function() {
           var self = this;
-          self.nodeWidgets = [];
+          self.nodeWidgets = new Map();
           require(['client', 'node_id'], function(client, node_id) {
             self.client = client;
             self.node_id = node_id;
-            self.updateSet();
-            client.web.onLinks(function() {
-              self.updateSet();
+            self.refreshSet();
+            client.web.onLinks(function(linksAdded, linksRemoved) {
+              self.updateSet(linksAdded, linksRemoved);
             });
           });
         },
         ready: function() {
-          var self = this;
-          self.set('selectors', [self.$.fromSelector, self.$.viaSelector, self.$.toSelector]);
-          self.$.fromSelector.addEventListener('nodeIdChanged', function() {
-            self.updateSet();
-          });
-          self.$.viaSelector.addEventListener( 'nodeIdChanged', function() {
-            self.updateSet();
-          });
-          self.$.toSelector.addEventListener(  'nodeIdChanged', function() {
-            self.updateSet();
-          });
-        },
-        arrayItem: function(change, idx, path) {
-          return this.get(path, change.base[idx]);
-        },
-        updateSet: function() {
         
           var self = this;
           
-          self.nodeWidgets.forEach(function(nodeWidget) {
-            Polymer.dom(self.$.setContent).removeChild(nodeWidget);
-          });
-          self.nodeWidgets = [];
+          self.set('selectors', [self.$.fromSelector, self.$.viaSelector, self.$.toSelector]);
           
-          if (self.client) {
-            self.client.web.getLinks().forEach(function(link) {
-              if (self.node_id.toHex(link.via) === self.via &&
-                  self.node_id.toHex(link.to)  === self.to) {
-                
-                var nodeWidget = document.createElement('yb-node');
-                nodeWidget.nodeId = self.node_id.toHex(link.from);
-                Polymer.dom(self.$.setContent).appendChild(nodeWidget);
-                self.nodeWidgets.push(nodeWidget);
-              }
+          require(['client', 'node_id'], function(client, node_id) {
+          
+            self.client = client;
+            self.node_id = node_id;
+            
+            self.$.fromSelector.addEventListener('nodeIdChanged', function() {
+              self.refreshSet();
             });
+            self.$.viaSelector.addEventListener( 'nodeIdChanged', function() {
+              self.refreshSet();
+            });
+            self.$.toSelector.addEventListener(  'nodeIdChanged', function() {
+              self.refreshSet();
+            });
+          });
+        },
+        filterLinks: function(links) {
+          
+          var self = this;
+        
+          if (((self.from ? 1:0) + (self.via ? 1:0) + (self.to ? 1:0)) !== 2) {
+            return [];
           }
+          return links.filter(function(link) {
+            return (!self.from || self.node_id.toHex(link.from) === self.from) &&
+                   (!self.via  || self.node_id.toHex(link.via)  === self.via) &&
+                   (!self.to   || self.node_id.toHex(link.to)   === self.to);
+          }).map(function(link) {
+            if (!self.from) return link.from;
+            if (!self.via)  return link.via;
+            if (!self.to)   return link.to;
+          });
+        },
+        refreshSet: function() {
+          var self = this;
+          var nodeIdKeys = new Set(self.filterLinks(self.client.web.getLinks()).map(function(nodeId) {
+            return self.node_id.toMapKey(nodeId);
+          }));
+          self.nodeWidgets.forEach(function(nodeWidget, nodeIdKey) {
+            if (!nodeIdKeys.has(nodeIdKey)) {
+              self.removeNodeWidget(self.node_id.fromMapKey(nodeIdKey));
+            }
+          });
+          nodeIdKeys.forEach(function(nodeIdKey) {
+            if (!self.nodeWidgets.has(nodeIdKey)) {
+              self.addNodeWidget(self.node_id.fromMapKey(nodeIdKey));
+            }
+          });
+        },
+        updateSet: function(linksAdded, linksRemoved) {
+        
+          var self = this;
+          
+          self.filterLinks(linksAdded).forEach(function(nodeId) {
+            self.addNodeWidget(nodeId);
+          });
+          
+          self.filterLinks(linksRemoved).forEach(function(nodeId) {
+            self.removeNodeWidget(nodeId);
+          });
+        },
+        addNodeWidget: function(nodeId) {
+          var nodeWidget = document.createElement('yb-node');
+          nodeWidget.nodeId = this.node_id.toHex(nodeId);
+          Polymer.dom(this.$.setContent).appendChild(nodeWidget);
+          this.nodeWidgets.set(this.node_id.toMapKey(nodeId), nodeWidget);
+        },
+        removeNodeWidget: function(nodeId) {
+          var nodeWidget = this.nodeWidgets.get(this.node_id.toMapKey(nodeId));
+          Polymer.dom(this.$.setContent).removeChild(nodeWidget);
+          this.nodeWidgets.delete(this.node_id.toMapKey(nodeId));
         }
       });
     })();

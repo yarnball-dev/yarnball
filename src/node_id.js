@@ -74,13 +74,29 @@ define(function() {
     return array.buffer;
   }
   
+  function linkToKey(link) {
+    return toHex(link.from) +
+           toHex(link.via) +
+           toHex(link.to);
+  }
+  
+  function linkFromKey(linkKey) {
+    return {
+      from: fromHex(linkKey.slice(0, 32)),
+      via:  fromHex(linkKey.slice(32, 32 + 32)),
+      to:   fromHex(linkKey.slice(32 + 32, 32 + 32 + 32)),
+    }
+  }
+  
   return {
-    make:       make,
-    equal:      equal,
-    toMapKey:   toMapKey,
-    fromMapKey: fromMapKey,
-    toHex:      toHex,
-    makeHex:    makeHex,
-    fromHex:    fromHex,
+    make:        make,
+    equal:       equal,
+    toMapKey:    toMapKey,
+    fromMapKey:  fromMapKey,
+    toHex:       toHex,
+    makeHex:     makeHex,
+    fromHex:     fromHex,
+    linkToKey:   linkToKey,
+    linkFromKey: linkFromKey,
   }
 });

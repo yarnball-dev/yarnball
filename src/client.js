@@ -25,20 +25,30 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     web.setNodeNames(nodes);
   });
   
+  socket.on('setNodeName', function(node) {
+    web.setNodeName(node.id, node.name);
+  });
+  
   socket.on('setLinks', function(links) {
     web.setLinks(links);
   });
   
-  socket.on('setNodeName', function(node) {
-    web.setNodeName(node.id, node.name);
+  socket.on('setLink', function(link) {
+    web.setLink(link);
+  });
+  
+  socket.on('unsetLink', function(link) {
+    web.unsetLink(link);
   });
   
   return {
     socket: socket,
     web: web,
     setNodeName: function(id, name) {
-      web.setNodeName(id, name);
-      socket.emit('setNodeName', {id: id, name: name});
+      if (web.getNodeName(id) !== name) {
+        web.setNodeName(id, name);
+        socket.emit('setNodeName', {id: id, name: name});
+      }
     },
     hasNodeName: function(id) {
       return web.hasNodeName(id);
@@ -46,11 +56,13 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     getNodeName: function(id) {
       return web.getNodeName(id);
     },
-    setLink: function(from, via, to) {
-      web.setLink(from, via, to);
+    setLink: function(link) {
+      web.setLink(link);
+      socket.emit('setLink', link);
     },
-    unsetLink: function(from, via, to) {
-      web.unsetLink(from, via, to);
+    unsetLink: function(link) {
+      web.unsetLink(link);
+      socket.emit('unsetLink', link);
     }
   }
 });
