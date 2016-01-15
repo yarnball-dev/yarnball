@@ -67,10 +67,13 @@
           self.connectorsVia  = new Map();
           self.connectorsTo   = new Map();
           
+          self.draggingConnectors = [];
+          
           self.selectedNodeWidgets = new Set();
           self.selectedConnectors  = new Set();
+          self.selectedSetWidgets  = new Set();
           
-          self.setWidgets = [];
+          self.setWidgets = new Set();
           
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
@@ -165,6 +168,9 @@
             
             var nodesInSelectionRect = new Set(self.getNodesInRect(currentSelectionRect));
             self.selectNodeWidgets(nodesInSelectionRect);
+            
+            var setWidgetsInSelectionRect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
+            self.selectSetWidgets(setWidgetsInSelectionRect);
           }
           function handleMouseup(event) {
           
@@ -191,6 +197,140 @@
             }
           });
           return nodeWidgets;
+        },
+        getSetWidgetsInRect: function(rect) {
+          var self = this;
+          var setWidgets = [];
+          self.setWidgets.forEach(function(setWidget) {
+            var setRect = setWidget.getBoundingClientRect();
+            if (!(setRect.left > rect.right  || setRect.right  < rect.left ||
+                  setRect.top  > rect.bottom || setRect.bottom < rect.top)) {
+              setWidgets.push(setWidget);
+            }
+          });
+          return setWidgets;
+        },
+        startDraggingSelected: function(event) {
+        
+          var self = this;
+          
+          if (event.detail.shiftKey) {
+            self.copySelected();
+          }
+        
+          var surfaceRect = self.getBoundingClientRect();
+          
+          var cursorStartPos = {
+            x: event.detail.pageX,
+            y: event.detail.pageY,
+          }
+          
+          self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            nodeWidget.dragStartPosition = nodeWidget.position;
+            nodeWidget.style['pointer-events'] = 'none';
+          });
+          
+          self.selectedSetWidgets.forEach(function(setWidget) {
+            setWidget.dragStartPosition = setWidget.position;
+            setWidget.style['pointer-events'] = 'none';
+          });
+          
+          document.body.style.cursor = '-webkit-grabbing';
+          
+          function handleMousemove(event) {
+          
+            var cursorOffset = {
+              x: event.pageX - cursorStartPos.x,
+              y: event.pageY - cursorStartPos.y,
+            }
+            
+            self.selectedNodeWidgets.forEach(function(selectedNodeWidget) {
+            
+              var newPos = {
+                x: selectedNodeWidget.dragStartPosition.x + cursorOffset.x,
+                y: selectedNodeWidget.dragStartPosition.y + cursorOffset.y,
+              }
+          
+              selectedNodeWidget.style.left = newPos.x + 'px';
+              selectedNodeWidget.style.top  = newPos.y + 'px';
+              selectedNodeWidget.position = newPos;
+            
+              self.updateConnectorsForNodeWidget(selectedNodeWidget);
+            });
+            
+            self.selectedSetWidgets.forEach(function(selectedSetWidget) {
+              
+              var newPos = {
+                x: selectedSetWidget.dragStartPosition.x + cursorOffset.x,
+                y: selectedSetWidget.dragStartPosition.y + cursorOffset.y,
+              }
+              
+              selectedSetWidget.style.left = newPos.x + 'px';
+              selectedSetWidget.style.top  = newPos.y + 'px';
+              selectedSetWidget.position = newPos;
+            });
+          }
+          
+          function finishDragging() {
+            window.removeEventListener('mousemove', handleMousemove);
+            window.removeEventListener('mouseup',   finishDragging);
+            document.body.style.cursor = 'auto';
+            self.selectedNodeWidgets.forEach(function(nodeWidget) {
+              nodeWidget.style['pointer-events'] = 'auto';
+            });
+            self.selectedSetWidgets.forEach(function(setWidget) {
+              setWidget.style['pointer-events'] = 'auto';
+            });
+            
+            self.getSelectors().forEach(function(selector) {
+              selector.removeEventListener('mouseover', selectorMouseover);
+              selector.removeEventListener('mouseout',  selectorMouseout);
+              selector.removeEventListener('mouseup',   selectorMouseup);
+              selector.classList.remove('drag-ready');
+            });
+          }
+          
+          window.addEventListener('mousemove', handleMousemove);
+          window.addEventListener('mouseup',   finishDragging);
+          
+          function selectorMouseover(event) {
+            var selector = event.currentTarget;
+            selector.classList.add('drag-hover');
+          }
+          function selectorMouseout(event) {
+            var selector = event.currentTarget;
+            selector.classList.remove('drag-hover');
+          }
+          function selectorMouseup(event) {
+            var selector = event.currentTarget;
+            selector.classList.remove('drag-hover');
+            var primaryNodeWidget = null;
+            if (self.selectedNodeWidgets.size === 1) {
+              self.selectedNodeWidgets.forEach(function(nodeWidget) {
+                primaryNodeWidget = nodeWidget;
+              });
+            }
+            if (primaryNodeWidget) {
+              selector.set('nodeId', primaryNodeWidget.nodeId);
+            }
+            self.selectedNodeWidgets.forEach(function(nodeWidget) {
+              nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
+              nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
+              nodeWidget.position   = nodeWidget.dragStartPosition;
+              self.updateConnectorsForNodeWidget(nodeWidget);
+            });
+            this.updateStyles();
+            finishDragging();
+          }
+          
+          if (self.selectedNodeWidgets.size === 1) {
+            self.getSelectors().forEach(function(selector) {
+              selector.addEventListener('mouseover', selectorMouseover);
+              selector.addEventListener('mouseout',  selectorMouseout);
+              selector.addEventListener('mouseup',   selectorMouseup);
+              selector.classList.add('drag-ready');
+            });
+          }
         },
         createNodeWidget: function(position, id) {
         
@@ -246,6 +386,19 @@
           
           this.selectedNodeWidgets = new Set(nodeWidgets);
         },
+        selectSetWidgets: function(setWidgets) {
+          this.selectedSetWidgets.forEach(function(setWidget) {
+            if (!setWidgets.has(setWidget)) {
+              setWidget.set('selected', false);
+            }
+          });
+          
+          setWidgets.forEach(function(setWidget) {
+            setWidget.set('selected', true);
+          });
+          
+          this.selectedSetWidgets = new Set(setWidgets);
+        },
         deselect: function() {
           this.selectedNodeWidgets.forEach(function(nodeWidget) {
             nodeWidget.set('selected', false);
@@ -256,6 +409,11 @@
             connector.set('selected', false);
           });
           this.selectedConnectors.clear();
+          
+          this.selectedSetWidgets.forEach(function(setWidget) {
+            setWidget.set('selected', false);
+          });
+          this.selectedSetWidgets.clear();
         },
         deleteSelected: function() {
           var self = this;
@@ -291,12 +449,19 @@
             return !connectorsToDelete.has(connector);
           });
           self.selectedConnectors.clear();
+          
+          self.selectedSetWidgets.forEach(function(setWidget) {
+            Polymer.dom(self.root).removeChild(setWidget);
+            self.setWidgets.delete(setWidget);
+          });
+          self.selectedSetWidgets.clear();
         },
         copySelected: function(offset) {
           var self = this;
           
           var newNodeWidgets = new Set();
           var newConnectors  = new Set();
+          var newSetWidgets  = new Set();
           
           var oldToNewNodeWidgetMap = new Map();
           
@@ -332,97 +497,32 @@
             }
           });
           
+          self.selectedSetWidgets.forEach(function(setWidget) {
+          
+            var newPosition = {
+              x: setWidget.position.x + (offset || 0),
+              y: setWidget.position.y + (offset || 0),
+            }
+          
+            var newSetWidget = self.createSetWidget(newPosition);
+            newSetWidget.set('from', setWidget.from);
+            newSetWidget.set('via',  setWidget.via);
+            newSetWidget.set('to',   setWidget.to);
+            
+            newSetWidgets.add(newSetWidget);
+            
+            setWidget.set('selected', false);
+            newSetWidget.set('selected', true);
+          });
+          
           self.selectedNodeWidgets = newNodeWidgets;
           self.selectedConnectors  = newConnectors;
+          self.selectedSetWidgets  = newSetWidgets;
         },
         _setupNodeWidgetDragging: function(nodeWidget) {
-        
           var self = this;
-        
           nodeWidget.addEventListener('dragStart', function(event) {
-          
-            if (event.detail.shiftKey) {
-              self.copySelected();
-            }
-          
-            var surfaceRect = self.getBoundingClientRect();
-            
-            var cursorStartPos = {
-              x: event.detail.pageX,
-              y: event.detail.pageY,
-            }
-            
-            self.selectedNodeWidgets.forEach(function(nodeWidget) {
-              nodeWidget.dragStartPosition = nodeWidget.position;
-            });
-            
-            nodeWidget.style['pointer-events'] = 'none';
-            document.body.style.cursor = '-webkit-grabbing';
-            function handleMousemove(event) {
-            
-              var cursorOffset = {
-                x: event.pageX - cursorStartPos.x,
-                y: event.pageY - cursorStartPos.y,
-              }
-              
-              self.selectedNodeWidgets.forEach(function(selectedNodeWidget) {
-              
-                var newPos = {
-                  x: selectedNodeWidget.dragStartPosition.x + cursorOffset.x,
-                  y: selectedNodeWidget.dragStartPosition.y + cursorOffset.y,
-                }
-            
-                selectedNodeWidget.style.left = newPos.x + 'px';
-                selectedNodeWidget.style.top  = newPos.y + 'px';
-                selectedNodeWidget.position = newPos;
-              
-                self.updateConnectorsForNodeWidget(selectedNodeWidget);
-              });
-            }
-            
-            function finishDragging() {
-              window.removeEventListener('mousemove', handleMousemove);
-              window.removeEventListener('mouseup',   finishDragging);
-              document.body.style.cursor = 'auto';
-              nodeWidget.style['pointer-events'] = 'auto';
-              
-              self.getSelectors().forEach(function(selector) {
-                selector.removeEventListener('mouseover', selectorMouseover);
-                selector.removeEventListener('mouseout',  selectorMouseout);
-                selector.removeEventListener('mouseup',   selectorMouseup);
-                selector.classList.remove('drag-ready');
-              });
-            }
-            
-            window.addEventListener('mousemove', handleMousemove);
-            window.addEventListener('mouseup',   finishDragging);
-            
-            function selectorMouseover(event) {
-              var selector = event.currentTarget;
-              selector.classList.add('drag-hover');
-            }
-            function selectorMouseout(event) {
-              var selector = event.currentTarget;
-              selector.classList.remove('drag-hover');
-            }
-            function selectorMouseup(event) {
-              var selector = event.currentTarget;
-              selector.classList.remove('drag-hover');
-              selector.set('nodeId', nodeWidget.nodeId);
-              nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
-              nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
-              nodeWidget.position = nodeWidget.dragStartPosition;
-              this.updateStyles();
-              self.updateConnectorsForNodeWidget(nodeWidget);
-              finishDragging();
-            }
-            
-            self.getSelectors().forEach(function(selector) {
-              selector.addEventListener('mouseover', selectorMouseover);
-              selector.addEventListener('mouseout',  selectorMouseout);
-              selector.addEventListener('mouseup',   selectorMouseup);
-              selector.classList.add('drag-ready');
-            });
+            self.startDraggingSelected(event);
           });
         },
         _setupNodeWidgetConnectorDragging: function(nodeWidget) {
@@ -528,17 +628,12 @@
         _setupNodeWidgetMenu: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('contextMenu', function(event) {
-            if (!self.draggingConnectors) {
+            if (!self.draggingConnectors.length) {
             
-              if (self.$.backgroundDropdown.opened) {
-                self.$.backgroundDropdown.close();
-              }
-            
-              self.$.selectionDropdown.set('horizontalOffset', nodeWidget.position.x + event.detail.offsetX);
-              self.$.selectionDropdown.set('verticalOffset',   nodeWidget.position.y + event.detail.offsetY);
-              if (!self.$.selectionDropdown.opened) {
-                self.$.selectionDropdown.open();
-              }
+              self.openSelectionMenu({
+                x: nodeWidget.position.x + event.detail.offsetX,
+                y: nodeWidget.position.y + event.detail.offsetY,
+              });
             }
           });
         },
@@ -592,11 +687,10 @@
           });
           
           connector.addEventListener('contextMenu', function(event) {
-            self.$.selectionDropdown.set('horizontalOffset', event.detail.offsetX);
-            self.$.selectionDropdown.set('verticalOffset',   event.detail.offsetY);
-            if (!self.$.selectionDropdown.opened) {
-              self.$.selectionDropdown.open();
-            }
+            self.openSelectionMenu({
+              x: event.detail.offsetX,
+              y: event.detail.offsetY,
+            });
           });
           
           return connector;
@@ -621,28 +715,77 @@
             })
           }
         },
+        createSetWidget: function(position) {
+        
+          var setWidget = document.createElement('yb-set');
+          
+          setWidget.via = '52f9cf0e223d559931856acc98400f21';
+          setWidget.to  = '7e1b27583610201f8b48941d3637b13f';
+          setWidget.style.position = 'absolute';
+          setWidget.style.left = position.x + 'px';
+          setWidget.style.top  = position.y + 'px';
+          setWidget.position = position;
+          setWidget.style['min-width']  = "150px";
+          setWidget.style['max-width']  = "400px";
+          setWidget.style['min-height'] = "50px";
+          
+          this._setupSetWidgetSelection(setWidget);
+          this._setupSetWidgetMenu(setWidget);
+          this._setupSetWidgetDragging(setWidget);
+          
+          Polymer.dom(this.root).appendChild(setWidget);
+          this.setWidgets.add(setWidget);
+          
+          return setWidget;
+        },
+        _setupSetWidgetSelection: function(setWidget) {
+          var self = this;
+          setWidget.addEventListener('selected', function(event) {
+            if (!self.selectedSetWidgets.has(setWidget)) {
+              if (!event.detail.ctrlKey) {
+                self.deselect();
+              }
+              self.selectedSetWidgets.add(setWidget);
+              setWidget.set('selected', true);
+            }
+          });
+        },
+        _setupSetWidgetDragging: function(setWidget) {
+          var self = this;
+          setWidget.addEventListener('dragStart', function(event) {
+            self.startDraggingSelected(event);
+          });
+        },
+        _setupSetWidgetMenu: function(setWidget) {
+          var self = this;
+          setWidget.addEventListener('contextMenu', function(event) {
+            if (!self.draggingConnectors.length) {
+            
+              self.openSelectionMenu({
+                x: event.detail.pageX,
+                y: event.detail.pageY,
+              });
+            }
+          });
+        },
+        openSelectionMenu: function(position) {
+          if (this.$.backgroundDropdown.opened) {
+            this.$.backgroundDropdown.close();
+          }
+          
+          this.$.selectionDropdown.set('horizontalOffset', position.x);
+          this.$.selectionDropdown.set('verticalOffset',   position.y);
+          if (!this.$.selectionDropdown.opened) {
+            this.$.selectionDropdown.open();
+          }
+        },
         menuItem_CreateNode: function() {
           this.$.backgroundDropdown.close();
           this.createNodeWidget(this.lastMenuPosition);
         },
         menuItem_CreateSet: function() {
-          var self = this;
-          
-          self.$.backgroundDropdown.close();
-          
-          var setWidget = document.createElement('yb-set');
-          setWidget.via = '52f9cf0e223d559931856acc98400f21';
-          setWidget.to  = '7e1b27583610201f8b48941d3637b13f';
-          setWidget.style.position = 'absolute';
-          setWidget.style.left = self.lastMenuPosition.x + 'px';
-          setWidget.style.top  = self.lastMenuPosition.y + 'px';
-          setWidget.style['min-width']  = "150px";
-          setWidget.style['max-width']  = "400px";
-          setWidget.style['min-height'] = "50px";
-          
-          self.setWidgets.push(setWidget);
-          
-          Polymer.dom(self.root).appendChild(setWidget);
+          this.$.backgroundDropdown.close();
+          this.createSetWidget(this.lastMenuPosition);
         },
         menuItem_DeleteSelected: function() {
           this.$.selectionDropdown.close();

@@ -37,6 +37,11 @@
             type: Array,
             value: []
           },
+          selected: {
+            type: Boolean,
+            value: false,
+            observer: 'handleSelectedChanged',
+          },
         },
         created: function() {
           var self = this;
@@ -71,6 +76,25 @@
               self.refreshSet();
             });
           });
+        },
+        listeners: {
+          mousedown: 'mousedown',
+          mouseup:   'mouseup',
+        },
+        mousedown: function(event) {
+          if (event.target === this && event.button === 0) {
+            this.fire('selected',  event);
+            this.fire('dragStart', event);
+          }
+        },
+        mouseup: function(event) {
+          if (event.button === 2) {
+            this.fire('selected',    event);
+            this.fire('contextMenu', event);
+          }
+        },
+        handleSelectedChanged: function() {
+          this.toggleClass('selected', this.selected);
         },
         filterLinks: function(links) {
           

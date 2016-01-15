@@ -1,8 +1,11 @@
+@import ../../yarnball
+
 :host
   display: inline-block
   border: 1px solid #ddd
   padding: 5px
   margin: 2px
+  background-color: #fff
   
   .header
     background: url(set_background.svg) repeat-x
@@ -17,3 +20,6 @@
   .content
     border-top: 1px solid #ddd
     padding-top: 5px
+
+:host.selected
+  background-color: $selected-color
