@@ -24,6 +24,12 @@
             observer: 'handleSelectedChanged',
           }
         },
+        created: function() {
+          var self = this;
+          require(['node_id'], function(node_id) {
+            self.node_id = node_id;
+          });
+        },
         ready: function() {
           
           var self = this;
@@ -40,6 +46,20 @@
               self.fire('contextMenu', event);
             }
           });
+        },
+        link: function() {
+          if (this.fromWidget &&
+              this.viaWidget &&
+              this.toWidget) {
+            
+            return {
+              from: this.node_id.fromHex(this.fromWidget.nodeId),
+              via:  this.node_id.fromHex(this.viaWidget.nodeId),
+              to:   this.node_id.fromHex(this.toWidget.nodeId),
+            }
+          } else {
+            return null;
+          }
         },
         observers: [
           'updatePositions(fromPos, viaPos, toPos)'

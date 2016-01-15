@@ -42,6 +42,10 @@
             <iron-icon icon="icons:content-copy" item-icon></iron-icon>
             Copy
           </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_RevealLinks">
+            <iron-icon icon="icons:visibility" item-icon></iron-icon>
+            Reveal Links
+          </paper-icon-item>
           <paper-icon-item on-tap="menuItem_HideSelected">
             <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
             Hide
@@ -531,6 +535,48 @@
           self.selectedConnectors  = newConnectors;
           self.selectedSetWidgets  = newSetWidgets;
         },
+        revealLinksInSelected: function() {
+        
+          var self = this;
+          
+          var selectedNodeIdsToWidgets = new Map();
+          self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            var nodeIdKey = self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId));
+            if (selectedNodeIdsToWidgets.has(nodeIdKey)) {
+              selectedNodeIdsToWidgets.get(nodeIdKey).add(nodeWidget);
+            } else {
+              selectedNodeIdsToWidgets.set(nodeIdKey, new Set([nodeWidget]));
+            }
+          });
+          
+          self.client.web.getLinks().forEach(function(link) {
+            if (selectedNodeIdsToWidgets.has(self.node_id.toMapKey(link.from)) &&
+                selectedNodeIdsToWidgets.has(self.node_id.toMapKey(link.via)) &&
+                selectedNodeIdsToWidgets.has(self.node_id.toMapKey(link.to))) {
+              
+              var nodeWidgetsFrom = selectedNodeIdsToWidgets.get(self.node_id.toMapKey(link.from));
+              var nodeWidgetsVia  = selectedNodeIdsToWidgets.get(self.node_id.toMapKey(link.via));
+              var nodeWidgetsTo   = selectedNodeIdsToWidgets.get(self.node_id.toMapKey(link.to));
+              
+              nodeWidgetsFrom.forEach(function(nodeWidgetFrom) {
+                nodeWidgetsVia.forEach(function(nodeWidgetVia) {
+                  nodeWidgetsTo.forEach(function(nodeWidgetTo) {
+                    
+                    var alreadyHasConnector = self.connectors.some(function(connector) {
+                      return connector.fromWidget === nodeWidgetFrom &&
+                             connector.viaWidget  === nodeWidgetVia &&
+                             connector.toWidget   === nodeWidgetTo;
+                    });
+                  
+                    if (!alreadyHasConnector) {
+                      self.createConnector(nodeWidgetFrom, nodeWidgetVia, nodeWidgetTo);
+                    }
+                  });
+                });
+              });
+            }
+          });
+        },
         _setupNodeWidgetDragging: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('dragStart', function(event) {
@@ -815,6 +861,10 @@
           this.$.selectionDropdown.close();
           var offset = 10;
           this.copySelected(offset);
+        },
+        menuItem_RevealLinks: function() {
+          this.$.selectionDropdown.close();
+          this.revealLinksInSelected();
         }
       });
     })();
