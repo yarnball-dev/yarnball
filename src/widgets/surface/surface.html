@@ -38,13 +38,17 @@
     <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
         <paper-menu>
-          <paper-icon-item on-tap="menuItem_DeleteSelected">
-            <iron-icon icon="icons:delete" item-icon></iron-icon>
-            Delete
-          </paper-icon-item>
           <paper-icon-item on-tap="menuItem_CopySelected">
             <iron-icon icon="icons:content-copy" item-icon></iron-icon>
             Copy
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_HideSelected">
+            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
+            Hide
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_DeleteSelected">
+            <iron-icon icon="icons:delete" item-icon></iron-icon>
+            Delete
           </paper-icon-item>
         </paper-menu>
       </div>
@@ -112,10 +116,14 @@
           if (this.$.selectionDropdown.opened) {
             this.$.selectionDropdown.close();
           }
+          
+          if (!event.ctrlKey) {
+            this.deselect();
+          }
         
           if (event.button === 0) {
-            if (!event.ctrlKey) {
-              this.deselect();
+            if (this.$.backgroundDropdown.opened) {
+              this.$.backgroundDropdown.close();
             }
             return this.startBoxSelection(event);
           } else if (event.button === 2) {
@@ -415,7 +423,7 @@
           });
           this.selectedSetWidgets.clear();
         },
-        deleteSelected: function() {
+        removeSelectedWidgets: function() {
           var self = this;
           
           var connectorsToDelete = new Set(self.selectedConnectors);
@@ -438,12 +446,14 @@
             Polymer.dom(self.root).removeChild(connector);
           });
           
+          var affectedLinks = new Set();
+          
           self.selectedConnectors.forEach(function(connector) {
-            self.client.unsetLink({
+            affectedLinks.add(self.node_id.linkToKey({
               from: self.node_id.fromHex(connector.fromWidget.nodeId),
               via:  self.node_id.fromHex(connector.viaWidget.nodeId),
               to:   self.node_id.fromHex(connector.toWidget.nodeId)
-            });
+            }));
           });
           self.connectors = self.connectors.filter(function(connector) {
             return !connectorsToDelete.has(connector);
@@ -455,6 +465,8 @@
             self.setWidgets.delete(setWidget);
           });
           self.selectedSetWidgets.clear();
+          
+          return affectedLinks;
         },
         copySelected: function(offset) {
           var self = this;
@@ -788,8 +800,16 @@
           this.createSetWidget(this.lastMenuPosition);
         },
         menuItem_DeleteSelected: function() {
+          var self = this;
+          self.$.selectionDropdown.close();
+          var linksToDelete = self.removeSelectedWidgets();
+          linksToDelete.forEach(function(linkKey) {
+            self.client.unsetLink(self.node_id.linkFromKey(linkKey));
+          });
+        },
+        menuItem_HideSelected: function() {
           this.$.selectionDropdown.close();
-          this.deleteSelected();
+          this.removeSelectedWidgets();
         },
         menuItem_CopySelected: function() {
           this.$.selectionDropdown.close();
