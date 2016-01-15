@@ -11,9 +11,13 @@
 
     .connector-path
       fill: none
-      stroke: #5792da
+      stroke: $connector-color
       stroke-width: 20px
       pointer-events: stroke
+      cursor: pointer
+    
+    .connector-path:hover
+      stroke: #78A4DA
 
 :host.selected
   svg
