@@ -62,6 +62,10 @@
             height: null,
           }
           
+          self.connectorsFrom = new Set();
+          self.connectorsVia  = new Set();
+          self.connectorsTo   = new Set();
+          
           require(['client', 'node_id'], function(client, node_id) {
           
             self.client = client;
@@ -86,6 +90,13 @@
           this.async(function() {
             self.updateDimensions();
           });
+        },
+        connectors: function() {
+          var connectors = new Set();
+          this.connectorsFrom.forEach(function(connector) { connectors.add(connector); });
+          this.connectorsVia.forEach(function(connector)  { connectors.add(connector); });
+          this.connectorsTo.forEach(function(connector)   { connectors.add(connector); });
+          return connectors;
         },
         handleSelectedChanged: function() {
           this.toggleClass('selected', this.selected);

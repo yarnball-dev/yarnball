@@ -178,7 +178,12 @@
         deleteSelected: function() {
           var self = this;
           
+          var connectorsToDelete = new Set(self.selectedConnectors);
+          
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            nodeWidget.connectors().forEach(function(connector) {
+              connectorsToDelete.add(connector);
+            });
             Polymer.dom(self.root).removeChild(nodeWidget);
           });
           self.nodeWidgets = self.nodeWidgets.filter(function(nodeWidget) {
@@ -186,8 +191,14 @@
           });
           self.selectedNodeWidgets.clear();
           
-          self.selectedConnectors.forEach(function(connector) {
+          connectorsToDelete.forEach(function(connector) {
+            connector.fromWidget.connectorsFrom.delete(connector);
+            connector.viaWidget.connectorsVia.delete(connector);
+            connector.toWidget.connectorsTo.delete(connector);
             Polymer.dom(self.root).removeChild(connector);
+          });
+          
+          self.selectedConnectors.forEach(function(connector) {
             self.client.unsetLink(
               self.node_id.fromHex(connector.fromWidget.nodeId),
               self.node_id.fromHex(connector.viaWidget.nodeId),
@@ -195,7 +206,7 @@
             )
           });
           self.connectors = self.connectors.filter(function(connector) {
-            return !self.selectedConnectors.has(connector);
+            return !connectorsToDelete.has(connector);
           });
           self.selectedConnectors.clear();
         },
@@ -440,6 +451,10 @@
           connector.fromWidget = fromWidget;
           connector.viaWidget  = viaWidget;
           connector.toWidget   = toWidget;
+          
+          fromWidget.connectorsFrom.add(connector);
+          viaWidget.connectorsVia.add(connector);
+          toWidget.connectorsTo.add(connector);
           
           self.connectors.push(connector);
           
