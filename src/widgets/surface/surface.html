@@ -18,6 +18,7 @@
   <template>
   
     <div id="background" on-mousedown="backgroundMousedown"></div>
+    <div id="boxSelection" class="hidden"></div>
     
     <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
@@ -105,10 +106,15 @@
           return selectors;
         },
         backgroundMousedown: function(event) {
+          if (this.$.selectionDropdown.opened) {
+            this.$.selectionDropdown.close();
+          }
+        
           if (event.button === 0) {
             if (!event.ctrlKey) {
               this.deselect();
             }
+            return this.startBoxSelection(event);
           } else if (event.button === 2) {
             event.preventDefault();
             this.lastMenuPosition = {
@@ -122,6 +128,69 @@
             }
             return false;
           }
+        },
+        startBoxSelection: function(event) {
+        
+          event.preventDefault();
+        
+          var self = this;
+          
+          document.body.style.cursor = 'crosshair';
+          
+          var dragStartPosition = {
+            x: event.pageX,
+            y: event.pageY,
+          }
+          
+          self.$.boxSelection.style.left = event.pageX + 'px';
+          self.$.boxSelection.style.top  = event.pageY + 'px';
+          self.$.boxSelection.style.width  = '0px';
+          self.$.boxSelection.style.height = '0px';
+          
+          self.$.boxSelection.classList.remove('hidden');
+          
+          function handleMousemove(event) {
+          
+            var currentSelectionRect = {
+              left:   Math.min(event.pageX, dragStartPosition.x),
+              top:    Math.min(event.pageY, dragStartPosition.y),
+              right:  Math.max(event.pageX, dragStartPosition.x),
+              bottom: Math.max(event.pageY, dragStartPosition.y),
+            }
+            
+            self.$.boxSelection.style.left = currentSelectionRect.left + 'px';
+            self.$.boxSelection.style.top  = currentSelectionRect.top  + 'px';
+            self.$.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
+            self.$.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
+            
+            var nodesInSelectionRect = new Set(self.getNodesInRect(currentSelectionRect));
+            self.selectNodeWidgets(nodesInSelectionRect);
+          }
+          function handleMouseup(event) {
+          
+            self.$.boxSelection.classList.add('hidden');
+            document.body.style.cursor = 'auto';
+            
+            window.removeEventListener('mousemove', handleMousemove);
+            window.removeEventListener('mouseup',   handleMouseup);
+          }
+          
+          window.addEventListener('mousemove', handleMousemove);
+          window.addEventListener('mouseup',   handleMouseup);
+          
+          return false;
+        },
+        getNodesInRect: function(rect) {
+          var self = this;
+          var nodeWidgets = [];
+          self.nodeWidgets.forEach(function(nodeWidget) {
+            var nodeRect = nodeWidget.getBoundingClientRect();
+            if (!(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
+                  nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top)) {
+              nodeWidgets.push(nodeWidget);
+            }
+          });
+          return nodeWidgets;
         },
         createNodeWidget: function(position, id) {
         
@@ -163,6 +232,19 @@
               nodeWidget.set('selected', true);
             }
           });
+        },
+        selectNodeWidgets: function(nodeWidgets) {
+          this.selectedNodeWidgets.forEach(function(nodeWidget) {
+            if (!nodeWidgets.has(nodeWidget)) {
+              nodeWidget.set('selected', false);
+            }
+          });
+          
+          nodeWidgets.forEach(function(nodeWidget) {
+            nodeWidget.set('selected', true);
+          });
+          
+          this.selectedNodeWidgets = new Set(nodeWidgets);
         },
         deselect: function() {
           this.selectedNodeWidgets.forEach(function(nodeWidget) {
@@ -210,7 +292,7 @@
           });
           self.selectedConnectors.clear();
         },
-        copySelected: function() {
+        copySelected: function(offset) {
           var self = this;
           
           var newNodeWidgets = new Set();
@@ -220,8 +302,8 @@
           
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
             var newPosition = {
-              x: nodeWidget.position.x + 10,
-              y: nodeWidget.position.y + 10,
+              x: nodeWidget.position.x + (offset || 0),
+              y: nodeWidget.position.y + (offset || 0),
             }
             var newNodeWidget = self.createNodeWidget(newPosition, nodeWidget.nodeId);
             newNodeWidgets.add(newNodeWidget);
@@ -258,6 +340,10 @@
           var self = this;
         
           nodeWidget.addEventListener('dragStart', function(event) {
+          
+            if (event.detail.shiftKey) {
+              self.copySelected();
+            }
           
             var surfaceRect = self.getBoundingClientRect();
             
@@ -297,7 +383,7 @@
             function finishDragging() {
               window.removeEventListener('mousemove', handleMousemove);
               window.removeEventListener('mouseup',   finishDragging);
-              document.body.style.cursor = 'default';
+              document.body.style.cursor = 'auto';
               nodeWidget.style['pointer-events'] = 'auto';
               
               self.getSelectors().forEach(function(selector) {
@@ -433,6 +519,11 @@
           var self = this;
           nodeWidget.addEventListener('contextMenu', function(event) {
             if (!self.draggingConnector) {
+            
+              if (self.$.backgroundDropdown.opened) {
+                self.$.backgroundDropdown.close();
+              }
+            
               self.$.selectionDropdown.set('horizontalOffset', nodeWidget.position.x + event.detail.offsetX);
               self.$.selectionDropdown.set('verticalOffset',   nodeWidget.position.y + event.detail.offsetY);
               if (!self.$.selectionDropdown.opened) {
@@ -549,7 +640,8 @@
         },
         menuItem_CopySelected: function() {
           this.$.selectionDropdown.close();
-          this.copySelected();
+          var offset = 10;
+          this.copySelected(offset);
         }
       });
     })();
