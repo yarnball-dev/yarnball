@@ -81,7 +81,7 @@
                   self.node_id.toHex(link.to)  === self.to) {
                 
                 var nodeWidget = document.createElement('yb-node');
-                nodeWidget['node-id'] = self.node_id.toHex(link.from);
+                nodeWidget.nodeId = self.node_id.toHex(link.from);
                 Polymer.dom(self.$.setContent).appendChild(nodeWidget);
                 self.nodeWidgets.push(nodeWidget);
               }

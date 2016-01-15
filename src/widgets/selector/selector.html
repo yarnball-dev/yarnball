@@ -11,7 +11,7 @@
   <template>
     <span id="nodeContainer">
     </span>
-    <template is="dom-if" if="{{node-id}}">
+    <template is="dom-if" if="{{nodeId}}">
       <paper-button id="clearButton" on-tap="clear">
         <iron-icon icon="icons:clear"></iron-icon>
       </paper-button>
@@ -25,16 +25,16 @@
       Polymer({
         is: 'yb-selector',
         properties: {
-          'node-id': {
+          'nodeId': {
             type: String,
             observer: 'nodeIdChanged',
             notify: true,
           },
         },
         ready: function() {
-          if (this['node-id']) {
+          if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
-            this.nodeWidget['node-id'] = this['node-id'];
+            this.nodeWidget.nodeId = this.nodeId;
             Polymer.dom(this.$.nodeContainer).appendChild(this.nodeWidget);
           } else {
             this.nodeWidget = null;
@@ -44,15 +44,15 @@
           if (this.nodeWidget) {
             Polymer.dom(this.$.nodeContainer).removeChild(this.nodeWidget);
           }
-          if (this['node-id']) {
+          if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
-            this.nodeWidget['node-id'] = this['node-id'];
+            this.nodeWidget.nodeId = this.nodeId;
             Polymer.dom(this.$.nodeContainer).appendChild(this.nodeWidget);
           }
-          this.fire('nodeIdChanged', this['node-id']);
+          this.fire('nodeIdChanged', this.nodeId);
         },
         clear: function() {
-          this.set('node-id', null);
+          this.set('nodeId', null);
         }
       });
     })();

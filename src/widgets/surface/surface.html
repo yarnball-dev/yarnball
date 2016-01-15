@@ -8,7 +8,6 @@
 <link rel="import" href="../node/node.html">
 <link rel="import" href="../connector/connector.html">
 <link rel="import" href="../set/set.html">
-<link rel="import" href="../selector/selector.html">
 
 <link rel="import" href="surface-styles.html">
 
@@ -18,7 +17,7 @@
 
   <template>
   
-    <div id="background"></div>
+    <div id="background" on-mousedown="backgroundMousedown"></div>
     
     <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
@@ -55,6 +54,19 @@
         is: 'yb-surface',
         created: function() {
           var self = this;
+          
+          self.nodeWidgets = [];
+          
+          self.connectors = [];
+          self.connectorsFrom = new Map();
+          self.connectorsVia  = new Map();
+          self.connectorsTo   = new Map();
+          
+          self.selectedNodeWidgets = new Set();
+          self.selectedConnectors  = new Set();
+          
+          self.setWidgets = [];
+          
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
             self.node_id = node_id;
@@ -68,32 +80,18 @@
             self.client  = client;
             self.node_id = node_id;
         
-            self.oncontextmenu = function(event) {
-              event.preventDefault();
-              return false;
-            }
-            
-            self.$.background.onmousedown = function(event) {
-              self.backgroundMousedown(event);
-            }
-            
-            self.nodeWidgets = [];
-            
-            self.selectedNodeWidgets = new Set();
-            self.selectedConnectors  = new Set();
-            
-            self.connectors = [];
-            self.connectorsFrom = new Map();
-            self.connectorsVia  = new Map();
-            self.connectorsTo   = new Map();
-            
-            self.setWidgets = [];
-            
             self.createNodeWidget({x: 100, y: 40},  '52f9cf0e223d559931856acc98400f21');
             self.createNodeWidget({x: 100, y: 100}, '1264ed87a8274e5188f9020954811805');
             self.createNodeWidget({x: 100, y: 160}, '5c4d67cf88fd9c5dbc841dee378b6b4b');
             self.createNodeWidget({x: 185, y: 160}, '7e1b27583610201f8b48941d3637b13f');
           });
+        },
+        listeners: {
+          contextmenu: 'oncontextmenu'
+        },
+        oncontextmenu: function() {
+          event.preventDefault();
+          return false;
         },
         getSelectors: function() {
           var selectors = [];
@@ -129,7 +127,7 @@
           if (!id) {
             id = self.node_id.makeHex();
           }
-          nodeWidget['node-id'] = id;
+          nodeWidget.nodeId = id;
           nodeWidget.style.position = 'absolute';
           nodeWidget.style.left = position.x + 'px';
           nodeWidget.style.top  = position.y + 'px';
@@ -187,9 +185,9 @@
           self.selectedConnectors.forEach(function(connector) {
             Polymer.dom(self.root).removeChild(connector);
             self.client.unsetLink(
-              self.node_id.fromHex(connector.fromWidget['node-id']),
-              self.node_id.fromHex(connector.viaWidget['node-id']),
-              self.node_id.fromHex(connector.toWidget['node-id'])
+              self.node_id.fromHex(connector.fromWidget.nodeId),
+              self.node_id.fromHex(connector.viaWidget.nodeId),
+              self.node_id.fromHex(connector.toWidget.nodeId)
             )
           });
           self.connectors = self.connectors.filter(function(connector) {
@@ -266,7 +264,7 @@
             function selectorMouseup(event) {
               var selector = event.currentTarget;
               selector.classList.remove('drag-hover');
-              selector.set('node-id', nodeWidget['node-id']);
+              selector.set('nodeId', nodeWidget.nodeId);
               nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
               nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
               nodeWidget.position = nodeWidget.dragStartPosition;
@@ -357,9 +355,9 @@
                                      self.draggingConnectorNodes.via,
                                      self.draggingConnectorNodes.to);
                 self.client.setLink(
-                  self.node_id.fromHex(self.draggingConnectorNodes.from['node-id']),
-                  self.node_id.fromHex(self.draggingConnectorNodes.via['node-id']),
-                  self.node_id.fromHex(self.draggingConnectorNodes.to['node-id'])
+                  self.node_id.fromHex(self.draggingConnectorNodes.from.nodeId),
+                  self.node_id.fromHex(self.draggingConnectorNodes.via.nodeId),
+                  self.node_id.fromHex(self.draggingConnectorNodes.to.nodeId)
                 )
               }
               
@@ -482,20 +480,6 @@
           self.setWidgets.push(setWidget);
           
           Polymer.dom(self.root).appendChild(setWidget);
-        },
-        menuItem_CreateSelector: function() {
-          var self = this;
-          
-          self.$.backgroundDropdown.close();
-          
-          var selector = document.createElement('yb-selector');
-          selector.style.position = 'absolute';
-          selector.style.left = self.lastMenuPosition.x + 'px';
-          selector.style.top  = self.lastMenuPosition.y + 'px';
-          selector.style.width  = '100px';
-          selector.style.height = '100px';
-          
-          Polymer.dom(self.root).appendChild(selector);
         },
         menuItem_DeleteSelected: function() {
           this.$.selectionDropdown.close();

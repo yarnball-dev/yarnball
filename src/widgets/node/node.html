@@ -7,7 +7,7 @@
   <template>
     <template is="dom-if" if="{{!isEditing}}">
       <template is="dom-if" if="{{!name}}" restamp="true">
-        <pre class="node-id">{{node-id-broken}}</pre>
+        <pre class="node-id">{{nodeId_withLinebreaks}}</pre>
       </template>
       <template is="dom-if" if="{{name}}">
         <span>{{name}}</span>
@@ -27,12 +27,12 @@
             type: String,
             value: '',
           },
-          'node-id': {
+          'nodeId': {
             type: String,
           },
-          'node-id-broken': {
+          'nodeId_withLinebreaks': {
             type: String,
-            computed: 'makeBrokenId(node-id)'
+            computed: 'getNodeId_withLinebreaks(nodeId)'
           },
           selected: {
             type: Boolean,
@@ -47,11 +47,11 @@
             type: Object,
           }
         },
-        makeBrokenId: function() {
-          return this['node-id'].slice(0, 8) + '\n' +
-                 this['node-id'].slice(8, 8 + 8) + '\n' +
-                 this['node-id'].slice(8 + 8, 8 + 8 + 8) + '\n' +
-                 this['node-id'].slice(8 + 8 + 8);
+        getNodeId_withLinebreaks: function() {
+          return this.nodeId.slice(0, 8) + '\n' +
+                 this.nodeId.slice(8, 8 + 8) + '\n' +
+                 this.nodeId.slice(8 + 8, 8 + 8 + 8) + '\n' +
+                 this.nodeId.slice(8 + 8 + 8);
         },
         created: function() {
         
@@ -65,7 +65,7 @@
           require(['client', 'node_id'], function(client, node_id) {
           
             self.client = client;
-            self.id_ = node_id.fromHex(self['node-id']);
+            self.id_ = node_id.fromHex(self.nodeId);
             if (client.hasNodeName(self.id_)) {
               self.set('name', client.getNodeName(self.id_));
             }
