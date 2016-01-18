@@ -940,8 +940,8 @@
             if (!self.draggingConnectors.length) {
             
               self.openSelectionMenu({
-                x: event.detail.pageX,
-                y: event.detail.pageY,
+                x: setWidget.position.x + event.detail.offsetX,
+                y: setWidget.position.y + event.detail.offsetY,
               });
             }
           });
