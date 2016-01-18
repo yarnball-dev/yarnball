@@ -19,6 +19,11 @@
     .connector-path:hover
       stroke: #78A4DA
 
+:host.not-clickable
+  svg
+    .connector-path
+      pointer-events: none
+
 :host.selected
   svg
     .connector-path

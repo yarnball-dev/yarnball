@@ -109,6 +109,41 @@
         listeners: {
           contextmenu: 'oncontextmenu'
         },
+        captureMouse: function(cursor, retargetAllEvents) {
+        
+          this.cusorBeforeMouseCapture = document.body.style.cursor;
+          document.body.style.cursor = cursor;
+          
+          if (retargetAllEvents) {
+            if (this.setCapture) {
+              this.setCapture(retargetAllEvents);
+            } else {
+              this.pointerBlocker = document.createElement('div');
+              this.pointerBlocker.classList.add('pointer-blocker');
+              this.pointerBlocker.style.position = 'fixed';
+              this.pointerBlocker.style.left   = '0';
+              this.pointerBlocker.style.top    = '0';
+              this.pointerBlocker.style.right  = '0';
+              this.pointerBlocker.style.bottom = '0';
+              this.pointerBlocker.style['z-index'] = '1000';
+              this.pointerBlocker.style['pointer-events'] = 'all';
+              document.body.appendChild(this.pointerBlocker);
+            }
+          }
+        },
+        releaseMouse: function() {
+          
+          document.body.style.cursor = this.cusorBeforeMouseCapture;
+        
+          if (document.releaseCapture) {
+            document.releaseCapture();
+          } else {
+            if (this.pointerBlocker) {
+              document.body.removeChild(this.pointerBlocker);
+              this.pointerBlocker = null;
+            }
+          }
+        },
         oncontextmenu: function(event) {
           event.preventDefault();
           return false;
@@ -154,33 +189,45 @@
         
           var self = this;
           
-          document.body.style.cursor = 'crosshair';
+          self.captureMouse('crosshair', true);
           
-          var dragStartPosition = {
+          var dragStartOffset = {
+            x: event.offsetX,
+            y: event.offsetY,
+          }
+          var dragStartPage = {
             x: event.pageX,
             y: event.pageY,
           }
           
-          self.$.boxSelection.style.left = event.pageX + 'px';
-          self.$.boxSelection.style.top  = event.pageY + 'px';
+          self.$.boxSelection.style.left = dragStartOffset.x + 'px';
+          self.$.boxSelection.style.top  = dragStartOffset.y + 'px';
           self.$.boxSelection.style.width  = '0px';
           self.$.boxSelection.style.height = '0px';
           
           self.$.boxSelection.classList.remove('hidden');
           
           var alreadySelectedNodeWidgets = new Set(self.selectedNodeWidgets);
+          var alreadySelectedSetWidgets  = new Set(self.selectedSetWidgets);
           
           function handleMousemove(event) {
           
+            var dragDelta = {
+              x: event.pageX - dragStartPage.x,
+              y: event.pageY - dragStartPage.y,
+            }
+          
             var currentSelectionRect = {
-              left:   Math.min(event.pageX, dragStartPosition.x),
-              top:    Math.min(event.pageY, dragStartPosition.y),
-              right:  Math.max(event.pageX, dragStartPosition.x),
-              bottom: Math.max(event.pageY, dragStartPosition.y),
+              left:   Math.min(dragStartOffset.x, dragStartOffset.x + dragDelta.x),
+              top:    Math.min(dragStartOffset.y, dragStartOffset.y + dragDelta.y),
+              right:  Math.max(dragStartOffset.x, dragStartOffset.x + dragDelta.x),
+              bottom: Math.max(dragStartOffset.y, dragStartOffset.y + dragDelta.y),
             }
             
-            self.$.boxSelection.style.left = currentSelectionRect.left + 'px';
-            self.$.boxSelection.style.top  = currentSelectionRect.top  + 'px';
+            var surfaceRect = self.getBoundingClientRect();
+            
+            self.$.boxSelection.style.left   = currentSelectionRect.left + 'px';
+            self.$.boxSelection.style.top    = currentSelectionRect.top  + 'px';
             self.$.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
             self.$.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
             
@@ -190,13 +237,17 @@
             });
             self.selectNodeWidgets(nodesToSelect);
             
-            var setWidgetsInSelectionRect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
-            self.selectSetWidgets(setWidgetsInSelectionRect);
+            var setWidgetsToSelect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
+            alreadySelectedSetWidgets.forEach(function(nodeWidget) {
+              setWidgetsToSelect.add(nodeWidget);
+            });
+            self.selectSetWidgets(setWidgetsToSelect);
           }
           function handleMouseup(event) {
           
             self.$.boxSelection.classList.add('hidden');
-            document.body.style.cursor = 'auto';
+            
+            self.releaseMouse();
             
             window.removeEventListener('mousemove', handleMousemove);
             window.removeEventListener('mouseup',   handleMouseup);
@@ -208,28 +259,30 @@
           return false;
         },
         getNodesInRect: function(rect) {
-          var self = this;
-          var nodeWidgets = [];
-          self.nodeWidgets.forEach(function(nodeWidget) {
-            var nodeRect = nodeWidget.getBoundingClientRect();
-            if (!(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
-                  nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top)) {
-              nodeWidgets.push(nodeWidget);
+          return this.nodeWidgets.filter(function(nodeWidget) {
+            var nodeClientRect = nodeWidget.getBoundingClientRect();
+            var nodeRect = {
+              left:   nodeWidget.position.x,
+              top:    nodeWidget.position.y,
+              right:  nodeWidget.position.x + nodeClientRect.width,
+              bottom: nodeWidget.position.y + nodeClientRect.height,
             }
+            return !(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
+                     nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top);
           });
-          return nodeWidgets;
         },
         getSetWidgetsInRect: function(rect) {
-          var self = this;
-          var setWidgets = [];
-          self.setWidgets.forEach(function(setWidget) {
-            var setRect = setWidget.getBoundingClientRect();
-            if (!(setRect.left > rect.right  || setRect.right  < rect.left ||
-                  setRect.top  > rect.bottom || setRect.bottom < rect.top)) {
-              setWidgets.push(setWidget);
+          return Array.from(this.setWidgets).filter(function(setWidget) {
+            var setClientRect = setWidget.getBoundingClientRect();
+            var setRect = {
+              left:   setWidget.position.x,
+              top:    setWidget.position.y,
+              right:  setWidget.position.x + setClientRect.width,
+              bottom: setWidget.position.y + setClientRect.height,
             }
+            return !(setRect.left > rect.right  || setRect.right  < rect.left ||
+                     setRect.top  > rect.bottom || setRect.bottom < rect.top);
           });
-          return setWidgets;
         },
         startDraggingSelected: function(event) {
         
@@ -662,6 +715,7 @@
             self.draggingConnectors = [];
             self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
               var draggingConnector = document.createElement('yb-connector');
+              draggingConnector.classList.add('not-clickable');
               draggingConnector.set('fromPos', fromNodeWidget.centerPosition());
               Polymer.dom(self.root).appendChild(draggingConnector);
               self.draggingConnectors.push(draggingConnector);
@@ -794,6 +848,11 @@
           connector.set('fromPos', fromWidget.centerPosition());
           connector.set('viaPos',  viaWidget.centerPosition());
           connector.set('toPos',   toWidget.centerPosition());
+          
+          connector.addEventListener('mouseover', function(event) {
+            Polymer.dom(self.root).removeChild(connector);
+            Polymer.dom(self.root).appendChild(connector);
+          });
           
           connector.addEventListener('selected', function(event) {
             if (!self.selectedConnectors.has(connector)) {
