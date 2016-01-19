@@ -4,107 +4,205 @@
   <head>
 
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     
     <title>Yarnball</title>
+    
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    
+    <link rel="stylesheet" href="bower_components/normalize-css/normalize.css">
     
     <link rel="stylesheet" href="style.css">
     <link href='https://fonts.googleapis.com/css?family=Lora' rel='stylesheet' type='text/css'>
     <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Titillium+Web' rel='stylesheet' type='text/css'>
     
     <script src="bower_components/requirejs/require.js"></script>
     
     <script src="bower_components/webcomponentsjs/webcomponents-lite.js"></script>
     
+    <link rel="import" href="bower_components/iron-pages/iron-pages.html">
+
     <link rel="import" href="yarnball.html">
+    <link rel="import" href="widgets/surface/surface.html">
+    
+    <link rel="import" href="routing.html">
     
   </head>
 
-  <body>
+  <body unresolved>
   
-    <yb-main>
-  
-      <div class="title-group">
-        <img class="title-logo" src="logo.svg" />
-        <div class="title">yarnball</div>
-        <div class="title-description">Woven Data</div>
-      </div>
+    <template is="dom-bind" id="app">
+    
+      <div class="main-container">
       
-      <div class="intro-section">
-        <div class="intro-container">
-          <div class="intro-caption">Yarnball defines three things:</div>
-          <div class="card-container">
-            <span class="intro-card node-intro-card">
-              <div class="card-content">
+        <yb-main></yb-main>
+    
+        <section class="nav">
+          <div class="title">yarnball</div>
+          <ul class="nav-buttons">
+            <li class$="[[navClassIntro(route)]]">
+              <a id="intro-link" data-route="intro" href="./intro">
+                Intro
+              </a>
+            </li>
+            <li class$="[[navClassTry(route)]]">
+              <a id="try-link" data-route="try" href="./try">
+                Try
+              </a>
+            </li>
+            <li id="docs-link" class$="[[navClassDocs(route)]]">
+              <a data-route="docs" href="./docs">
+                Docs
+              </a>
+            </li>
+          </ul>
+        </section>
+      
+        <iron-pages class="main-pages" attr-for-selected="data-route" selected="{{route}}">
+
+          <section data-route="intro">
+          
+            <section class="intro-section first-intro-section">
+              <label>In Yarnball, there's three things:</label>
+              
+              <div class="intro-card-group">
+                <div class="intro-card">
+                  <div class="intro-card-content">
+                    <yb-node node-id="1e436f8bb0da1c31e9382450fdd51eaa"></yb-node>
+                  </div>
+                  <label>Node</label>
+                </div>
+                <div class="intro-card">
+                  <div class="intro-card-content">
+                    <yb-link
+                      from="1e436f8bb0da1c31e9382450fdd51eaa"
+                      via ="ac1bbe77ed038accd45f7e906d4257d2"
+                      to  ="a0f9922a65546eacd04b910998744300">
+                    </yb-link>
+                  </div>
+                  <label>Link</label>
+                </div>
+                <div class="intro-card">
+                  <div class="intro-card-content">
+                    <img src="web.svg" />
+                  </div>
+                  <label>Web</label>
+                </div>
+              </div>
+              
+              <hr />
+            </section>
+            
+            <section class="intro-section">
+              <div class="intro-card-float">
                 <yb-node node-id="1e436f8bb0da1c31e9382450fdd51eaa"></yb-node>
               </div>
-              <div class="card-title">Node</div>
-            </span>
-            <span class="intro-card link-intro-card">
-              <div class="card-content">
+              <p>
+                A node is a randomly generated number.
+              </p>
+              <p>
+                It can represent things, concepts, or anything.
+              </p>
+            </section>
+            
+            <section class="intro-section align-right">
+              <div class="intro-card-float">
+                <yb-node node-id="5c4d67cf88fd9c5dbc841dee378b6b4b"></yb-node>
+              </div>
+              <p>
+                A node can be given a name, for example:
+              </p>
+            </section>
+            
+            <section class="intro-section">
+              <div class="intro-card-float">
                 <yb-link
                   from="1e436f8bb0da1c31e9382450fdd51eaa"
                   via ="ac1bbe77ed038accd45f7e906d4257d2"
                   to  ="a0f9922a65546eacd04b910998744300">
                 </yb-link>
               </div>
-              <div class="card-title">Link</div>
-            </span>
-            <span class="intro-card web-intro-card">
-              <div class="card-content">
+              <p>A link connects three nodes together.</p>
+              <p>It connects <em>from</em> the first node, <em>via</em> the second node, <em>to</em> the last node.</p>
+            </section>
+            
+            <section class="intro-section align-right">
+              <div class="intro-card-float">
                 <img src="web.svg" />
               </div>
-              <div class="card-title">Web</div>
-            </span>
-          </div>
-        </div>
+              <p>A collection of links is called a web.</p>
+              <p>A web can represent any kind of information, arranged in any kind of way.</p>
+            </section>
+              
+          </section>
+          
+          <section data-route="try" class="try-page">
+            <yb-surface>
+            </yb-surface>
+          </section>
+          
+          <section data-route="docs">
+            DOCS
+          </section>
+          
+        </iron-pages>
+      
       </div>
       
-      <div class="sections">
+    </template>
+    
+    <script>
+    
+      var app = document.querySelector('#app');
       
-        <section>
-          <div class="annotation-group">
-            <yb-node node-id="1e436f8bb0da1c31e9382450fdd51eaa"></yb-node>
-            <div class="annotation">
-              <div>A node is a randomly generated number.</div>
-              <div>It can represent things, concepts, or anything.</div>
-            </div>
-          </div>
-          <div class="annotation-group">
-            <div class="annotation">
-              <div>For convenience, a node can be given a name. For example:</div>
-            </div>
-            <yb-node node-id="5c4d67cf88fd9c5dbc841dee378b6b4b"></yb-node>
-          </div>
-        </section>
+      app.navClassIntro = function(route) { return (route === 'intro') ? 'selected' : ''; }
+      app.navClassTry   = function(route) { return (route === 'try')   ? 'selected' : ''; }
+      app.navClassDocs  = function(route) { return (route === 'docs')  ? 'selected' : ''; }
+      
+      document.addEventListener('WebComponentsReady', function() {
+      
+        require(['bower_components/page/page'], function(page) {
         
-        <section>
-          <div class="annotation-group">
-            <yb-link
-              from="1e436f8bb0da1c31e9382450fdd51eaa"
-              via ="ac1bbe77ed038accd45f7e906d4257d2"
-              to  ="a0f9922a65546eacd04b910998744300">
-            </yb-link>
-            <div class="annotation">
-              <div>A link connects three nodes together.</div>
-              <div>It connects <strong>from</strong> the first node, <strong>via</strong> the second node, <strong>to</strong> the last node.</div>
-            </div>
-          </div>
-        </section>
-        
-        <section>
-          <div class="annotation-group">
-            <img src="web.svg" />
-            <div class="annotation">
-              <div>A collection of links is called a web.</div>
-              <div>A web can represent any kind of information, structured in any arbitrary way.</div>
-            </div>
-          </div>
-        </section>
-        
-      </div>
-  
-    </yb-main>
+          page('/', function() {
+            app.route = 'intro';
+          });
+          page('/intro', function() {
+            app.route = 'intro';
+          });
+          page('/try',   function() {
+            app.route = 'try';
+          });
+          page('/docs',  function() {
+            app.route = 'docs'
+          });
+          
+          page({
+            hashbang: true
+          });
+          
+          
+          document.querySelector('#intro-link').addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            page('/intro');
+            return false;
+          });
+          
+          document.querySelector('#try-link').addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            page('/try');
+            return false;
+          });
+          
+          document.querySelector('#docs-link').addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            page('/docs');
+            return false;
+          });
+          
+        });
+      });
+
+    </script>
   </body>
   
 </html>
