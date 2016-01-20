@@ -1,6 +1,10 @@
 var gulp        = require('gulp'),
+    gulp_if     = require('gulp-if'),
     spawn       = require('child_process').spawn,
     sass        = require('gulp-sass'),
+    uglifyjs    = require('gulp-uglify'),
+    cssnano     = require('gulp-cssnano'),
+    htmlmin     = require('gulp-htmlmin'),
     styleModule = require('gulp-style-modules'),
     browserSync = require('browser-sync'),
     bowerFiles  = require('main-bower-files');
@@ -41,11 +45,15 @@ gulp.task('svg', function() {
 gulp.task('bower', function() {
 //   gulp.src(bowerFiles())
   gulp.src('bower_components/**/*')
+    .pipe(gulp_if('*.js', uglifyjs()))
+//     .pipe(gulp_if('*.html', htmlmin()))
+    .pipe(gulp_if('*.css', cssnano()))
     .pipe(gulp.dest('dist/bower_components/'));
 });
 
 gulp.task('socket.io', function() {
   gulp.src('node_modules/socket.io-client/**')
+    .pipe(gulp_if('*.js', uglifyjs()))
     .pipe(gulp.dest('dist/socket.io-client'));
 });
 
