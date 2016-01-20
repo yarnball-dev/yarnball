@@ -9,12 +9,17 @@
   <style include="set-styles"></style>
 
   <template>
-    <div class="header">
-      <yb-selector id="fromSelector" node-id="{{from}}"></yb-selector>
-      <yb-selector id="viaSelector"  node-id="{{via}}"> </yb-selector>
-      <yb-selector id="toSelector"   node-id="{{to}}">  </yb-selector>
+    <div id="widget-handle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
+    <div id="widget-body" class="widget-body">
+      <div class="header">
+        <yb-selector id="fromSelector" node-id="{{from}}"></yb-selector>
+        <span class="connector"></span>
+        <yb-selector id="viaSelector"  node-id="{{via}}"> </yb-selector>
+        <span class="connector"></span>
+        <yb-selector id="toSelector"   node-id="{{to}}">  </yb-selector>
+      </div>
+      <div id="setContent"></div>
     </div>
-    <div id="setContent"></div>
   </template>
   
   <script>
@@ -26,12 +31,15 @@
         properties: {
           from: {
             type: String,
+            observer: 'refreshSet',
           },
           via: {
             type: String,
+            observer: 'refreshSet',
           },
           to: {
             type: String,
+            observer: 'refreshSet',
           },
           selectors: {
             type: Array,
@@ -46,14 +54,6 @@
         created: function() {
           var self = this;
           self.nodeWidgets = new Map();
-          require(['client', 'node_id'], function(client, node_id) {
-            self.client = client;
-            self.node_id = node_id;
-            self.refreshSet();
-            client.web.onLinks(function(linksAdded, linksRemoved) {
-              self.updateSet(linksAdded, linksRemoved);
-            });
-          });
         },
         ready: function() {
         
@@ -62,27 +62,15 @@
           self.set('selectors', [self.$.fromSelector, self.$.viaSelector, self.$.toSelector]);
           
           require(['client', 'node_id'], function(client, node_id) {
-          
-            self.client = client;
             self.node_id = node_id;
-            
-            self.$.fromSelector.addEventListener('nodeIdChanged', function() {
-              self.refreshSet();
-            });
-            self.$.viaSelector.addEventListener( 'nodeIdChanged', function() {
-              self.refreshSet();
-            });
-            self.$.toSelector.addEventListener(  'nodeIdChanged', function() {
-              self.refreshSet();
+            self.refreshSet();
+            client.web.onLinks(function(linksAdded, linksRemoved) {
+              self.updateSet(linksAdded, linksRemoved);
             });
           });
         },
-        listeners: {
-          mousedown: 'mousedown',
-          mouseup:   'mouseup',
-        },
         mousedown: function(event) {
-          if (event.target === this && event.button === 0) {
+          if (event.target === this.$['widget-handle'] && event.button === 0) {
             this.fire('selected',  event);
             this.fire('dragStart', event);
           }
@@ -115,18 +103,21 @@
         },
         refreshSet: function() {
           var self = this;
-          var nodeIdKeys = new Set(self.filterLinks(self.client.web.getLinks()).map(function(nodeId) {
-            return self.node_id.toMapKey(nodeId);
-          }));
-          self.nodeWidgets.forEach(function(nodeWidget, nodeIdKey) {
-            if (!nodeIdKeys.has(nodeIdKey)) {
-              self.removeNodeWidget(self.node_id.fromMapKey(nodeIdKey));
-            }
-          });
-          nodeIdKeys.forEach(function(nodeIdKey) {
-            if (!self.nodeWidgets.has(nodeIdKey)) {
-              self.addNodeWidget(self.node_id.fromMapKey(nodeIdKey));
-            }
+          require(['client', 'node_id'], function(client, node_id) {
+            self.node_id = node_id;
+            var nodeIdKeys = new Set(self.filterLinks(client.web.getLinks()).map(function(nodeId) {
+              return self.node_id.toMapKey(nodeId);
+            }));
+            self.nodeWidgets.forEach(function(nodeWidget, nodeIdKey) {
+              if (!nodeIdKeys.has(nodeIdKey)) {
+                self.removeNodeWidget(self.node_id.fromMapKey(nodeIdKey));
+              }
+            });
+            nodeIdKeys.forEach(function(nodeIdKey) {
+              if (!self.nodeWidgets.has(nodeIdKey)) {
+                self.addNodeWidget(self.node_id.fromMapKey(nodeIdKey));
+              }
+            });
           });
         },
         updateSet: function(linksAdded, linksRemoved) {

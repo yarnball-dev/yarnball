@@ -104,6 +104,8 @@
             self.createNodeWidget({x: 100, y: 100}, '1264ed87a8274e5188f9020954811805');
             self.createNodeWidget({x: 100, y: 160}, '5c4d67cf88fd9c5dbc841dee378b6b4b');
             self.createNodeWidget({x: 185, y: 160}, '7e1b27583610201f8b48941d3637b13f');
+            
+            self.createSetWidget({x: 400, y: 50});
           });
         },
         listeners: {
@@ -306,7 +308,6 @@
           
           self.selectedSetWidgets.forEach(function(setWidget) {
             setWidget.dragStartPosition = setWidget.position;
-            setWidget.style['pointer-events'] = 'none';
           });
           
           document.body.style.cursor = '-webkit-grabbing';
@@ -351,9 +352,6 @@
             document.body.style.cursor = 'auto';
             self.selectedNodeWidgets.forEach(function(nodeWidget) {
               nodeWidget.style['pointer-events'] = 'auto';
-            });
-            self.selectedSetWidgets.forEach(function(setWidget) {
-              setWidget.style['pointer-events'] = 'auto';
             });
             
             self.getSelectors().forEach(function(selector) {

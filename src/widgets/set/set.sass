@@ -1,25 +1,50 @@
 @import ../../yarnball
 
 :host
-  display: inline-block
-  border: 1px solid #ddd
-  padding: 5px
-  margin: 2px
-  background-color: #fff
+  
+  pointer-events: none
+  
+  .widget-handle
+    pointer-events: all
+    display: inline-block
+    border: 1px solid #ddd
+    width:  50px
+    height: 50px
+    vertical-align: top
+  
+  .widget-body
+    pointer-events: all
+    display: inline-block
+    border: 1px solid #ddd
+    padding: 0
+    background-color: #fff
   
   .header
-    background: url(set_background.svg) repeat-x
-    background-size: contain
     margin-bottom: 4px
     min-height: 30px
+    padding: 5px
     display: flex
+    align-items: center
     
     yb-selector
       flex-grow: 1
+      align-self: stretch
+    
+    yb-selector.is-empty
+      border: 1px solid #ddd
+      min-width:  70px
+      min-height: 40px
+    
+    .connector
+      display: inline-block
+      width:  20px
+      height: 30px
+      background-color: $connector-color
   
   .content
     border-top: 1px solid #ddd
     padding-top: 5px
 
 :host.selected
-  background-color: $selected-color
+  .widget-handle
+    background-color: $selected-color

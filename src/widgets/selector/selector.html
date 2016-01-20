@@ -9,8 +9,6 @@
   <style include="selector-styles"></style>
 
   <template>
-    <span id="nodeContainer">
-    </span>
     <template is="dom-if" if="{{nodeId}}">
       <paper-button id="clearButton" on-tap="clear">
         <iron-icon icon="icons:clear"></iron-icon>
@@ -32,23 +30,29 @@
           },
         },
         ready: function() {
+          this.classList.toggle('is-empty', this.nodeId ? false : true);
+        
           if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
             this.nodeWidget.nodeId = this.nodeId;
-            Polymer.dom(this.$.nodeContainer).appendChild(this.nodeWidget);
+            Polymer.dom(this.root).insertBefore(this.nodeWidget, Polymer.dom(this.root).firstChild);
           } else {
             this.nodeWidget = null;
           }
         },
         nodeIdChanged: function() {
+        
+          this.classList.toggle('is-empty', this.nodeId ? false : true);
+          
           if (this.nodeWidget) {
-            Polymer.dom(this.$.nodeContainer).removeChild(this.nodeWidget);
+            Polymer.dom(this.root).removeChild(this.nodeWidget);
           }
           if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
             this.nodeWidget.nodeId = this.nodeId;
-            Polymer.dom(this.$.nodeContainer).appendChild(this.nodeWidget);
+            Polymer.dom(this.root).insertBefore(this.nodeWidget, Polymer.dom(this.root).firstChild);
           }
+          
           this.fire('nodeIdChanged', this.nodeId);
         },
         clear: function() {
