@@ -10,7 +10,7 @@
         <pre class="node-id">{{nodeId_withLinebreaks}}</pre>
       </template>
       <template is="dom-if" if="{{name}}">
-        <span>{{name}}</span>
+        <div id="node-name">{{name}}</div>
       </template>
     </template>
     <input id="input_box" class="hidden" type="text" value="{{name}}" on-blur="onBlur" on-keypress="onKeypress">
