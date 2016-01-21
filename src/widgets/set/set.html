@@ -52,8 +52,7 @@
           },
         },
         created: function() {
-          var self = this;
-          self.nodeWidgets = new Map();
+          this.nodeWidgetsInSet = new Map();
         },
         ready: function() {
         
@@ -108,13 +107,13 @@
             var nodeIdKeys = new Set(self.filterLinks(client.web.getLinks()).map(function(nodeId) {
               return self.node_id.toMapKey(nodeId);
             }));
-            self.nodeWidgets.forEach(function(nodeWidget, nodeIdKey) {
+            self.nodeWidgetsInSet.forEach(function(nodeWidget, nodeIdKey) {
               if (!nodeIdKeys.has(nodeIdKey)) {
                 self.removeNodeWidget(self.node_id.fromMapKey(nodeIdKey));
               }
             });
             nodeIdKeys.forEach(function(nodeIdKey) {
-              if (!self.nodeWidgets.has(nodeIdKey)) {
+              if (!self.nodeWidgetsInSet.has(nodeIdKey)) {
                 self.addNodeWidget(self.node_id.fromMapKey(nodeIdKey));
               }
             });
@@ -136,12 +135,12 @@
           var nodeWidget = document.createElement('yb-node');
           nodeWidget.nodeId = this.node_id.toHex(nodeId);
           Polymer.dom(this.$.setContent).appendChild(nodeWidget);
-          this.nodeWidgets.set(this.node_id.toMapKey(nodeId), nodeWidget);
+          this.nodeWidgetsInSet.set(this.node_id.toMapKey(nodeId), nodeWidget);
         },
         removeNodeWidget: function(nodeId) {
-          var nodeWidget = this.nodeWidgets.get(this.node_id.toMapKey(nodeId));
+          var nodeWidget = this.nodeWidgetsInSet.get(this.node_id.toMapKey(nodeId));
           Polymer.dom(this.$.setContent).removeChild(nodeWidget);
-          this.nodeWidgets.delete(this.node_id.toMapKey(nodeId));
+          this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
         }
       });
     })();

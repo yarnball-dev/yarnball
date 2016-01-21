@@ -48,9 +48,6 @@
             type: Boolean,
             value: false,
           },
-          dimensions: {
-            type: Object,
-          }
         },
         getNodeId_withLinebreaks: function() {
           return this.nodeId.slice(0, 8) + '\n' +
@@ -91,10 +88,10 @@
           });
         },
         attached: function() {
-          var self = this;
-          this.async(function() {
-            self.updateDimensions();
-          });
+          this.fire('nodeWidgetCreated', this);
+        },
+        detached: function() {
+          this.fire('nodeWidgetDestroyed', this);
         },
         connectors: function() {
           var connectors = new Set();
@@ -121,23 +118,15 @@
             this.fire('dimensionsChanged', this.dimensions);
           }
         },
-        centerPosition: function() {
-          return {
-            x: this.position.x + (this.dimensions.width  / 2),
-            y: this.position.y + (this.dimensions.height / 2),
-          }
-        },
         listeners: {
           mousedown: 'mousedown',
           mouseup:   'mouseup',
-          dblclick: 'dblclick',
+          dblclick:  'dblclick',
         },
         mousedown: function(event) {
-        
           var self = this;
         
           if (!self.isEditing) {
-            event.preventDefault();
             
             if (event.button === 0) {
               self.fire('selected', event);
@@ -174,7 +163,6 @@
             }
             window.addEventListener('mousemove', handleMousemove);
             window.addEventListener('mouseup',   handleMouseup);
-            return false;
           }
         },
         mouseup: function(event) {
@@ -185,13 +173,13 @@
         },
         dblclick: function(event) {
           if (!this.isEditing) {
-            this.set('isEditing', true);
             this.startEditing();
             event.preventDefault();
             return false;
           }
         },
         startEditing: function() {
+          this.set('isEditing', true);
           this.$.input_box.style.width = this.clientWidth + 'px';
           this.$.input_box.classList.remove('hidden');
           this.$.input_box.select();
@@ -208,7 +196,9 @@
           }
         },
         onBlur: function(event) {
-          this.finishEditing();
+          if (this.isEditing) {
+            this.finishEditing();
+          }
         },
         onKeypress: function(event) {
           if (event.which === 13) {

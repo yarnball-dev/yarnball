@@ -21,7 +21,9 @@
     display: block
     position: absolute
     background-color: $highlight-color
+    opacity: 0.5
     pointer-events: none
+    z-index: 3
   
   #boxSelection.hidden
     display: none
@@ -35,6 +37,9 @@
   yb-node
     margin: 0
     z-index: 2
+  yb-node.dragging
+    margin: 0
+    z-index: 3
   
   yb-set
     z-index: 2

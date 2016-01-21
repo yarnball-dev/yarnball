@@ -7,10 +7,15 @@
   .widget-handle
     pointer-events: all
     display: inline-block
+    background-color: #fff
     border: 1px solid #ddd
+    border-radius: 4px
     width:  50px
     height: 50px
     vertical-align: top
+    cursor: pointer
+  .widget-handle:hover
+    background-color: $highlight-color
   
   .widget-body
     pointer-events: all
@@ -20,7 +25,6 @@
     background-color: #fff
   
   .header
-    margin-bottom: 4px
     min-height: 30px
     padding: 5px
     display: flex

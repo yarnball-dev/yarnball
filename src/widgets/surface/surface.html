@@ -72,7 +72,8 @@
         created: function() {
           var self = this;
           
-          self.nodeWidgets = [];
+          self.nodeWidgets         = new Set();
+          self.nodeWidgetsTopLevel = new Set();
           
           self.connectors = new Set();
           self.connectorsFrom = new Map();
@@ -100,12 +101,12 @@
             self.client  = client;
             self.node_id = node_id;
         
-            self.createNodeWidget({x: 100, y: 40},  '52f9cf0e223d559931856acc98400f21');
-            self.createNodeWidget({x: 100, y: 100}, '1264ed87a8274e5188f9020954811805');
-            self.createNodeWidget({x: 100, y: 160}, '5c4d67cf88fd9c5dbc841dee378b6b4b');
-            self.createNodeWidget({x: 185, y: 160}, '7e1b27583610201f8b48941d3637b13f');
+//             self.createNodeWidget({x: 100, y: 40},  '52f9cf0e223d559931856acc98400f21');
+//             self.createNodeWidget({x: 100, y: 100}, '1264ed87a8274e5188f9020954811805');
+//             self.createNodeWidget({x: 100, y: 160}, '5c4d67cf88fd9c5dbc841dee378b6b4b');
+//             self.createNodeWidget({x: 185, y: 160}, '7e1b27583610201f8b48941d3637b13f');
             
-            self.createSetWidget({x: 400, y: 50});
+//             self.createSetWidget({x: 400, y: 50});
           });
         },
         listeners: {
@@ -260,14 +261,36 @@
           
           return false;
         },
+        getNodePosition: function(nodeWidget) {
+          if (nodeWidget.position) {
+            return nodeWidget.position;
+          } else {
+            var surfaceRect = this.getBoundingClientRect();
+            var nodeRect = nodeWidget.getBoundingClientRect();
+            nodeWidget.position = {
+              x: nodeRect.left - surfaceRect.left,
+              y: nodeRect.top  - surfaceRect.top,
+            }
+            return nodeWidget.position;
+          }
+        },
+        getNodeWidgetCenter: function(nodeWidget) {
+          var surfaceRect = this.getBoundingClientRect();
+          var nodeRect = nodeWidget.getBoundingClientRect();
+          return {
+            x: (nodeRect.left - surfaceRect.left) + (nodeRect.width  / 2),
+            y: (nodeRect.top  - surfaceRect.top)  + (nodeRect.height / 2),
+          }
+        },
         getNodesInRect: function(rect) {
-          return this.nodeWidgets.filter(function(nodeWidget) {
+          var surfaceClientRect = this.getBoundingClientRect();
+          return Array.from(this.nodeWidgets).filter(function(nodeWidget) {
             var nodeClientRect = nodeWidget.getBoundingClientRect();
             var nodeRect = {
-              left:   nodeWidget.position.x,
-              top:    nodeWidget.position.y,
-              right:  nodeWidget.position.x + nodeClientRect.width,
-              bottom: nodeWidget.position.y + nodeClientRect.height,
+              left:   nodeClientRect.left   - surfaceClientRect.left,
+              top:    nodeClientRect.top    - surfaceClientRect.top,
+              right:  nodeClientRect.right  - surfaceClientRect.left,
+              bottom: nodeClientRect.bottom - surfaceClientRect.top,
             }
             return !(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
                      nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top);
@@ -275,7 +298,7 @@
         },
         getSetWidgetsInRect: function(rect) {
           return Array.from(this.setWidgets).filter(function(setWidget) {
-            var setClientRect = setWidget.getBoundingClientRect();
+            var setClientRect = setWidget.$['widget-handle'].getBoundingClientRect();
             var setRect = {
               left:   setWidget.position.x,
               top:    setWidget.position.y,
@@ -286,11 +309,11 @@
                      setRect.top  > rect.bottom || setRect.bottom < rect.top);
           });
         },
-        startDraggingSelected: function(event) {
+        startDraggingSelected: function(event, copy) {
         
           var self = this;
           
-          if (event.detail.shiftKey) {
+          if (copy || event.detail.shiftKey) {
             self.copySelected();
           }
         
@@ -301,9 +324,13 @@
             y: event.detail.pageY,
           }
           
-          self.selectedNodeWidgets.forEach(function(nodeWidget) {
-            nodeWidget.dragStartPosition = nodeWidget.position;
-            nodeWidget.style['pointer-events'] = 'none';
+          var draggingNodeWidgets = new Set(Array.from(self.selectedNodeWidgets).filter(function(nodeWidget) {
+            return self.nodeWidgetsTopLevel.has(nodeWidget);
+          }));
+          
+          draggingNodeWidgets.forEach(function(nodeWidget) {
+            nodeWidget.dragStartPosition = self.getNodePosition(nodeWidget);
+            nodeWidget.classList.add('dragging');
           });
           
           self.selectedSetWidgets.forEach(function(setWidget) {
@@ -313,24 +340,25 @@
           document.body.style.cursor = '-webkit-grabbing';
           
           function handleMousemove(event) {
+            event.preventDefault();
           
             var cursorOffset = {
               x: event.pageX - cursorStartPos.x,
               y: event.pageY - cursorStartPos.y,
             }
             
-            self.selectedNodeWidgets.forEach(function(selectedNodeWidget) {
+            draggingNodeWidgets.forEach(function(draggingNodeWidget) {
             
               var newPos = {
-                x: selectedNodeWidget.dragStartPosition.x + cursorOffset.x,
-                y: selectedNodeWidget.dragStartPosition.y + cursorOffset.y,
+                x: draggingNodeWidget.dragStartPosition.x + cursorOffset.x,
+                y: draggingNodeWidget.dragStartPosition.y + cursorOffset.y,
               }
           
-              selectedNodeWidget.style.left = newPos.x + 'px';
-              selectedNodeWidget.style.top  = newPos.y + 'px';
-              selectedNodeWidget.position = newPos;
+              draggingNodeWidget.style.left = newPos.x + 'px';
+              draggingNodeWidget.style.top  = newPos.y + 'px';
+              draggingNodeWidget.position = newPos;
             
-              self.updateConnectorsForNodeWidget(selectedNodeWidget);
+              self.updateConnectorsForNodeWidget(draggingNodeWidget);
             });
             
             self.selectedSetWidgets.forEach(function(selectedSetWidget) {
@@ -344,14 +372,18 @@
               selectedSetWidget.style.top  = newPos.y + 'px';
               selectedSetWidget.position = newPos;
             });
+            
+            return false;
           }
           
-          function finishDragging() {
+          function finishDragging(event) {
+            event.preventDefault();
+          
             window.removeEventListener('mousemove', handleMousemove);
             window.removeEventListener('mouseup',   finishDragging);
             document.body.style.cursor = 'auto';
-            self.selectedNodeWidgets.forEach(function(nodeWidget) {
-              nodeWidget.style['pointer-events'] = 'auto';
+            draggingNodeWidgets.forEach(function(nodeWidget) {
+              nodeWidget.classList.remove('dragging');
             });
             
             self.getSelectors().forEach(function(selector) {
@@ -360,6 +392,8 @@
               selector.removeEventListener('mouseup',   selectorMouseup);
               selector.classList.remove('drag-ready');
             });
+            
+            return false;
           }
           
           window.addEventListener('mousemove', handleMousemove);
@@ -377,30 +411,36 @@
             var selector = event.currentTarget;
             selector.classList.remove('drag-hover');
             var primaryNodeWidget = null;
-            if (self.selectedNodeWidgets.size === 1) {
-              self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            if (draggingNodeWidgets.size === 1) {
+              draggingNodeWidgets.forEach(function(nodeWidget) {
                 primaryNodeWidget = nodeWidget;
               });
             }
             if (primaryNodeWidget) {
               selector.set('nodeId', primaryNodeWidget.nodeId);
             }
-            self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            draggingNodeWidgets.forEach(function(nodeWidget) {
               nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
               nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
               nodeWidget.position   = nodeWidget.dragStartPosition;
               self.updateConnectorsForNodeWidget(nodeWidget);
             });
             this.updateStyles();
-            finishDragging();
+            finishDragging(event);
           }
           
-          if (self.selectedNodeWidgets.size === 1) {
+          if (draggingNodeWidgets.size === 1) {
+            var draggingNodeWidget = null;
+            draggingNodeWidgets.forEach(function(draggingNodeWidget_) {
+              draggingNodeWidget = draggingNodeWidget_;
+            });
             self.getSelectors().forEach(function(selector) {
-              selector.addEventListener('mouseover', selectorMouseover);
-              selector.addEventListener('mouseout',  selectorMouseout);
-              selector.addEventListener('mouseup',   selectorMouseup);
-              selector.classList.add('drag-ready');
+              if (selector.nodeId !== draggingNodeWidget.nodeId) {
+                selector.addEventListener('mouseover', selectorMouseover);
+                selector.addEventListener('mouseout',  selectorMouseout);
+                selector.addEventListener('mouseup',   selectorMouseup);
+                selector.classList.add('drag-ready');
+              }
             });
           }
         },
@@ -430,7 +470,8 @@
           
           Polymer.dom(self.root).appendChild(nodeWidget);
           
-          self.nodeWidgets.push(nodeWidget);
+          self.nodeWidgets.add(nodeWidget);
+          self.nodeWidgetsTopLevel.add(nodeWidget);
           
           return nodeWidget;
         },
@@ -444,39 +485,73 @@
                 otherNodeWidget.set('highlighted', true);
               }
             });
-            function handleMouseout() {
-              nodeWidget.removeEventListener('mouseout', handleMouseout);
+            function stopHighlighting() {
+              nodeWidget.removeEventListener('mouseout', stopHighlighting);
+              nodeWidget.removeEventListener('detached', stopHighlighting);
               nodeCopies.forEach(function(nodeWidgetCopy) {
                 nodeWidgetCopy.set('highlighted', false);
               });
             }
-            nodeWidget.addEventListener('mouseout', handleMouseout);
+            nodeWidget.addEventListener('mouseout', stopHighlighting);
+            nodeWidget.addEventListener('detached', stopHighlighting);
           });
         },
         _setupNodeWidgetSelection: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('selected', function(event) {
+            self.bringNodeWidgetToFront(nodeWidget);
             if (!self.selectedNodeWidgets.has(nodeWidget)) {
-              if (!event.detail.ctrlKey) {
-                self.deselect();
-              }
-              self.selectedNodeWidgets.add(nodeWidget);
-              nodeWidget.set('selected', true);
+              self.selectNodeWidgets([nodeWidget], event.detail.ctrlKey);
             }
           });
         },
-        selectNodeWidgets: function(nodeWidgets) {
-          this.selectedNodeWidgets.forEach(function(nodeWidget) {
-            if (!nodeWidgets.has(nodeWidget)) {
-              nodeWidget.set('selected', false);
+        bringNodeWidgetToFront: function(nodeWidget) {
+          if (this.nodeWidgetsTopLevel.has(nodeWidget)) {
+            this.appendChild(nodeWidget);
+          }
+        },
+        bringConnectorToFront: function(connector) {
+          this.appendChild(connector);
+        },
+        bringSetWidgetToFront: function(setWidget) {
+          this.appendChild(setWidget);
+        },
+        selectNodeWidgets: function(nodeWidgets, appendSelection) {
+          var self = this;
+          
+          nodeWidgets = new Set(nodeWidgets);
+        
+          if (!appendSelection) {
+            self.selectedNodeWidgets.forEach(function(nodeWidget) {
+              if (!nodeWidgets.has(nodeWidget)) {
+                nodeWidget.set('selected', false);
+              }
+            });
+          }
+          
+          nodeWidgets.forEach(function(nodeWidget) {
+            if (!self.selectedNodeWidgets.has(nodeWidget)) {
+              nodeWidget.set('selected', true);
+              if (appendSelection) {
+                self.selectedNodeWidgets.add(nodeWidget);
+              }
             }
           });
           
-          nodeWidgets.forEach(function(nodeWidget) {
-            nodeWidget.set('selected', true);
-          });
+          if (!appendSelection) {
           
-          this.selectedNodeWidgets = new Set(nodeWidgets);
+            self.selectedNodeWidgets = new Set(nodeWidgets);
+            
+            self.selectedConnectors.forEach(function(connector) {
+              connector.set('selected', false);
+            });
+            self.selectedConnectors.clear();
+            
+            self.selectedSetWidgets.forEach(function(setWidget) {
+              setWidget.set('selected', false);
+            });
+            self.selectedSetWidgets.clear();
+          }
         },
         selectSetWidgets: function(setWidgets) {
           this.selectedSetWidgets.forEach(function(setWidget) {
@@ -511,16 +586,22 @@
           var self = this;
           
           var connectorsToDelete = new Set(self.selectedConnectors);
-          
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
             nodeWidget.connectors().forEach(function(connector) {
               connectorsToDelete.add(connector);
             });
+          });
+          
+          // Delete node widgets
+          self.selectedNodeWidgets.forEach(function(nodeWidget) {
             Polymer.dom(self.root).removeChild(nodeWidget);
           });
-          self.nodeWidgets = self.nodeWidgets.filter(function(nodeWidget) {
+          self.nodeWidgets = new Set(Array.from(self.nodeWidgets).filter(function(nodeWidget) {
             return !self.selectedNodeWidgets.has(nodeWidget);
-          });
+          }));
+          self.nodeWidgetsTopLevel = new Set(Array.from(self.nodeWidgetsTopLevel).filter(function(nodeWidget) {
+            return !self.selectedNodeWidgets.has(nodeWidget);
+          }));
           self.selectedNodeWidgets.clear();
           
           connectorsToDelete.forEach(function(connector) {
@@ -530,8 +611,8 @@
             Polymer.dom(self.root).removeChild(connector);
           });
           
+          // Find affected links
           var affectedLinks = new Set();
-          
           self.selectedConnectors.forEach(function(connector) {
             affectedLinks.add(self.node_id.linkToKey({
               from: self.node_id.fromHex(connector.fromWidget.nodeId),
@@ -539,11 +620,14 @@
               to:   self.node_id.fromHex(connector.toWidget.nodeId)
             }));
           });
-          self.connectors = new Set(Array.from(self.connectors.entries()).filter(function(connector) {
+          
+          // Delete connectors
+          self.connectors = new Set(Array.from(self.connectors).filter(function(connector) {
             return !connectorsToDelete.has(connector);
           }));
           self.selectedConnectors.clear();
           
+          // Delete set widgets
           self.selectedSetWidgets.forEach(function(setWidget) {
             Polymer.dom(self.root).removeChild(setWidget);
             self.setWidgets.delete(setWidget);
@@ -593,11 +677,16 @@
           
           var oldToNewNodeWidgetMap = new Map();
           
+          var surfaceRect = self.getBoundingClientRect();
+          
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            var nodeRect = nodeWidget.getBoundingClientRect();
+            
             var newPosition = {
-              x: nodeWidget.position.x + (offset || 0),
-              y: nodeWidget.position.y + (offset || 0),
+              x: (nodeRect.left - surfaceRect.left) + (offset || 0),
+              y: (nodeRect.top  - surfaceRect.top)  + (offset || 0),
             }
+            
             var newNodeWidget = self.createNodeWidget(newPosition, nodeWidget.nodeId);
             newNodeWidgets.add(newNodeWidget);
             
@@ -692,7 +781,10 @@
         _setupNodeWidgetDragging: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('dragStart', function(event) {
-            self.startDraggingSelected(event);
+            event.preventDefault();
+            var copy = !self.nodeWidgetsTopLevel.has(event.target);
+            self.startDraggingSelected(event, copy);
+            return false;
           });
         },
         _setupNodeWidgetConnectorDragging: function(nodeWidget) {
@@ -700,6 +792,11 @@
           var self = this;
         
           nodeWidget.addEventListener('rightButtonDragStart', function(event) {
+            event.preventDefault();
+            
+            if (!self.selectedNodeWidgets.has(nodeWidget)) {
+              self.selectNodeWidgets([nodeWidget]);
+            }
           
             var surfaceRect = self.getBoundingClientRect();
             
@@ -714,7 +811,7 @@
             self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
               var draggingConnector = document.createElement('yb-connector');
               draggingConnector.classList.add('not-clickable');
-              draggingConnector.set('fromPos', fromNodeWidget.centerPosition());
+              draggingConnector.set('fromPos', self.getNodeWidgetCenter(fromNodeWidget));
               Polymer.dom(self.root).appendChild(draggingConnector);
               self.draggingConnectors.push(draggingConnector);
             });
@@ -725,20 +822,20 @@
                 if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                   self.draggingConnectorNodes.via = otherNodeWidget;
                   self.draggingConnectors.forEach(function(draggingConnector) {
-                    draggingConnector.set('viaPos', otherNodeWidget.centerPosition());
+                    draggingConnector.set('viaPos', self.getNodeWidgetCenter(otherNodeWidget));
                   });
                 }
               } else if (!self.draggingConnectorNodes.to) {
                 if (otherNodeWidget !== self.draggingConnectorNodes.via) {
                   self.draggingConnectorNodes.to = otherNodeWidget;
                   self.draggingConnectors.forEach(function(draggingConnector) {
-                    draggingConnector.set('toPos', otherNodeWidget.centerPosition());
+                    draggingConnector.set('toPos', self.getNodeWidgetCenter(otherNodeWidget));
                   });
                 }
               }
             }
             
-            self.nodeWidgets.forEach(function(otherNodeWidget) {
+            self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
               if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                 otherNodeWidget.addEventListener('mouseover', handleOtherNodeMouseover);
               }
@@ -765,7 +862,7 @@
               window.removeEventListener('mousemove', handleMousemove);
               window.removeEventListener('mouseup',   handleMouseup);
               
-              self.nodeWidgets.forEach(function(otherNodeWidget) {
+              self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
                 if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                   otherNodeWidget.removeEventListener('mouseover', handleOtherNodeMouseover);
                 }
@@ -801,9 +898,11 @@
           nodeWidget.addEventListener('contextMenu', function(event) {
             if (!self.draggingConnectors.length) {
             
+              var surfaceRect = self.getBoundingClientRect();
+              
               self.openSelectionMenu({
-                x: nodeWidget.position.x + event.detail.offsetX,
-                y: nodeWidget.position.y + event.detail.offsetY,
+                x: event.detail.pageX - surfaceRect.left,
+                y: event.detail.pageY - surfaceRect.top,
               });
             }
           });
@@ -843,13 +942,12 @@
             self.connectorsTo.get(toWidget).push(connector);
           }
           
-          connector.set('fromPos', fromWidget.centerPosition());
-          connector.set('viaPos',  viaWidget.centerPosition());
-          connector.set('toPos',   toWidget.centerPosition());
+          connector.set('fromPos', self.getNodeWidgetCenter(fromWidget));
+          connector.set('viaPos',  self.getNodeWidgetCenter(viaWidget));
+          connector.set('toPos',   self.getNodeWidgetCenter(toWidget));
           
           connector.addEventListener('mouseover', function(event) {
-            Polymer.dom(self.root).removeChild(connector);
-            Polymer.dom(self.root).appendChild(connector);
+            self.bringConnectorToFront(connector);
           });
           
           connector.addEventListener('selected', function(event) {
@@ -872,22 +970,24 @@
           return connector;
         },
         updateConnectorsForNodeWidget: function(nodeWidget) {
-          if (this.connectorsFrom.has(nodeWidget)) {
-            var connectorsFrom = this.connectorsFrom.get(nodeWidget);
+          var self = this;
+          
+          if (self.connectorsFrom.has(nodeWidget)) {
+            var connectorsFrom = self.connectorsFrom.get(nodeWidget);
             connectorsFrom.forEach(function(connector) {
-              connector.set('fromPos', nodeWidget.centerPosition());
+              connector.set('fromPos', self.getNodeWidgetCenter(nodeWidget));
             });
           }
-          if (this.connectorsVia.has(nodeWidget)) {
-            var connectorsVia = this.connectorsVia.get(nodeWidget);
+          if (self.connectorsVia.has(nodeWidget)) {
+            var connectorsVia = self.connectorsVia.get(nodeWidget);
             connectorsVia.forEach(function(connector) {
-              connector.set('viaPos', nodeWidget.centerPosition());
+              connector.set('viaPos', self.getNodeWidgetCenter(nodeWidget));
             });
           }
-          if (this.connectorsTo.has(nodeWidget)) {
-            var connectorsTo = this.connectorsTo.get(nodeWidget);
+          if (self.connectorsTo.has(nodeWidget)) {
+            var connectorsTo = self.connectorsTo.get(nodeWidget);
             connectorsTo.forEach(function(connector) {
-              connector.set('toPos', nodeWidget.centerPosition());
+              connector.set('toPos', self.getNodeWidgetCenter(nodeWidget));
             })
           }
         },
@@ -895,19 +995,15 @@
         
           var setWidget = document.createElement('yb-set');
           
-          setWidget.via = '52f9cf0e223d559931856acc98400f21';
-          setWidget.to  = '7e1b27583610201f8b48941d3637b13f';
           setWidget.style.position = 'absolute';
           setWidget.style.left = position.x + 'px';
           setWidget.style.top  = position.y + 'px';
           setWidget.position = position;
-          setWidget.style['min-width']  = "150px";
-          setWidget.style['max-width']  = "400px";
-          setWidget.style['min-height'] = "50px";
           
           this._setupSetWidgetSelection(setWidget);
           this._setupSetWidgetMenu(setWidget);
           this._setupSetWidgetDragging(setWidget);
+          this._setupSetWidgetNodeHandling(setWidget);
           
           Polymer.dom(this.root).appendChild(setWidget);
           this.setWidgets.add(setWidget);
@@ -917,31 +1013,53 @@
         _setupSetWidgetSelection: function(setWidget) {
           var self = this;
           setWidget.addEventListener('selected', function(event) {
-            if (!self.selectedSetWidgets.has(setWidget)) {
-              if (!event.detail.ctrlKey) {
-                self.deselect();
+            if (event.target === setWidget) {
+              self.bringSetWidgetToFront(setWidget);
+              if (!self.selectedSetWidgets.has(setWidget)) {
+                if (!event.detail.ctrlKey) {
+                  self.deselect();
+                }
+                self.selectedSetWidgets.add(setWidget);
+                setWidget.set('selected', true);
               }
-              self.selectedSetWidgets.add(setWidget);
-              setWidget.set('selected', true);
+            } else if (self.nodeWidgets.has(event.target)) {
+              if (!self.selectedNodeWidgets.has(event.target)) {
+                self.selectNodeWidgets([event.target], event.detail.ctrlKey);
+              }
             }
           });
         },
         _setupSetWidgetDragging: function(setWidget) {
           var self = this;
           setWidget.addEventListener('dragStart', function(event) {
-            self.startDraggingSelected(event);
+            event.preventDefault();
+            var copy = self.nodeWidgets.has(event.target) && !self.nodeWidgetsTopLevel.has(event.target);
+            self.startDraggingSelected(event, copy);
+            return false;
           });
         },
         _setupSetWidgetMenu: function(setWidget) {
           var self = this;
           setWidget.addEventListener('contextMenu', function(event) {
-            if (!self.draggingConnectors.length) {
-            
-              self.openSelectionMenu({
-                x: setWidget.position.x + event.detail.offsetX,
-                y: setWidget.position.y + event.detail.offsetY,
-              });
+            if (event.detail.target === setWidget.$['widget-handle']) {
+              if (!self.draggingConnectors.length) {
+              
+                self.openSelectionMenu({
+                  x: setWidget.position.x + event.detail.offsetX,
+                  y: setWidget.position.y + event.detail.offsetY,
+                });
+              }
             }
+          });
+        },
+        _setupSetWidgetNodeHandling: function(setWidget) {
+          var self = this;
+          setWidget.addEventListener('nodeWidgetCreated', function(event) {
+            self.nodeWidgets.add(event.detail);
+            self._setupNodeWidgetHighlighting(event.detail);
+          });
+          setWidget.addEventListener('nodeWidgetsDestroyed', function(event) {
+            self.nodeWidgets.delete(event.detail);
           });
         },
         openSelectionMenu: function(position) {
