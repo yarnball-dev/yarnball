@@ -88,6 +88,8 @@
           
           self.setWidgets = new Set();
           
+          self.selectors = new Set();
+          
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
             self.node_id = node_id;
@@ -113,6 +115,8 @@
           contextmenu: 'oncontextmenu',
           nodeWidgetCreated:   'nodeWidgetCreated',
           nodeWidgetDestroyed: 'nodeWidgetDestroyed',
+          selectorAttached: 'selectorAttached',
+          selectorDetached: 'selectorDetached',
         },
         captureMouse: function(cursor, retargetAllEvents) {
         
@@ -152,13 +156,6 @@
         oncontextmenu: function(event) {
           event.preventDefault();
           return false;
-        },
-        getSelectors: function() {
-          var selectors = [];
-          this.setWidgets.forEach(function(setWidget) {
-            selectors = selectors.concat(setWidget.selectors);
-          });
-          return selectors;
         },
         backgroundMousedown: function(event) {
           if (this.$.selectionDropdown.opened) {
@@ -388,7 +385,7 @@
               nodeWidget.classList.remove('dragging');
             });
             
-            self.getSelectors().forEach(function(selector) {
+            self.selectors.forEach(function(selector) {
               selector.removeEventListener('mouseover', selectorMouseover);
               selector.removeEventListener('mouseout',  selectorMouseout);
               selector.removeEventListener('mouseup',   selectorMouseup);
@@ -436,7 +433,7 @@
             draggingNodeWidgets.forEach(function(draggingNodeWidget_) {
               draggingNodeWidget = draggingNodeWidget_;
             });
-            self.getSelectors().forEach(function(selector) {
+            self.selectors.forEach(function(selector) {
               if (selector.nodeId !== draggingNodeWidget.nodeId) {
                 selector.addEventListener('mouseover', selectorMouseover);
                 selector.addEventListener('mouseout',  selectorMouseout);
@@ -648,11 +645,10 @@
           self.selectedConnectors.clear();
           
           // Delete set widgets
-          self.selectedSetWidgets.forEach(function(setWidget) {
-            Polymer.dom(self.root).removeChild(setWidget);
-            self.setWidgets.delete(setWidget);
+          var setWidgetsToDelete = new Set(self.selectedSetWidgets);
+          setWidgetsToDelete.forEach(function(setWidget) {
+            self.removeSetWidget(setWidget);
           });
-          self.selectedSetWidgets.clear();
           
           return affectedLinks;
         },
@@ -1039,11 +1035,15 @@
           return setWidget;
         },
         removeSetWidget: function(setWidget) {
-          if (this.selectedSetWidgets.has(setWidget)) {
-            this.selectedSetWidgets.delete(setWidget);
+          var self = this;
+          if (self.selectedSetWidgets.has(setWidget)) {
+            self.selectedSetWidgets.delete(setWidget);
           }
-          this.setWidgets.delete(setWidget);
-          Polymer.dom(this.root).removeChild(setWidget);
+          self.setWidgets.delete(setWidget);
+          setWidget.selectors.forEach(function(selector) {
+            self.selectors.delete(selector);
+          });
+          Polymer.dom(self.root).removeChild(setWidget);
         },
         _setupSetWidgetSelection: function(setWidget) {
           var self = this;
@@ -1086,6 +1086,12 @@
               }
             }
           });
+        },
+        selectorAttached: function(event) {
+          this.selectors.add(event.detail);
+        },
+        selectorDetached: function(event) {
+          this.selectors.delete(event.detail);
         },
         openSelectionMenu: function(position) {
           if (this.$.backgroundDropdown.opened) {

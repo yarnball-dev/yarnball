@@ -40,6 +40,9 @@
             this.nodeWidget = null;
           }
         },
+        attached: function() {
+          this.fire('selectorAttached', this);
+        },
         nodeIdChanged: function() {
         
           this.classList.toggle('is-empty', this.nodeId ? false : true);

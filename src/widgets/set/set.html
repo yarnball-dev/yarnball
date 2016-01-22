@@ -41,10 +41,6 @@
             type: String,
             observer: 'refreshSet',
           },
-          selectors: {
-            type: Array,
-            value: []
-          },
           selected: {
             type: Boolean,
             value: false,
@@ -54,16 +50,18 @@
         created: function() {
           this.nodeWidgets      = new Set();
           this.nodeWidgetsInSet = new Map();
+          
+          this.selectors = new Set();
         },
         listeners: {
           nodeWidgetCreated:   'nodeWidgetCreated',
           nodeWidgetDestroyed: 'nodeWidgetDestroyed',
+          selectorAttached:    'selectorAttached',
+          selectorDetached:    'selectorDetached',
         },
         ready: function() {
         
           var self = this;
-          
-          self.set('selectors', [self.$.fromSelector, self.$.viaSelector, self.$.toSelector]);
           
           require(['client', 'node_id'], function(client, node_id) {
             self.node_id = node_id;
@@ -78,6 +76,12 @@
         },
         nodeWidgetDestroyed: function(event) {
           this.nodeWidgets.delete(event.detail);
+        },
+        selectorAttached: function(event) {
+          this.selectors.add(event.detail);
+        },
+        selectorDetached: function(event) {
+          this.selectors.delete(event.detail);
         },
         mousedown: function(event) {
           if (event.target === this.$['widget-handle'] && event.button === 0) {
