@@ -74,6 +74,21 @@ define(['./node_id'], function(node_id) {
     }
   }
   
+  Web.prototype.setLinks = function(links) {
+    var self = this;
+    var newLinks = [];
+    links.forEach(function(link) {
+      var linkKey = node_id.linkToKey(link);
+      if (!self.links.has(linkKey)) {
+        self.links.add(linkKey);
+        newLinks.push(link);
+      }
+    });
+    if (newLinks.length > 0) {
+      self._notifyLinks(newLinks, []);
+    }
+  }
+  
   Web.prototype.unsetLink = function(link) {
     var linkKey = node_id.linkToKey(link);
     if (this.links.has(linkKey)) {
@@ -94,7 +109,7 @@ define(['./node_id'], function(node_id) {
     });
   }
   
-  Web.prototype.setLinks = function(links) {
+  Web.prototype.resetLinks = function(links) {
     var self = this;
     var linkKeys = new Set(links.map(function(link) {
       return node_id.linkToKey(link);
@@ -103,7 +118,7 @@ define(['./node_id'], function(node_id) {
     var linksRemoved = [];
     linkKeys.forEach(function(linkKey) {
       if (!self.links.has(linkKey)) {
-        linksAdded.push(linkKey);
+        linksAdded.push(node_id.linkFromKey(linkKey));
       }
     });
     self.links.forEach(function(linkKey) {

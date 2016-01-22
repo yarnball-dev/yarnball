@@ -1,34 +1,41 @@
 @import ../../yarnball
 
 :host
+
   display: flex
   flex-direction: row
   align-items: stretch
-  #nodeContainer
+  
+  #dropTarget
     flex-grow: 1
-  
-  yb-node
-    margin: 0
-    z-index: 2
-  
-  #clearButton
     display: flex
-    justify-content: center
-    align-items:     center
-    width:  40px
-    padding: 0
-    min-width: auto
-    margin-left:  -4px
-    margin-right: 0
-    background-color: #FFF0F0
-    color: #fff
-    
-    iron-icon
-      width: auto
-      height: auto
+    flex-direction: row
+    align-items: stretch
+    #nodeContainer
+      flex-grow: 1
   
-  #clearButton:hover
-    background-color: #FFB1B1
+    yb-node
+      margin: 0
+      z-index: 2
+    
+    #clearButton
+      display: flex
+      justify-content: center
+      align-items:     center
+      width:  40px
+      padding: 0
+      min-width: auto
+      margin-left:  -4px
+      margin-right: 0
+      background-color: #FFF0F0
+      color: #fff
+      
+      iron-icon
+        width: auto
+        height: auto
+    
+    #clearButton:hover
+      background-color: #FFB1B1
 
 :host.drag-ready
   outline: 2px solid #aaa

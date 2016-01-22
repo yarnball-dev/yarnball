@@ -2,6 +2,8 @@
 <link rel="import" href="../../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
 
+<link rel="import" href="../drop-target/drop-target.html">
+
 <link rel="import" href="selector-styles.html">
 
 <dom-module id="yb-selector">
@@ -9,11 +11,13 @@
   <style include="selector-styles"></style>
 
   <template>
-    <template is="dom-if" if="{{nodeId}}">
-      <paper-button id="clearButton" on-tap="clear">
-        <iron-icon icon="icons:clear"></iron-icon>
-      </paper-button>
-    </template>
+    <yb-drop-target id="dropTarget" on-nodes-dropped="nodesDropped">
+      <template is="dom-if" if="{{nodeId}}">
+        <paper-button id="clearButton" on-tap="clear">
+          <iron-icon icon="icons:clear"></iron-icon>
+        </paper-button>
+      </template>
+    </yb-drop-target>
   </template>
   
   <script>
@@ -35,13 +39,17 @@
           if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
             this.nodeWidget.nodeId = this.nodeId;
-            Polymer.dom(this.root).insertBefore(this.nodeWidget, Polymer.dom(this.root).firstChild);
+            Polymer.dom(this.$.dropTarget).insertBefore(this.nodeWidget, Polymer.dom(this.$.dropTarget).firstChild);
           } else {
             this.nodeWidget = null;
           }
         },
-        attached: function() {
-          this.fire('selectorAttached', this);
+        nodesDropped: function(event) {
+          var nodeWidgets = event.detail;
+          if (nodeWidgets.size === 1) {
+            var nodeWidget = Array.from(nodeWidgets)[0];
+            this.set('nodeId', nodeWidget.nodeId);
+          }
         },
         nodeIdChanged: function() {
         
@@ -49,12 +57,12 @@
           
           if (this.nodeWidget) {
             this.fire('nodeWidgetDestroyed', this.nodeWidget);
-            Polymer.dom(this.root).removeChild(this.nodeWidget);
+            Polymer.dom(this.$.dropTarget).removeChild(this.nodeWidget);
           }
           if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
             this.nodeWidget.nodeId = this.nodeId;
-            Polymer.dom(this.root).insertBefore(this.nodeWidget, Polymer.dom(this.root).firstChild);
+            Polymer.dom(this.$.dropTarget).insertBefore(this.nodeWidget, Polymer.dom(this.$.dropTarget).firstChild);
           }
           
           this.fire('nodeIdChanged', this.nodeId);

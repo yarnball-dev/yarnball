@@ -1,0 +1,40 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="drop-target-styles.html">
+
+<dom-module id="yb-drop-target">
+
+  <style include="drop-target-styles"></style>
+
+  <template>
+    <content></content>
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-drop-target',
+        properties: {
+          enabled: {
+            type: Boolean,
+            value: true,
+            notify: true,
+            observer: 'enabledChanged',
+          }
+        },
+        ready: function() {
+          this.classList.toggle('enabled', this.enabled);
+        },
+        attached: function() {
+          this.fire('dropTargetAttached', this);
+        },
+        enabledChanged: function(enabled) {
+          this.classList.toggle('enabled', enabled);
+        },
+      });
+    })();
+  </script>
+
+</dom-module>

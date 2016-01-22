@@ -88,7 +88,7 @@
           
           self.setWidgets = new Set();
           
-          self.selectors = new Set();
+          self.dropTargets = new Set();
           
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
@@ -115,8 +115,8 @@
           contextmenu: 'oncontextmenu',
           nodeWidgetCreated:   'nodeWidgetCreated',
           nodeWidgetDestroyed: 'nodeWidgetDestroyed',
-          selectorAttached: 'selectorAttached',
-          selectorDetached: 'selectorDetached',
+          dropTargetAttached: 'dropTargetAttached',
+          dropTargetDetached: 'dropTargetDetached',
         },
         captureMouse: function(cursor, retargetAllEvents) {
         
@@ -385,11 +385,11 @@
               nodeWidget.classList.remove('dragging');
             });
             
-            self.selectors.forEach(function(selector) {
-              selector.removeEventListener('mouseover', selectorMouseover);
-              selector.removeEventListener('mouseout',  selectorMouseout);
-              selector.removeEventListener('mouseup',   selectorMouseup);
-              selector.classList.remove('drag-ready');
+            self.dropTargets.forEach(function(dropTarget) {
+              dropTarget.removeEventListener('mouseover', dropTargetMouseover);
+              dropTarget.removeEventListener('mouseout',  dropTargetMouseout);
+              dropTarget.removeEventListener('mouseup',   dropTargetMouseup);
+              dropTarget.classList.remove('drag-ready');
             });
             
             return false;
@@ -398,26 +398,18 @@
           window.addEventListener('mousemove', handleMousemove);
           window.addEventListener('mouseup',   finishDragging);
           
-          function selectorMouseover(event) {
-            var selector = event.currentTarget;
-            selector.classList.add('drag-hover');
+          function dropTargetMouseover(event) {
+            var dropTarget = event.currentTarget;
+            dropTarget.classList.add('drag-hover');
           }
-          function selectorMouseout(event) {
-            var selector = event.currentTarget;
-            selector.classList.remove('drag-hover');
+          function dropTargetMouseout(event) {
+            var dropTarget = event.currentTarget;
+            dropTarget.classList.remove('drag-hover');
           }
-          function selectorMouseup(event) {
-            var selector = event.currentTarget;
-            selector.classList.remove('drag-hover');
-            var primaryNodeWidget = null;
-            if (draggingNodeWidgets.size === 1) {
-              draggingNodeWidgets.forEach(function(nodeWidget) {
-                primaryNodeWidget = nodeWidget;
-              });
-            }
-            if (primaryNodeWidget) {
-              selector.set('nodeId', primaryNodeWidget.nodeId);
-            }
+          function dropTargetMouseup(event) {
+            var dropTarget = event.currentTarget;
+            dropTarget.classList.remove('drag-hover');
+            dropTarget.fire('nodes-dropped', draggingNodeWidgets);
             draggingNodeWidgets.forEach(function(nodeWidget) {
               nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
               nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
@@ -428,20 +420,14 @@
             finishDragging(event);
           }
           
-          if (draggingNodeWidgets.size === 1) {
-            var draggingNodeWidget = null;
-            draggingNodeWidgets.forEach(function(draggingNodeWidget_) {
-              draggingNodeWidget = draggingNodeWidget_;
-            });
-            self.selectors.forEach(function(selector) {
-              if (selector.nodeId !== draggingNodeWidget.nodeId) {
-                selector.addEventListener('mouseover', selectorMouseover);
-                selector.addEventListener('mouseout',  selectorMouseout);
-                selector.addEventListener('mouseup',   selectorMouseup);
-                selector.classList.add('drag-ready');
-              }
-            });
-          }
+          self.dropTargets.forEach(function(dropTarget) {
+            if (dropTarget.enabled) {
+              dropTarget.addEventListener('mouseover', dropTargetMouseover);
+              dropTarget.addEventListener('mouseout',  dropTargetMouseout);
+              dropTarget.addEventListener('mouseup',   dropTargetMouseup);
+              dropTarget.classList.add('drag-ready');
+            }
+          });
         },
         createNodeWidget: function(position, id) {
         
@@ -1040,8 +1026,8 @@
             self.selectedSetWidgets.delete(setWidget);
           }
           self.setWidgets.delete(setWidget);
-          setWidget.selectors.forEach(function(selector) {
-            self.selectors.delete(selector);
+          setWidget.dropTargets.forEach(function(dropTarget) {
+            self.dropTargets.delete(dropTarget);
           });
           Polymer.dom(self.root).removeChild(setWidget);
         },
@@ -1087,11 +1073,11 @@
             }
           });
         },
-        selectorAttached: function(event) {
-          this.selectors.add(event.detail);
+        dropTargetAttached: function(event) {
+          this.dropTargets.add(event.detail);
         },
-        selectorDetached: function(event) {
-          this.selectors.delete(event.detail);
+        dropTargetDetached: function(event) {
+          this.dropTargets.delete(event.detail);
         },
         openSelectionMenu: function(position) {
           if (this.$.backgroundDropdown.opened) {

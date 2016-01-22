@@ -3,6 +3,7 @@
 <link rel="import" href="set-styles.html">
 
 <link rel="import" href="../selector/selector.html">
+<link rel="import" href="../drop-target/drop-target.html">
 
 <dom-module id="yb-set">
 
@@ -18,7 +19,8 @@
         <span class="connector"></span>
         <yb-selector id="toSelector"   node-id="{{to}}">  </yb-selector>
       </div>
-      <div id="setContent"></div>
+      <yb-drop-target id="setContent" on-nodes-dropped="nodesDropped">
+      </yb-drop-target>
     </div>
   </template>
   
@@ -31,14 +33,17 @@
         properties: {
           from: {
             type: String,
+            notify: true,
             observer: 'refreshSet',
           },
           via: {
             type: String,
+            notify: true,
             observer: 'refreshSet',
           },
           to: {
             type: String,
+            notify: true,
             observer: 'refreshSet',
           },
           selected: {
@@ -51,13 +56,13 @@
           this.nodeWidgets      = new Set();
           this.nodeWidgetsInSet = new Map();
           
-          this.selectors = new Set();
+          this.dropTargets = new Set();
         },
         listeners: {
           nodeWidgetCreated:   'nodeWidgetCreated',
           nodeWidgetDestroyed: 'nodeWidgetDestroyed',
-          selectorAttached:    'selectorAttached',
-          selectorDetached:    'selectorDetached',
+          dropTargetAttached:  'dropTargetAttached',
+          dropTargetDetached:  'dropTargetDetached',
         },
         ready: function() {
         
@@ -77,11 +82,11 @@
         nodeWidgetDestroyed: function(event) {
           this.nodeWidgets.delete(event.detail);
         },
-        selectorAttached: function(event) {
-          this.selectors.add(event.detail);
+        dropTargetAttached: function(event) {
+          this.dropTargets.add(event.detail);
         },
-        selectorDetached: function(event) {
-          this.selectors.delete(event.detail);
+        dropTargetDetached: function(event) {
+          this.dropTargets.delete(event.detail);
         },
         mousedown: function(event) {
           if (event.target === this.$['widget-handle'] && event.button === 0) {
@@ -98,11 +103,14 @@
         handleSelectedChanged: function() {
           this.toggleClass('selected', this.selected);
         },
+        isFilterValid: function() {
+          return ((this.from ? 1:0) + (this.via ? 1:0) + (this.to ? 1:0)) === 2;
+        },
         filterLinks: function(links) {
           
           var self = this;
         
-          if (((self.from ? 1:0) + (self.via ? 1:0) + (self.to ? 1:0)) !== 2) {
+          if (!self.isFilterValid()) {
             return [];
           }
           return links.filter(function(link) {
@@ -117,6 +125,9 @@
         },
         refreshSet: function() {
           var self = this;
+          
+          self.$.setContent.set('enabled', self.isFilterValid());
+          
           require(['client', 'node_id'], function(client, node_id) {
             self.node_id = node_id;
             var nodeIdKeys = new Set(self.filterLinks(client.web.getLinks()).map(function(nodeId) {
@@ -158,7 +169,38 @@
           this.nodeWidgets.delete(nodeWidget);
           this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
           Polymer.dom(this.$.setContent).removeChild(nodeWidget);
-        }
+        },
+        nodesDropped: function(event) {
+          var self = this;
+          if (((self.from ? 1:0) + (self.via ? 1:0) + (self.to ? 1:0)) !== 2) {
+            return;
+          }
+          var nodeWidgets = event.detail;
+          require(['client', 'node_id'], function(client, node_id) {
+            var links = Array.from(nodeWidgets).map(function(nodeWidget) {
+              if (!self.from) {
+                return {
+                  from: node_id.fromHex(nodeWidget.nodeId),
+                  via:  node_id.fromHex(self.via),
+                  to:   node_id.fromHex(self.to),
+                }
+              } else if (!self.via) {
+                return {
+                  from: node_id.fromHex(self.from),
+                  via:  node_id.fromHex(nodeWidget.nodeId),
+                  to:   node_id.fromHex(self.to),
+                }
+              } else if (!self.to) {
+                return {
+                  from: node_id.fromHex(self.from),
+                  via:  node_id.fromHex(self.via),
+                  to:   node_id.fromHex(nodeWidget.nodeId),
+                }
+              }
+            });
+            client.setLinks(links);
+          });
+        },
       });
     })();
   </script>

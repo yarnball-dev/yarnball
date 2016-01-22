@@ -60,9 +60,12 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
       web.setLink(link);
       socket.emit('setLink', link);
     },
+    setLinks: function(links) {
+      web.setLinks(links);
+    },
     unsetLink: function(link) {
       web.unsetLink(link);
       socket.emit('unsetLink', link);
-    }
+    },
   }
 });
