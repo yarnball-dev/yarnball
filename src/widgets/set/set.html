@@ -52,7 +52,12 @@
           },
         },
         created: function() {
+          this.nodeWidgets      = new Set();
           this.nodeWidgetsInSet = new Map();
+        },
+        listeners: {
+          nodeWidgetCreated:   'nodeWidgetCreated',
+          nodeWidgetDestroyed: 'nodeWidgetDestroyed',
         },
         ready: function() {
         
@@ -67,6 +72,12 @@
               self.updateSet(linksAdded, linksRemoved);
             });
           });
+        },
+        nodeWidgetCreated: function(event) {
+          this.nodeWidgets.add(event.detail);
+        },
+        nodeWidgetDestroyed: function(event) {
+          this.nodeWidgets.delete(event.detail);
         },
         mousedown: function(event) {
           if (event.target === this.$['widget-handle'] && event.button === 0) {
@@ -135,12 +146,14 @@
           var nodeWidget = document.createElement('yb-node');
           nodeWidget.nodeId = this.node_id.toHex(nodeId);
           Polymer.dom(this.$.setContent).appendChild(nodeWidget);
+          this.nodeWidgets.add(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(nodeId), nodeWidget);
         },
         removeNodeWidget: function(nodeId) {
           var nodeWidget = this.nodeWidgetsInSet.get(this.node_id.toMapKey(nodeId));
-          Polymer.dom(this.$.setContent).removeChild(nodeWidget);
+          this.nodeWidgets.delete(nodeWidget);
           this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
+          Polymer.dom(this.$.setContent).removeChild(nodeWidget);
         }
       });
     })();

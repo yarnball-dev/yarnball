@@ -110,7 +110,9 @@
           });
         },
         listeners: {
-          contextmenu: 'oncontextmenu'
+          contextmenu: 'oncontextmenu',
+          nodeWidgetCreated:   'nodeWidgetCreated',
+          nodeWidgetDestroyed: 'nodeWidgetDestroyed',
         },
         captureMouse: function(cursor, retargetAllEvents) {
         
@@ -462,18 +464,33 @@
             self.updateConnectorsForNodeWidget(nodeWidget);
           });
           
-          self._setupNodeWidgetHighlighting(nodeWidget);
-          self._setupNodeWidgetSelection(nodeWidget);
-          self._setupNodeWidgetDragging(nodeWidget);
-          self._setupNodeWidgetConnectorDragging(nodeWidget);
-          self._setupNodeWidgetMenu(nodeWidget);
+          self.nodeWidgetsTopLevel.add(nodeWidget);
           
           Polymer.dom(self.root).appendChild(nodeWidget);
           
-          self.nodeWidgets.add(nodeWidget);
-          self.nodeWidgetsTopLevel.add(nodeWidget);
-          
           return nodeWidget;
+        },
+        nodeWidgetCreated: function(event) {
+          var nodeWidget = event.detail;
+          this.nodeWidgets.add(nodeWidget);
+          this._setupNodeWidgetHighlighting(nodeWidget);
+          this._setupNodeWidgetSelection(nodeWidget);
+          this._setupNodeWidgetDragging(nodeWidget);
+          this._setupNodeWidgetConnectorDragging(nodeWidget);
+          this._setupNodeWidgetMenu(nodeWidget);
+        },
+        nodeWidgetDestroyed: function(event) {
+          var nodeWidget = event.detail;
+          
+          this.nodeWidgets.delete(nodeWidget);
+          
+          if (this.nodeWidgetsTopLevel.has(nodeWidget)) {
+            this.nodeWidgetsTopLevel.delete(nodeWidget);
+          }
+          
+          if (this.selectedNodeWidgets.has(nodeWidget)) {
+            this.selectedNodeWidgets.delete(nodeWidget);
+          }
         },
         _setupNodeWidgetHighlighting: function(nodeWidget) {
           var self = this;
@@ -499,7 +516,9 @@
         _setupNodeWidgetSelection: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('selected', function(event) {
-            self.bringNodeWidgetToFront(nodeWidget);
+            if (self.nodeWidgetsTopLevel.has(nodeWidget)) {
+              self.bringNodeWidgetToFront(nodeWidget);
+            }
             if (!self.selectedNodeWidgets.has(nodeWidget)) {
               self.selectNodeWidgets([nodeWidget], event.detail.ctrlKey);
             }
@@ -594,6 +613,7 @@
           
           // Delete node widgets
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
+            self.nodeWidgetDestroyed(nodeWidget);
             Polymer.dom(self.root).removeChild(nodeWidget);
           });
           self.nodeWidgets = new Set(Array.from(self.nodeWidgets).filter(function(nodeWidget) {
@@ -790,6 +810,10 @@
         _setupNodeWidgetConnectorDragging: function(nodeWidget) {
         
           var self = this;
+          
+          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
+            return;
+          }
         
           nodeWidget.addEventListener('rightButtonDragStart', function(event) {
             event.preventDefault();
@@ -895,6 +919,11 @@
         },
         _setupNodeWidgetMenu: function(nodeWidget) {
           var self = this;
+          
+          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
+            return;
+          }
+          
           nodeWidget.addEventListener('contextMenu', function(event) {
             if (!self.draggingConnectors.length) {
             
@@ -1003,12 +1032,18 @@
           this._setupSetWidgetSelection(setWidget);
           this._setupSetWidgetMenu(setWidget);
           this._setupSetWidgetDragging(setWidget);
-          this._setupSetWidgetNodeHandling(setWidget);
           
           Polymer.dom(this.root).appendChild(setWidget);
           this.setWidgets.add(setWidget);
           
           return setWidget;
+        },
+        removeSetWidget: function(setWidget) {
+          if (this.selectedSetWidgets.has(setWidget)) {
+            this.selectedSetWidgets.delete(setWidget);
+          }
+          this.setWidgets.delete(setWidget);
+          Polymer.dom(this.root).removeChild(setWidget);
         },
         _setupSetWidgetSelection: function(setWidget) {
           var self = this;
@@ -1050,16 +1085,6 @@
                 });
               }
             }
-          });
-        },
-        _setupSetWidgetNodeHandling: function(setWidget) {
-          var self = this;
-          setWidget.addEventListener('nodeWidgetCreated', function(event) {
-            self.nodeWidgets.add(event.detail);
-            self._setupNodeWidgetHighlighting(event.detail);
-          });
-          setWidget.addEventListener('nodeWidgetsDestroyed', function(event) {
-            self.nodeWidgets.delete(event.detail);
           });
         },
         openSelectionMenu: function(position) {

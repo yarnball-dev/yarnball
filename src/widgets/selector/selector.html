@@ -45,6 +45,7 @@
           this.classList.toggle('is-empty', this.nodeId ? false : true);
           
           if (this.nodeWidget) {
+            this.fire('nodeWidgetDestroyed', this.nodeWidget);
             Polymer.dom(this.root).removeChild(this.nodeWidget);
           }
           if (this.nodeId) {
