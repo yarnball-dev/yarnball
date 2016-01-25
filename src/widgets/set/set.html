@@ -10,8 +10,8 @@
   <style include="set-styles"></style>
 
   <template>
-    <div id="widget-handle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
-    <div id="widget-body" class="widget-body">
+    <div id="widgetHandle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
+    <div id="widgetBody" class="widget-body">
       <div class="header">
         <yb-selector id="fromSelector" node-id="{{from}}"></yb-selector>
         <span class="connector"></span>
@@ -68,6 +68,9 @@
         
           var self = this;
           
+          self.widgetHandle = self.$.widgetHandle;
+          self.widgetBody   = self.$.widgetBody;
+          
           require(['client', 'node_id'], function(client, node_id) {
             self.node_id = node_id;
             self.refreshSet();
@@ -89,7 +92,7 @@
           this.dropTargets.delete(event.detail);
         },
         mousedown: function(event) {
-          if (event.target === this.$['widget-handle'] && event.button === 0) {
+          if (event.target === this.widgetHandle && event.button === 0) {
             this.fire('selected',  event);
             this.fire('dragStart', event);
           }

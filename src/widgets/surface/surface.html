@@ -17,50 +17,55 @@
 
   <template>
   
-    <div id="background" on-mousedown="backgroundMousedown"></div>
-    <div id="boxSelection" class="hidden"></div>
+    <div id="viewRoot">
     
-    <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
-      <div class="dropdown-content">
-        <paper-menu>
-          <paper-icon-item on-tap="menuItem_CreateNode">
-            <iron-icon icon="icons:add" item-icon></iron-icon>
-            Add Node
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_CreateSet">
-            <iron-icon icon="icons:add" item-icon></iron-icon>
-            Add Set
-          </paper-icon-item>
-        </paper-menu>
-      </div>
-    </iron-dropdown>
+      <div id="background" on-mousedown="backgroundMousedown"></div>
     
-    <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
-      <div class="dropdown-content">
-        <paper-menu>
-          <paper-icon-item on-tap="menuItem_CopySelected">
-            <iron-icon icon="icons:content-copy" item-icon></iron-icon>
-            Copy
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_RevealLinks">
-            <iron-icon icon="icons:visibility" item-icon></iron-icon>
-            Reveal Links
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_HideLinks">
-            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
-            Hide Links
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_HideSelected">
-            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
-            Hide
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_DeleteSelected">
-            <iron-icon icon="icons:delete" item-icon></iron-icon>
-            Delete
-          </paper-icon-item>
-        </paper-menu>
-      </div>
-    </iron-dropdown>
+      <div id="boxSelection" class="hidden"></div>
+    
+      <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
+        <div class="dropdown-content">
+          <paper-menu>
+            <paper-icon-item on-tap="menuItem_CreateNode">
+              <iron-icon icon="icons:add" item-icon></iron-icon>
+              Add Node
+            </paper-icon-item>
+            <paper-icon-item on-tap="menuItem_CreateSet">
+              <iron-icon icon="icons:add" item-icon></iron-icon>
+              Add Set
+            </paper-icon-item>
+          </paper-menu>
+        </div>
+      </iron-dropdown>
+      
+      <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
+        <div class="dropdown-content">
+          <paper-menu>
+            <paper-icon-item on-tap="menuItem_CopySelected">
+              <iron-icon icon="icons:content-copy" item-icon></iron-icon>
+              Copy
+            </paper-icon-item>
+            <paper-icon-item on-tap="menuItem_RevealLinks">
+              <iron-icon icon="icons:visibility" item-icon></iron-icon>
+              Reveal Links
+            </paper-icon-item>
+            <paper-icon-item on-tap="menuItem_HideLinks">
+              <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
+              Hide Links
+            </paper-icon-item>
+            <paper-icon-item on-tap="menuItem_HideSelected">
+              <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
+              Hide
+            </paper-icon-item>
+            <paper-icon-item on-tap="menuItem_DeleteSelected">
+              <iron-icon icon="icons:delete" item-icon></iron-icon>
+              Delete
+            </paper-icon-item>
+          </paper-menu>
+        </div>
+      </iron-dropdown>
+      
+    </div>
   </template>
   
   <script>
@@ -71,6 +76,9 @@
         is: 'yb-surface',
         created: function() {
           var self = this;
+          
+          self.viewOffset = {x: 0, y: 0};
+          self.viewMargin = 100;
           
           self.nodeWidgets         = new Set();
           self.nodeWidgetsTopLevel = new Set();
@@ -98,6 +106,8 @@
         ready: function() {
         
           var self = this;
+          
+          self.viewRoot = self.$.viewRoot;
         
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
@@ -118,70 +128,149 @@
           dropTargetAttached: 'dropTargetAttached',
           dropTargetDetached: 'dropTargetDetached',
         },
-        captureMouse: function(cursor, retargetAllEvents) {
+        captureMouse: function(event, options) {
         
-          this.cusorBeforeMouseCapture = document.body.style.cursor;
-          document.body.style.cursor = cursor;
+          var cusorBeforeMouseCapture = document.body.style.cursor;
           
-          if (retargetAllEvents) {
-            if (this.setCapture) {
-              this.setCapture(retargetAllEvents);
-            } else {
-              this.pointerBlocker = document.createElement('div');
-              this.pointerBlocker.classList.add('pointer-blocker');
-              this.pointerBlocker.style.position = 'fixed';
-              this.pointerBlocker.style.left   = '0';
-              this.pointerBlocker.style.top    = '0';
-              this.pointerBlocker.style.right  = '0';
-              this.pointerBlocker.style.bottom = '0';
-              this.pointerBlocker.style['z-index'] = '1000';
-              this.pointerBlocker.style['pointer-events'] = 'all';
-              document.body.appendChild(this.pointerBlocker);
-            }
+          if ('cursor' in options) {
+            document.body.style.cursor = options.cursor;
           }
-        },
-        releaseMouse: function() {
           
-          document.body.style.cursor = this.cusorBeforeMouseCapture;
-        
-          if (document.releaseCapture) {
-            document.releaseCapture();
+          var startPos = {
+            x: event.pageX,
+            y: event.pageY,
+          }
+          
+          var lastPos = startPos;
+          
+          var pointerBlocker = null;
+          
+          var blockEvents = ('blockEvents' in options) ? options.blockEvents : true;
+          
+          if (this.setCapture) {
+            this.setCapture(blockEvents);
           } else {
-            if (this.pointerBlocker) {
-              document.body.removeChild(this.pointerBlocker);
-              this.pointerBlocker = null;
+            if (blockEvents) {
+              pointerBlocker = document.createElement('div');
+              pointerBlocker.classList.add('pointer-blocker');
+              pointerBlocker.style.position = 'fixed';
+              pointerBlocker.style.left   = '0';
+              pointerBlocker.style.top    = '0';
+              pointerBlocker.style.right  = '0';
+              pointerBlocker.style.bottom = '0';
+              pointerBlocker.style['z-index'] = '1000';
+              pointerBlocker.style['pointer-events'] = 'all';
+              document.body.appendChild(pointerBlocker);
             }
           }
+          
+          function mousemove(event) {
+          
+            var currentPos = {
+              x: event.pageX,
+              y: event.pageY,
+            }
+          
+            var dragDelta = {
+              x: event.pageX - startPos.x,
+              y: event.pageY - startPos.y,
+            }
+            
+            var currentDelta = {
+              x: currentPos.x - lastPos.x,
+              y: currentPos.y - lastPos.y,
+            }
+          
+            if ('mousemove' in options) {
+              options.mousemove({
+                event: event,
+                currentPos: currentPos,
+                dragDelta: dragDelta,
+                currentDelta: currentDelta,
+              });
+            }
+            
+            lastPos = currentPos;
+          }
+          
+          function mouseup(event) {
+          
+            window.removeEventListener('mousemove', mousemove);
+            window.removeEventListener('mouseup',   mouseup);
+            
+            document.body.style.cursor = cusorBeforeMouseCapture;
+          
+            if (document.releaseCapture) {
+              document.releaseCapture();
+            } else {
+              if (pointerBlocker) {
+                document.body.removeChild(pointerBlocker);
+                pointerBlocker = null;
+              }
+            }
+          
+            if ('mouseup' in options) {
+              options.mouseup(event);
+            }
+          }
+          
+          window.addEventListener('mousemove', mousemove);
+          window.addEventListener('mouseup',   mouseup);
+        },
+        startViewDrag: function(event) {
+          var self = this;
+          event.preventDefault();
+          self.captureMouse(event, {
+            cursor: '-webkit-grabbing',
+            mousemove: function(options) {
+              self.moveView(options.currentDelta);
+            }
+          });
+          return false;
+        },
+        setView: function(offset) {
+          this.viewOffset = offset;
+          this.viewRoot.style.transform = 'translate(' + offset.x + 'px, ' + offset.y + 'px)';
+        },
+        moveView: function(offset) {
+          this.setView({
+            x: this.viewOffset.x + offset.x,
+            y: this.viewOffset.y + offset.y,
+          });
         },
         oncontextmenu: function(event) {
           event.preventDefault();
           return false;
         },
         backgroundMousedown: function(event) {
-          if (this.$.selectionDropdown.opened) {
-            this.$.selectionDropdown.close();
-          }
+        
+          this.closeSelectionMenu();
           
           if (!event.ctrlKey) {
             this.deselect();
           }
+          
+          var cursorPosition = {
+            x: event.offsetX,
+            y: event.offsetY,
+          }
         
           if (event.button === 0) {
-            if (this.$.backgroundDropdown.opened) {
-              this.$.backgroundDropdown.close();
-            }
+          
+            this.closeBackgroundMenu();
+
             return this.startBoxSelection(event);
+            
+          } else if (event.button === 1) {
+          
+            return this.startViewDrag(event);
+            
           } else if (event.button === 2) {
-            event.preventDefault();
-            this.lastMenuPosition = {
-              x: event.offsetX,
-              y: event.offsetY,
-            }
-            this.$.backgroundDropdown.set('horizontalOffset', event.offsetX);
-            this.$.backgroundDropdown.set('verticalOffset',   event.offsetY);
-            if (!this.$.backgroundDropdown.opened) {
-              this.$.backgroundDropdown.open();
-            }
+          
+            this.openBackgroundMenu({
+              x: event.offsetX + this.$.background.offsetLeft,
+              y: event.offsetY + this.$.background.offsetTop,
+            });
             return false;
           }
         },
@@ -191,113 +280,100 @@
         
           var self = this;
           
-          self.captureMouse('crosshair', true);
-          
           var dragStartOffset = {
-            x: event.offsetX,
-            y: event.offsetY,
-          }
-          var dragStartPage = {
-            x: event.pageX,
-            y: event.pageY,
+            x: event.offsetX + self.$.background.offsetLeft,
+            y: event.offsetY + self.$.background.offsetTop,
           }
           
           self.$.boxSelection.style.left = dragStartOffset.x + 'px';
           self.$.boxSelection.style.top  = dragStartOffset.y + 'px';
-          self.$.boxSelection.style.width  = '0px';
-          self.$.boxSelection.style.height = '0px';
+          self.$.boxSelection.style.width  = '0';
+          self.$.boxSelection.style.height = '0';
           
           self.$.boxSelection.classList.remove('hidden');
           
           var alreadySelectedNodeWidgets = new Set(self.selectedNodeWidgets);
           var alreadySelectedSetWidgets  = new Set(self.selectedSetWidgets);
           
-          function handleMousemove(event) {
+          self.captureMouse(event, {
+            cursor: 'crosshair',
+            mousemove: function(options) {
           
-            var dragDelta = {
-              x: event.pageX - dragStartPage.x,
-              y: event.pageY - dragStartPage.y,
+              var currentSelectionRect = {
+                left:   Math.min(dragStartOffset.x, dragStartOffset.x + options.dragDelta.x),
+                top:    Math.min(dragStartOffset.y, dragStartOffset.y + options.dragDelta.y),
+                right:  Math.max(dragStartOffset.x, dragStartOffset.x + options.dragDelta.x),
+                bottom: Math.max(dragStartOffset.y, dragStartOffset.y + options.dragDelta.y),
+              }
+              
+              self.$.boxSelection.style.left   = currentSelectionRect.left + 'px';
+              self.$.boxSelection.style.top    = currentSelectionRect.top  + 'px';
+              self.$.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
+              self.$.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
+              
+              var nodesToSelect = new Set(self.getNodeWidgetsInRect(currentSelectionRect));
+              alreadySelectedNodeWidgets.forEach(function(nodeWidget) {
+                nodesToSelect.add(nodeWidget);
+              });
+              self.selectNodeWidgets(nodesToSelect);
+              
+              var setWidgetsToSelect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
+              alreadySelectedSetWidgets.forEach(function(nodeWidget) {
+                setWidgetsToSelect.add(nodeWidget);
+              });
+              self.selectSetWidgets(setWidgetsToSelect);
+            },
+            mouseup: function(event) {
+              self.$.boxSelection.classList.add('hidden');
             }
-          
-            var currentSelectionRect = {
-              left:   Math.min(dragStartOffset.x, dragStartOffset.x + dragDelta.x),
-              top:    Math.min(dragStartOffset.y, dragStartOffset.y + dragDelta.y),
-              right:  Math.max(dragStartOffset.x, dragStartOffset.x + dragDelta.x),
-              bottom: Math.max(dragStartOffset.y, dragStartOffset.y + dragDelta.y),
-            }
-            
-            var surfaceRect = self.getBoundingClientRect();
-            
-            self.$.boxSelection.style.left   = currentSelectionRect.left + 'px';
-            self.$.boxSelection.style.top    = currentSelectionRect.top  + 'px';
-            self.$.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
-            self.$.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
-            
-            var nodesToSelect = new Set(self.getNodesInRect(currentSelectionRect));
-            alreadySelectedNodeWidgets.forEach(function(nodeWidget) {
-              nodesToSelect.add(nodeWidget);
-            });
-            self.selectNodeWidgets(nodesToSelect);
-            
-            var setWidgetsToSelect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
-            alreadySelectedSetWidgets.forEach(function(nodeWidget) {
-              setWidgetsToSelect.add(nodeWidget);
-            });
-            self.selectSetWidgets(setWidgetsToSelect);
-          }
-          function handleMouseup(event) {
-          
-            self.$.boxSelection.classList.add('hidden');
-            
-            self.releaseMouse();
-            
-            window.removeEventListener('mousemove', handleMousemove);
-            window.removeEventListener('mouseup',   handleMouseup);
-          }
-          
-          window.addEventListener('mousemove', handleMousemove);
-          window.addEventListener('mouseup',   handleMouseup);
+          });
           
           return false;
         },
         getNodePosition: function(nodeWidget) {
-          if (nodeWidget.position) {
-            return nodeWidget.position;
-          } else {
-            var surfaceRect = this.getBoundingClientRect();
-            var nodeRect = nodeWidget.getBoundingClientRect();
-            nodeWidget.position = {
-              x: nodeRect.left - surfaceRect.left,
-              y: nodeRect.top  - surfaceRect.top,
-            }
-            return nodeWidget.position;
+          
+          var nodeRect = nodeWidget.getBoundingClientRect();
+          var viewRootRect = this.viewRoot.getBoundingClientRect();
+          
+          return {
+            x: nodeRect.left - viewRootRect.left,
+            y: nodeRect.top  - viewRootRect.top,
           }
         },
         getNodeWidgetCenter: function(nodeWidget) {
-          var surfaceRect = this.getBoundingClientRect();
+        
           var nodeRect = nodeWidget.getBoundingClientRect();
+          var viewRootRect = this.viewRoot.getBoundingClientRect();
+          
           return {
-            x: (nodeRect.left - surfaceRect.left) + (nodeRect.width  / 2),
-            y: (nodeRect.top  - surfaceRect.top)  + (nodeRect.height / 2),
+            x: (nodeRect.left - viewRootRect.left) + (nodeRect.width / 2),
+            y: (nodeRect.top  - viewRootRect.top)  + (nodeRect.height / 2),
           }
         },
-        getNodesInRect: function(rect) {
-          var surfaceClientRect = this.getBoundingClientRect();
-          return Array.from(this.nodeWidgets).filter(function(nodeWidget) {
-            var nodeClientRect = nodeWidget.getBoundingClientRect();
-            var nodeRect = {
-              left:   nodeClientRect.left   - surfaceClientRect.left,
-              top:    nodeClientRect.top    - surfaceClientRect.top,
-              right:  nodeClientRect.right  - surfaceClientRect.left,
-              bottom: nodeClientRect.bottom - surfaceClientRect.top,
-            }
+        getNodeWidgetRect: function(nodeWidget) {
+          var nodeRect = nodeWidget.getBoundingClientRect();
+          var viewRootRect = this.viewRoot.getBoundingClientRect();
+          
+          return {
+            left:   nodeRect.left   - viewRootRect.left,
+            top:    nodeRect.top    - viewRootRect.top,
+            right:  nodeRect.right  - viewRootRect.left,
+            bottom: nodeRect.bottom - viewRootRect.top,
+            width:  nodeRect.width,
+            height: nodeRect.height,
+          }
+        },
+        getNodeWidgetsInRect: function(rect) {
+          var self = this;
+          return Array.from(self.nodeWidgets).filter(function(nodeWidget) {
+            var nodeRect = self.getNodeWidgetRect(nodeWidget);
             return !(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
                      nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top);
           });
         },
         getSetWidgetsInRect: function(rect) {
           return Array.from(this.setWidgets).filter(function(setWidget) {
-            var setClientRect = setWidget.$['widget-handle'].getBoundingClientRect();
+            var setClientRect = setWidget.widgetHandle.getBoundingClientRect();
             var setRect = {
               left:   setWidget.position.x,
               top:    setWidget.position.y,
@@ -309,15 +385,12 @@
           });
         },
         startDraggingSelected: function(event, copy) {
-        
           var self = this;
           
           if (copy || event.detail.shiftKey) {
             self.copySelected();
           }
         
-          var surfaceRect = self.getBoundingClientRect();
-          
           var cursorStartPos = {
             x: event.detail.pageX,
             y: event.detail.pageY,
@@ -355,7 +428,6 @@
           
               draggingNodeWidget.style.left = newPos.x + 'px';
               draggingNodeWidget.style.top  = newPos.y + 'px';
-              draggingNodeWidget.position = newPos;
             
               self.updateConnectorsForNodeWidget(draggingNodeWidget);
             });
@@ -413,7 +485,6 @@
             draggingNodeWidgets.forEach(function(nodeWidget) {
               nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
               nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
-              nodeWidget.position   = nodeWidget.dragStartPosition;
               self.updateConnectorsForNodeWidget(nodeWidget);
             });
             this.updateStyles();
@@ -441,27 +512,27 @@
           nodeWidget.style.position = 'absolute';
           nodeWidget.style.left = position.x + 'px';
           nodeWidget.style.top  = position.y + 'px';
-          nodeWidget.position = position;
           
           nodeWidget.addEventListener('dimensionsChanged', function(event) {
             self.updateConnectorsForNodeWidget(nodeWidget);
           });
           
-          self.nodeWidgets.add(nodeWidget);
           self.nodeWidgetsTopLevel.add(nodeWidget);
           
-          Polymer.dom(self.root).appendChild(nodeWidget);
+          Polymer.dom(self.viewRoot).appendChild(nodeWidget);
           
           return nodeWidget;
         },
         nodeWidgetCreated: function(event) {
           var nodeWidget = event.detail;
-          this.nodeWidgets.add(nodeWidget);
-          this._setupNodeWidgetHighlighting(nodeWidget);
-          this._setupNodeWidgetSelection(nodeWidget);
-          this._setupNodeWidgetDragging(nodeWidget);
-          this._setupNodeWidgetConnectorDragging(nodeWidget);
-          this._setupNodeWidgetMenu(nodeWidget);
+          if (!this.nodeWidgets.has(nodeWidget)) {
+            this.nodeWidgets.add(nodeWidget);
+            this._setupNodeWidgetHighlighting(nodeWidget);
+            this._setupNodeWidgetSelection(nodeWidget);
+            this._setupNodeWidgetDragging(nodeWidget);
+            this._setupNodeWidgetConnectorDragging(nodeWidget);
+            this._setupNodeWidgetMenu(nodeWidget);
+          }
         },
         nodeWidgetDestroyed: function(event) {
           var nodeWidget = event.detail;
@@ -510,14 +581,14 @@
         },
         bringNodeWidgetToFront: function(nodeWidget) {
           if (this.nodeWidgetsTopLevel.has(nodeWidget)) {
-            this.appendChild(nodeWidget);
+            Polymer.dom(this.viewRoot).appendChild(nodeWidget);
           }
         },
         bringConnectorToFront: function(connector) {
-          this.appendChild(connector);
+          Polymer.dom(this.viewRoot).appendChild(connector);
         },
         bringSetWidgetToFront: function(setWidget) {
-          this.appendChild(setWidget);
+          Polymer.dom(this.viewRoot).appendChild(setWidget);
         },
         selectNodeWidgets: function(nodeWidgets, appendSelection) {
           var self = this;
@@ -598,7 +669,7 @@
           // Delete node widgets
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
             self.nodeWidgetDestroyed(nodeWidget);
-            Polymer.dom(self.root).removeChild(nodeWidget);
+            Polymer.dom(self.viewRoot).removeChild(nodeWidget);
           });
           self.nodeWidgets = new Set(Array.from(self.nodeWidgets).filter(function(nodeWidget) {
             return !self.selectedNodeWidgets.has(nodeWidget);
@@ -612,7 +683,7 @@
             connector.fromWidget.connectorsFrom.delete(connector);
             connector.viaWidget.connectorsVia.delete(connector);
             connector.toWidget.connectorsTo.delete(connector);
-            Polymer.dom(self.root).removeChild(connector);
+            Polymer.dom(self.viewRoot).removeChild(connector);
           });
           
           // Find affected links
@@ -643,7 +714,7 @@
           connector.fromWidget.connectorsFrom.delete(connector);
           connector.viaWidget.connectorsVia.delete(connector);
           connector.toWidget.connectorsTo.delete(connector);
-          Polymer.dom(this.root).removeChild(connector);
+          Polymer.dom(this.viewRoot).removeChild(connector);
           this.connectors.delete(connector);
         },
         removeSelectedConnectors: function() {
@@ -652,7 +723,7 @@
             connector.fromWidget.connectorsFrom.delete(connector);
             connector.viaWidget.connectorsVia.delete(connector);
             connector.toWidget.connectorsTo.delete(connector);
-            Polymer.dom(self.root).removeChild(connector);
+            Polymer.dom(self.viewRoot).removeChild(connector);
             self.connectors.delete(connector);
           });
           self.selectedConnectors.clear();
@@ -680,14 +751,13 @@
           
           var oldToNewNodeWidgetMap = new Map();
           
-          var surfaceRect = self.getBoundingClientRect();
-          
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
-            var nodeRect = nodeWidget.getBoundingClientRect();
+          
+            var nodePos = self.getNodePosition(nodeWidget);
             
             var newPosition = {
-              x: (nodeRect.left - surfaceRect.left) + (offset || 0),
-              y: (nodeRect.top  - surfaceRect.top)  + (offset || 0),
+              x: nodePos.x + (offset || 0),
+              y: nodePos.y + (offset || 0),
             }
             
             var newNodeWidget = self.createNodeWidget(newPosition, nodeWidget.nodeId);
@@ -790,85 +860,84 @@
             return false;
           });
         },
-        _setupNodeWidgetConnectorDragging: function(nodeWidget) {
-        
+        startNewConnectorDragFromSelected: function(event, dragStartPos) {
           var self = this;
           
-          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
-            return;
+          self.draggingConnectorNodes = {
+            from: new Set(self.selectedNodeWidgets),
+            via:  null,
+            to:   null,
           }
-        
-          nodeWidget.addEventListener('rightButtonDragStart', function(event) {
-            event.preventDefault();
-            
-            if (!self.selectedNodeWidgets.has(nodeWidget)) {
-              self.selectNodeWidgets([nodeWidget]);
-            }
           
-            var surfaceRect = self.getBoundingClientRect();
-            
-            self.draggingConnectorNodes = {
-              from: new Set(self.selectedNodeWidgets),
-              via:  null,
-              to:   null,
-            }
-            self.draggingConnectorNodes.from.add(nodeWidget);
-            
-            self.draggingConnectors = [];
-            self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
-              var draggingConnector = document.createElement('yb-connector');
-              draggingConnector.classList.add('not-clickable');
-              draggingConnector.set('fromPos', self.getNodeWidgetCenter(fromNodeWidget));
-              Polymer.dom(self.root).appendChild(draggingConnector);
-              self.draggingConnectors.push(draggingConnector);
+          self.draggingConnectors = [];
+          self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
+            var draggingConnector = document.createElement('yb-connector');
+            draggingConnector.classList.add('not-clickable');
+            var nodeCenter = self.getNodeWidgetCenter(fromNodeWidget);
+            draggingConnector.set('fromPos', {
+              x: nodeCenter.x + self.viewMargin,
+              y: nodeCenter.y + self.viewMargin,
             });
-            
-            function handleOtherNodeMouseover(event) {
-              var otherNodeWidget = event.currentTarget;
-              if (!self.draggingConnectorNodes.via) {
-                if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
-                  self.draggingConnectorNodes.via = otherNodeWidget;
-                  self.draggingConnectors.forEach(function(draggingConnector) {
-                    draggingConnector.set('viaPos', self.getNodeWidgetCenter(otherNodeWidget));
-                  });
-                }
-              } else if (!self.draggingConnectorNodes.to) {
-                if (otherNodeWidget !== self.draggingConnectorNodes.via) {
-                  self.draggingConnectorNodes.to = otherNodeWidget;
-                  self.draggingConnectors.forEach(function(draggingConnector) {
-                    draggingConnector.set('toPos', self.getNodeWidgetCenter(otherNodeWidget));
-                  });
-                }
-              }
-            }
-            
-            self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
+            Polymer.dom(self.viewRoot).appendChild(draggingConnector);
+            self.draggingConnectors.push(draggingConnector);
+          });
+          
+          function handleOtherNodeMouseover(event) {
+            var otherNodeWidget = event.currentTarget;
+            var otherNodeCenter = self.getNodeWidgetCenter(otherNodeWidget);
+            if (!self.draggingConnectorNodes.via) {
               if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
-                otherNodeWidget.addEventListener('mouseover', handleOtherNodeMouseover);
+                self.draggingConnectorNodes.via = otherNodeWidget;
+                self.draggingConnectors.forEach(function(draggingConnector) {
+                  draggingConnector.set('viaPos', {
+                    x: otherNodeCenter.x + self.viewMargin,
+                    y: otherNodeCenter.y + self.viewMargin,
+                  });
+                });
               }
-            });
-            
-            function handleMousemove(event) {
-            
+            } else if (!self.draggingConnectorNodes.to) {
+              if (otherNodeWidget !== self.draggingConnectorNodes.via) {
+                self.draggingConnectorNodes.to = otherNodeWidget;
+                self.draggingConnectors.forEach(function(draggingConnector) {
+                  draggingConnector.set('toPos', {
+                    x: otherNodeCenter.x + self.viewMargin,
+                    y: otherNodeCenter.y + self.viewMargin,
+                  });
+                });
+              }
+            }
+          }
+          
+          self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
+            if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
+              otherNodeWidget.addEventListener('mouseover', handleOtherNodeMouseover);
+            }
+          });
+          
+          self.captureMouse(event, {
+            mousemove: function(options) {
               var cursorPos = {
-                x: event.pageX - surfaceRect.left,
-                y: event.pageY - surfaceRect.top,
+                x: dragStartPos.x + options.dragDelta.x,
+                y: dragStartPos.y + options.dragDelta.y,
               }
               
               if (!self.draggingConnectorNodes.via) {
                 self.draggingConnectors.forEach(function(draggingConnector) {
-                  draggingConnector.set('viaPos', cursorPos);
+                  draggingConnector.set('viaPos', {
+                    x: cursorPos.x + self.viewMargin,
+                    y: cursorPos.y + self.viewMargin,
+                  });
                 });
               } else if(!self.draggingConnectorNodes.to) {
                 self.draggingConnectors.forEach(function(draggingConnector) {
-                  draggingConnector.set('toPos', cursorPos);
+                  draggingConnector.set('toPos', {
+                    x: cursorPos.x + self.viewMargin,
+                    y: cursorPos.y + self.viewMargin,
+                  });
                 });
               }
-            }
-            function handleMouseup(event) {
-              window.removeEventListener('mousemove', handleMousemove);
-              window.removeEventListener('mouseup',   handleMouseup);
-              
+            },
+            mouseup: function() {
               self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
                 if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                   otherNodeWidget.removeEventListener('mouseover', handleOtherNodeMouseover);
@@ -891,13 +960,35 @@
               }
               
               self.draggingConnectors.forEach(function(draggingConnector) {
-                Polymer.dom(self.root).removeChild(draggingConnector);
+                Polymer.dom(self.viewRoot).removeChild(draggingConnector);
               });
               self.draggingConnectors = [];
+            },
+            blockEvents: false
+          });
+        },
+        _setupNodeWidgetConnectorDragging: function(nodeWidget) {
+          var self = this;
+          
+          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
+            return;
+          }
+        
+          nodeWidget.addEventListener('rightButtonDragStart', function(event) {
+            event.preventDefault();
+            
+            if (!self.selectedNodeWidgets.has(nodeWidget)) {
+              self.selectNodeWidgets([nodeWidget]);
             }
             
-            window.addEventListener('mousemove', handleMousemove);
-            window.addEventListener('mouseup',   handleMouseup);
+            var nodePos = self.getNodePosition(nodeWidget);
+            
+            var cursorPos = {
+              x: nodePos.x + event.detail.offsetX,
+              y: nodePos.y + event.detail.offsetY,
+            }
+            
+            self.startNewConnectorDragFromSelected(event.detail, cursorPos);
           });
         },
         _setupNodeWidgetMenu: function(nodeWidget) {
@@ -910,11 +1001,11 @@
           nodeWidget.addEventListener('contextMenu', function(event) {
             if (!self.draggingConnectors.length) {
             
-              var surfaceRect = self.getBoundingClientRect();
+              var nodeWidgetPos = self.getNodeWidgetCenter(nodeWidget);
               
               self.openSelectionMenu({
-                x: event.detail.pageX - surfaceRect.left,
-                y: event.detail.pageY - surfaceRect.top,
+                x: nodeWidgetPos.x,
+                y: nodeWidgetPos.y,
               });
             }
           });
@@ -924,7 +1015,7 @@
           var self = this;
         
           var connector = document.createElement('yb-connector');
-          Polymer.dom(self.root).appendChild(connector);
+          Polymer.dom(self.viewRoot).appendChild(connector);
           
           connector.fromWidget = fromWidget;
           connector.viaWidget  = viaWidget;
@@ -954,9 +1045,22 @@
             self.connectorsTo.get(toWidget).push(connector);
           }
           
-          connector.set('fromPos', self.getNodeWidgetCenter(fromWidget));
-          connector.set('viaPos',  self.getNodeWidgetCenter(viaWidget));
-          connector.set('toPos',   self.getNodeWidgetCenter(toWidget));
+          var fromCenter = self.getNodeWidgetCenter(fromWidget);
+          var viaCenter  = self.getNodeWidgetCenter(viaWidget);
+          var toCenter   = self.getNodeWidgetCenter(toWidget);
+          
+          connector.set('fromPos', {
+            x: fromCenter.x + self.viewMargin,
+            y: fromCenter.y + self.viewMargin,
+          });
+          connector.set('viaPos', {
+            x: viaCenter.x + self.viewMargin,
+            y: viaCenter.y + self.viewMargin,
+          });
+          connector.set('toPos', {
+            x: toCenter.x + self.viewMargin,
+            y: toCenter.y + self.viewMargin,
+          });
           
           connector.addEventListener('mouseover', function(event) {
             self.bringConnectorToFront(connector);
@@ -984,22 +1088,33 @@
         updateConnectorsForNodeWidget: function(nodeWidget) {
           var self = this;
           
+          var nodeCenter = self.getNodeWidgetCenter(nodeWidget);
+          
           if (self.connectorsFrom.has(nodeWidget)) {
             var connectorsFrom = self.connectorsFrom.get(nodeWidget);
             connectorsFrom.forEach(function(connector) {
-              connector.set('fromPos', self.getNodeWidgetCenter(nodeWidget));
+              connector.set('fromPos', {
+                x: nodeCenter.x + self.viewMargin,
+                y: nodeCenter.y + self.viewMargin,
+              });
             });
           }
           if (self.connectorsVia.has(nodeWidget)) {
             var connectorsVia = self.connectorsVia.get(nodeWidget);
             connectorsVia.forEach(function(connector) {
-              connector.set('viaPos', self.getNodeWidgetCenter(nodeWidget));
+              connector.set('viaPos', {
+                x: nodeCenter.x + self.viewMargin,
+                y: nodeCenter.y + self.viewMargin,
+              });
             });
           }
           if (self.connectorsTo.has(nodeWidget)) {
             var connectorsTo = self.connectorsTo.get(nodeWidget);
             connectorsTo.forEach(function(connector) {
-              connector.set('toPos', self.getNodeWidgetCenter(nodeWidget));
+              connector.set('toPos', {
+                x: nodeCenter.x + self.viewMargin,
+                y: nodeCenter.y + self.viewMargin,
+              });
             })
           }
         },
@@ -1016,7 +1131,7 @@
           this._setupSetWidgetMenu(setWidget);
           this._setupSetWidgetDragging(setWidget);
           
-          Polymer.dom(this.root).appendChild(setWidget);
+          Polymer.dom(this.viewRoot).appendChild(setWidget);
           this.setWidgets.add(setWidget);
           
           return setWidget;
@@ -1030,7 +1145,7 @@
           setWidget.dropTargets.forEach(function(dropTarget) {
             self.dropTargets.delete(dropTarget);
           });
-          Polymer.dom(self.root).removeChild(setWidget);
+          Polymer.dom(self.viewRoot).removeChild(setWidget);
         },
         _setupSetWidgetSelection: function(setWidget) {
           var self = this;
@@ -1054,16 +1169,17 @@
         _setupSetWidgetDragging: function(setWidget) {
           var self = this;
           setWidget.addEventListener('dragStart', function(event) {
-            event.preventDefault();
-            var copy = self.nodeWidgets.has(event.target) && !self.nodeWidgetsTopLevel.has(event.target);
-            self.startDraggingSelected(event, copy);
-            return false;
+            if (event.detail.target === setWidget.widgetHandle) {
+              event.detail.preventDefault();
+              self.startDraggingSelected(event);
+              return false;
+            }
           });
         },
         _setupSetWidgetMenu: function(setWidget) {
           var self = this;
           setWidget.addEventListener('contextMenu', function(event) {
-            if (event.detail.target === setWidget.$['widget-handle']) {
+            if (event.detail.target === setWidget.widgetHandle) {
               if (!self.draggingConnectors.length) {
               
                 self.openSelectionMenu({
@@ -1080,48 +1196,58 @@
         dropTargetDetached: function(event) {
           this.dropTargets.delete(event.detail);
         },
+        openBackgroundMenu: function(position) {
+          this.lastMenuPosition = position;
+          this.$.backgroundDropdown.style.position = 'absolute';
+          this.$.backgroundDropdown.style.left = position.x + 'px';
+          this.$.backgroundDropdown.style.top  = position.y + 'px';
+          this.$.backgroundDropdown.style.display = 'block';
+        },
+        closeBackgroundMenu: function() {
+          this.$.backgroundDropdown.style.display = 'none';
+        },
         openSelectionMenu: function(position) {
-          if (this.$.backgroundDropdown.opened) {
-            this.$.backgroundDropdown.close();
-          }
+          this.closeBackgroundMenu();
           
-          this.$.selectionDropdown.set('horizontalOffset', position.x);
-          this.$.selectionDropdown.set('verticalOffset',   position.y);
-          if (!this.$.selectionDropdown.opened) {
-            this.$.selectionDropdown.open();
-          }
+          this.$.selectionDropdown.style.position = 'absolute';
+          this.$.selectionDropdown.style.left = position.x + 'px';
+          this.$.selectionDropdown.style.top  = position.y + 'px';
+          this.$.selectionDropdown.style.display = 'block';
+        },
+        closeSelectionMenu() {
+          this.$.selectionDropdown.style.display = 'none';
         },
         menuItem_CreateNode: function() {
-          this.$.backgroundDropdown.close();
+          this.closeBackgroundMenu();
           this.createNodeWidget(this.lastMenuPosition);
         },
         menuItem_CreateSet: function() {
-          this.$.backgroundDropdown.close();
+          this.closeBackgroundMenu();
           this.createSetWidget(this.lastMenuPosition);
         },
         menuItem_DeleteSelected: function() {
           var self = this;
-          self.$.selectionDropdown.close();
+          self.closeSelectionMenu();
           var linksToDelete = self.removeSelectedWidgets();
           linksToDelete.forEach(function(linkKey) {
             self.client.unsetLink(self.node_id.linkFromKey(linkKey));
           });
         },
         menuItem_HideSelected: function() {
-          this.$.selectionDropdown.close();
+          this.closeSelectionMenu();
           this.removeSelectedWidgets();
         },
         menuItem_CopySelected: function() {
-          this.$.selectionDropdown.close();
+          this.closeSelectionMenu();
           var offset = 10;
           this.copySelected(offset);
         },
         menuItem_RevealLinks: function() {
-          this.$.selectionDropdown.close();
+          this.closeSelectionMenu();
           this.revealLinksInSelected();
         },
         menuItem_HideLinks: function() {
-          this.$.selectionDropdown.close();
+          this.closeSelectionMenu();
           this.removeSelectedConnectors();
           this.removeConnectorsBetweenSelectedNodeWidgets();
         },

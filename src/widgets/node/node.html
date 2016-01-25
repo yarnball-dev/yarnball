@@ -132,7 +132,6 @@
               self.fire('selected', event);
             }
             
-            var dragOffset = {x: event.offsetX, y: event.offsetY};
             var cursorStartPos = {
               x: event.pageX,
               y: event.pageY,
@@ -151,7 +150,7 @@
                 if (event.button === 0) {
                   self.fire('dragStart', event);
                 } else if (event.button === 2) {
-                  self.fire('rightButtonDragStart', dragOffset);
+                  self.fire('rightButtonDragStart', windowEvent);
                 }
                 window.removeEventListener('mousemove', handleMousemove);
                 window.removeEventListener('mouseup',   handleMouseup);

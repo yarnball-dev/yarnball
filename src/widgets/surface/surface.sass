@@ -12,10 +12,19 @@
   -khtml-user-select: none; /* KHTML browsers (e.g. Konqueror) */
   -webkit-user-select: none; /* Chrome, Safari, and Opera */
   
-  #background
+  #viewRoot
     position: absolute
     width:  100%
     height: 100%
+  
+  #background
+    position: absolute
+    left:   0
+    top:    0
+    right:  0
+    bottom: 0
+    margin: -100px
+    border: 1px solid red
   
   #boxSelection
     display: block
@@ -30,9 +39,12 @@
   
   yb-connector
     position: absolute
-    width:  100%
-    height: 100%
+    left:   0
+    top:    0
+    right:  0
+    bottom: 0
     z-index: 1
+    margin: -100px
   
   yb-node
     margin: 0
@@ -44,6 +56,9 @@
   yb-set
     z-index: 2
     margin: 0
+  
+  iron-dropdown
+    z-index: 4
   
   .dropdown-content
     background-color: white
