@@ -1,5 +1,7 @@
 @import ../../yarnball
 
+$view-margin: -10000px
+
 :host
   display: block
   position: relative
@@ -23,7 +25,7 @@
     top:    0
     right:  0
     bottom: 0
-    margin: -100px
+    margin: $view-margin
     border: 1px solid red
   
   #boxSelection
@@ -44,7 +46,7 @@
     right:  0
     bottom: 0
     z-index: 1
-    margin: -100px
+    margin: $view-margin
   
   yb-node
     margin: 0
@@ -73,3 +75,21 @@
       paper-item:hover,
       paper-icon-item:hover
         background: $highlight-color
+
+:host.mouse-captured
+  /deep/
+    *
+      pointer-events: none !important
+
+:host.mouse-captured
+  #background
+    pointer-events: all !important
+      
+:host.dragging-nodes
+  /deep/
+    yb-drop-target.drag-ready
+      pointer-events: all !important
+
+:host.dragging-connectors
+  yb-node
+    pointer-events: all !important

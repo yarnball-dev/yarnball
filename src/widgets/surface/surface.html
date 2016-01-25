@@ -19,53 +19,54 @@
   
     <div id="viewRoot">
     
-      <div id="background" on-mousedown="backgroundMousedown"></div>
+      <div id="background" on-mousedown="backgroundMousedown" on-wheel="backgroundWheel"></div>
     
       <div id="boxSelection" class="hidden"></div>
     
-      <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
-        <div class="dropdown-content">
-          <paper-menu>
-            <paper-icon-item on-tap="menuItem_CreateNode">
-              <iron-icon icon="icons:add" item-icon></iron-icon>
-              Add Node
-            </paper-icon-item>
-            <paper-icon-item on-tap="menuItem_CreateSet">
-              <iron-icon icon="icons:add" item-icon></iron-icon>
-              Add Set
-            </paper-icon-item>
-          </paper-menu>
-        </div>
-      </iron-dropdown>
-      
-      <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
-        <div class="dropdown-content">
-          <paper-menu>
-            <paper-icon-item on-tap="menuItem_CopySelected">
-              <iron-icon icon="icons:content-copy" item-icon></iron-icon>
-              Copy
-            </paper-icon-item>
-            <paper-icon-item on-tap="menuItem_RevealLinks">
-              <iron-icon icon="icons:visibility" item-icon></iron-icon>
-              Reveal Links
-            </paper-icon-item>
-            <paper-icon-item on-tap="menuItem_HideLinks">
-              <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
-              Hide Links
-            </paper-icon-item>
-            <paper-icon-item on-tap="menuItem_HideSelected">
-              <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
-              Hide
-            </paper-icon-item>
-            <paper-icon-item on-tap="menuItem_DeleteSelected">
-              <iron-icon icon="icons:delete" item-icon></iron-icon>
-              Delete
-            </paper-icon-item>
-          </paper-menu>
-        </div>
-      </iron-dropdown>
-      
     </div>
+    
+    <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
+      <div class="dropdown-content">
+        <paper-menu>
+          <paper-icon-item on-tap="menuItem_CreateNode">
+            <iron-icon icon="icons:add" item-icon></iron-icon>
+            Add Node
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_CreateSet">
+            <iron-icon icon="icons:add" item-icon></iron-icon>
+            Add Set
+          </paper-icon-item>
+        </paper-menu>
+      </div>
+    </iron-dropdown>
+    
+    <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
+      <div class="dropdown-content">
+        <paper-menu>
+          <paper-icon-item on-tap="menuItem_CopySelected">
+            <iron-icon icon="icons:content-copy" item-icon></iron-icon>
+            Copy
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_RevealLinks">
+            <iron-icon icon="icons:visibility" item-icon></iron-icon>
+            Reveal Links
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_HideLinks">
+            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
+            Hide Links
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_HideSelected">
+            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
+            Hide
+          </paper-icon-item>
+          <paper-icon-item on-tap="menuItem_DeleteSelected">
+            <iron-icon icon="icons:delete" item-icon></iron-icon>
+            Delete
+          </paper-icon-item>
+        </paper-menu>
+      </div>
+    </iron-dropdown>
+      
   </template>
   
   <script>
@@ -77,8 +78,11 @@
         created: function() {
           var self = this;
           
-          self.viewOffset = {x: 0, y: 0};
-          self.viewMargin = 100;
+          self.viewTranslate = {x: 0, y: 0};
+          self.viewScale     = 1.0;
+          self.viewOrigin    = {x: 0, y: 0};
+          
+          self.viewMargin = 10000;
           
           self.nodeWidgets         = new Set();
           self.nodeWidgetsTopLevel = new Set();
@@ -108,6 +112,8 @@
           var self = this;
           
           self.viewRoot = self.$.viewRoot;
+          
+          self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
         
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
@@ -130,91 +136,97 @@
         },
         captureMouse: function(event, options) {
         
+          var self = this;
+        
           var cusorBeforeMouseCapture = document.body.style.cursor;
           
           if ('cursor' in options) {
             document.body.style.cursor = options.cursor;
           }
           
-          var startPos = {
+          var startPosPage = {
             x: event.pageX,
             y: event.pageY,
           }
           
-          var lastPos = startPos;
+          var eventTargetRectView = self.getElementRectInView(event.target);
           
-          var pointerBlocker = null;
-          
-          var blockEvents = ('blockEvents' in options) ? options.blockEvents : true;
-          
-          if (this.setCapture) {
-            this.setCapture(blockEvents);
-          } else {
-            if (blockEvents) {
-              pointerBlocker = document.createElement('div');
-              pointerBlocker.classList.add('pointer-blocker');
-              pointerBlocker.style.position = 'fixed';
-              pointerBlocker.style.left   = '0';
-              pointerBlocker.style.top    = '0';
-              pointerBlocker.style.right  = '0';
-              pointerBlocker.style.bottom = '0';
-              pointerBlocker.style['z-index'] = '1000';
-              pointerBlocker.style['pointer-events'] = 'all';
-              document.body.appendChild(pointerBlocker);
-            }
+          var startPosView = {
+            x: eventTargetRectView.left + event.offsetX,
+            y: eventTargetRectView.top  + event.offsetY,
           }
+          
+          var lastPosPage = startPosPage;
+          var lastPosView = startPosView;
+          
+          self.classList.add('mouse-captured');
+          
+          self.$.background.addEventListener('mousemove', mousemove);
           
           function mousemove(event) {
           
-            var currentPos = {
+            event.stopImmediatePropagation();
+          
+            var currentPosPage = {
               x: event.pageX,
               y: event.pageY,
             }
           
-            var dragDelta = {
-              x: event.pageX - startPos.x,
-              y: event.pageY - startPos.y,
+            var currentPosView = {
+              x: event.offsetX - self.viewMargin,
+              y: event.offsetY - self.viewMargin,
+            }
+          
+            var dragDeltaView = {
+              x: (event.offsetX - self.viewMargin) - startPosView.x,
+              y: (event.offsetY - self.viewMargin) - startPosView.y,
             }
             
-            var currentDelta = {
-              x: currentPos.x - lastPos.x,
-              y: currentPos.y - lastPos.y,
+            var dragDeltaPage = {
+              x: event.pageX - startPosPage.x,
+              y: event.pageY - startPosPage.y,
+            }
+            
+            var currentDeltaPage = {
+              x: currentPosPage.x - lastPosPage.x,
+              y: currentPosPage.y - lastPosPage.y,
+            }
+            
+            var currentDeltaView = {
+              x: currentPosView.x - lastPosView.x,
+              y: currentPosView.y - lastPosView.y,
             }
           
             if ('mousemove' in options) {
               options.mousemove({
                 event: event,
-                currentPos: currentPos,
-                dragDelta: dragDelta,
-                currentDelta: currentDelta,
+                currentPosPage: currentPosPage,
+                currentPosView: currentPosView,
+                dragDeltaPage: dragDeltaPage,
+                dragDeltaView: dragDeltaView,
+                currentDeltaPage: currentDeltaPage,
+                currentDeltaView: currentDeltaView,
               });
             }
             
-            lastPos = currentPos;
+            lastPosPage = currentPosPage;
+            lastPosView = currentPosView;
           }
           
           function mouseup(event) {
           
-            window.removeEventListener('mousemove', mousemove);
+            self.$.background.removeEventListener('mousemove', mousemove);
             window.removeEventListener('mouseup',   mouseup);
             
             document.body.style.cursor = cusorBeforeMouseCapture;
           
-            if (document.releaseCapture) {
-              document.releaseCapture();
-            } else {
-              if (pointerBlocker) {
-                document.body.removeChild(pointerBlocker);
-                pointerBlocker = null;
-              }
-            }
-          
+            self.classList.remove('mouse-captured');
+            
             if ('mouseup' in options) {
               options.mouseup(event);
             }
           }
           
-          window.addEventListener('mousemove', mousemove);
           window.addEventListener('mouseup',   mouseup);
         },
         startViewDrag: function(event) {
@@ -223,20 +235,42 @@
           self.captureMouse(event, {
             cursor: '-webkit-grabbing',
             mousemove: function(options) {
-              self.moveView(options.currentDelta);
+              self.moveView(options.currentDeltaPage);
             }
           });
           return false;
         },
-        setView: function(offset) {
-          this.viewOffset = offset;
-          this.viewRoot.style.transform = 'translate(' + offset.x + 'px, ' + offset.y + 'px)';
+        setView: function(translate, scale, origin) {
+          this.viewTranslate = translate;
+          this.viewScale     = scale;
+          this.viewOrigin    = origin;
+          this.viewRoot.style.transform = 'translate(' + translate.x + 'px, ' + translate.y + 'px) scale(' + scale + ')';
+          this.viewRoot.style['transform-origin'] = origin.x + 'px ' + origin.y + 'px';
         },
         moveView: function(offset) {
           this.setView({
-            x: this.viewOffset.x + offset.x,
-            y: this.viewOffset.y + offset.y,
-          });
+              x: this.viewTranslate.x + offset.x,
+              y: this.viewTranslate.y + offset.y,
+            },
+            this.viewScale,
+            this.viewOrigin
+          );
+        },
+        zoomView: function(scaleMultiplier) {
+          this.setView(this.viewTranslate, this.viewScale * scaleMultiplier, this.viewOrigin);
+        },
+        zoomOnPosition: function(position, zoomOffset) {
+          this.setView(
+            {
+              x: this.viewTranslate.x + ((position.x - this.viewOrigin.x) * (this.viewScale - 1.0)),
+              y: this.viewTranslate.y + ((position.y - this.viewOrigin.y) * (this.viewScale - 1.0)),
+            },
+            this.viewScale * (1.0 + zoomOffset),
+            {
+              x: position.x,
+              y: position.y,
+            }
+          );
         },
         oncontextmenu: function(event) {
           event.preventDefault();
@@ -251,8 +285,8 @@
           }
           
           var cursorPosition = {
-            x: event.offsetX,
-            y: event.offsetY,
+            x: event.offsetX - this.viewMargin,
+            y: event.offsetY - this.viewMargin,
           }
         
           if (event.button === 0) {
@@ -267,12 +301,38 @@
             
           } else if (event.button === 2) {
           
+            this.lastMenuPosition = cursorPosition;
+          
+            var surfaceRect = this.getBoundingClientRect();
+          
             this.openBackgroundMenu({
-              x: event.offsetX + this.$.background.offsetLeft,
-              y: event.offsetY + this.$.background.offsetTop,
+              x: event.pageX - surfaceRect.left,
+              y: event.pageY - surfaceRect.top,
             });
             return false;
           }
+        },
+        backgroundWheel: function(event) {
+          
+          var cursorPosView = {
+            x: event.offsetX - this.viewMargin,
+            y: event.offsetY - this.viewMargin,
+          }
+          
+          var zoomSpeed = null;
+          if (event.deltaMode === 0) { // Pixels
+            zoomSpeed = 0.08;
+          } else if (event.deltaMode === 1) { // Lines
+            zoomSpeed = 0.16;
+          } else if (event.deltaMode === 2) { // Pages
+            zoomSpeed = 0.2;
+          } else {
+            zoomSpeed = 0.08;
+          }
+          
+          var zoomOffset = (event.deltaY < 0) ? zoomSpeed : -zoomSpeed;
+          
+          this.zoomOnPosition(cursorPosView, zoomOffset);
         },
         startBoxSelection: function(event) {
         
@@ -298,12 +358,12 @@
           self.captureMouse(event, {
             cursor: 'crosshair',
             mousemove: function(options) {
-          
+            
               var currentSelectionRect = {
-                left:   Math.min(dragStartOffset.x, dragStartOffset.x + options.dragDelta.x),
-                top:    Math.min(dragStartOffset.y, dragStartOffset.y + options.dragDelta.y),
-                right:  Math.max(dragStartOffset.x, dragStartOffset.x + options.dragDelta.x),
-                bottom: Math.max(dragStartOffset.y, dragStartOffset.y + options.dragDelta.y),
+                left:   Math.min(dragStartOffset.x, dragStartOffset.x + options.dragDeltaView.x),
+                top:    Math.min(dragStartOffset.y, dragStartOffset.y + options.dragDeltaView.y),
+                right:  Math.max(dragStartOffset.x, dragStartOffset.x + options.dragDeltaView.x),
+                bottom: Math.max(dragStartOffset.y, dragStartOffset.y + options.dragDeltaView.y),
               }
               
               self.$.boxSelection.style.left   = currentSelectionRect.left + 'px';
@@ -330,38 +390,44 @@
           
           return false;
         },
+        getElementRectInView: function(element) {
+          if (!element.offsetParent || (element.offsetParent === this.viewRoot)) {
+            return {
+              left:   element.offsetLeft,
+              top:    element.offsetTop,
+              right:  element.offsetLeft + element.offsetWidth,
+              bottom: element.offsetTop  + element.offsetHeight,
+              width:  element.offsetWidth,
+              height: element.offsetHeight,
+            }
+          } else {
+            var offsetParentRect = this.getElementRectInView(element.offsetParent);
+            return {
+              left:   offsetParentRect.left + element.offsetLeft,
+              top:    offsetParentRect.top  + element.offsetTop,
+              right:  offsetParentRect.left + element.offsetLeft + element.offsetWidth,
+              bottom: offsetParentRect.top  + element.offsetTop  + element.offsetHeight,
+              width:  element.offsetWidth,
+              height: element.offsetHeight,
+            }
+          }
+        },
         getNodePosition: function(nodeWidget) {
-          
-          var nodeRect = nodeWidget.getBoundingClientRect();
-          var viewRootRect = this.viewRoot.getBoundingClientRect();
-          
+          var nodeRect = this.getNodeWidgetRect(nodeWidget);
           return {
-            x: nodeRect.left - viewRootRect.left,
-            y: nodeRect.top  - viewRootRect.top,
+            x: nodeRect.left,
+            y: nodeRect.top,
           }
         },
         getNodeWidgetCenter: function(nodeWidget) {
-        
-          var nodeRect = nodeWidget.getBoundingClientRect();
-          var viewRootRect = this.viewRoot.getBoundingClientRect();
-          
+          var nodeRect = this.getNodeWidgetRect(nodeWidget);
           return {
-            x: (nodeRect.left - viewRootRect.left) + (nodeRect.width / 2),
-            y: (nodeRect.top  - viewRootRect.top)  + (nodeRect.height / 2),
+            x: nodeRect.left + (nodeRect.width  / 2),
+            y: nodeRect.top  + (nodeRect.height / 2),
           }
         },
         getNodeWidgetRect: function(nodeWidget) {
-          var nodeRect = nodeWidget.getBoundingClientRect();
-          var viewRootRect = this.viewRoot.getBoundingClientRect();
-          
-          return {
-            left:   nodeRect.left   - viewRootRect.left,
-            top:    nodeRect.top    - viewRootRect.top,
-            right:  nodeRect.right  - viewRootRect.left,
-            bottom: nodeRect.bottom - viewRootRect.top,
-            width:  nodeRect.width,
-            height: nodeRect.height,
-          }
+          return this.getElementRectInView(nodeWidget);
         },
         getNodeWidgetsInRect: function(rect) {
           var self = this;
@@ -409,66 +475,55 @@
             setWidget.dragStartPosition = setWidget.position;
           });
           
-          document.body.style.cursor = '-webkit-grabbing';
+          self.classList.add('dragging-nodes');
           
-          function handleMousemove(event) {
-            event.preventDefault();
+          self.captureMouse(event.detail, {
+            cursor: '-webkit-grabbing',
+            mousemove: function(options) {
+            
+              draggingNodeWidgets.forEach(function(draggingNodeWidget) {
+              
+                var newPos = {
+                  x: draggingNodeWidget.dragStartPosition.x + options.dragDeltaView.x,
+                  y: draggingNodeWidget.dragStartPosition.y + options.dragDeltaView.y,
+                }
+                
+                draggingNodeWidget.style.left = newPos.x + 'px';
+                draggingNodeWidget.style.top  = newPos.y + 'px';
+              
+                self.updateConnectorsForNodeWidget(draggingNodeWidget);
+              });
+              
+              self.selectedSetWidgets.forEach(function(selectedSetWidget) {
+                
+                var newPos = {
+                  x: selectedSetWidget.dragStartPosition.x + options.dragDeltaView.x,
+                  y: selectedSetWidget.dragStartPosition.y + options.dragDeltaView.y,
+                }
+                
+                selectedSetWidget.style.left = newPos.x + 'px';
+                selectedSetWidget.style.top  = newPos.y + 'px';
+                selectedSetWidget.position = newPos;
+              });
+              
+              return false;
+            },
+            mouseup: function() {
+            
+              self.classList.remove('dragging-nodes');
           
-            var cursorOffset = {
-              x: event.pageX - cursorStartPos.x,
-              y: event.pageY - cursorStartPos.y,
+              draggingNodeWidgets.forEach(function(nodeWidget) {
+                nodeWidget.classList.remove('dragging');
+              });
+              
+              self.dropTargets.forEach(function(dropTarget) {
+                dropTarget.removeEventListener('mouseover', dropTargetMouseover);
+                dropTarget.removeEventListener('mouseout',  dropTargetMouseout);
+                dropTarget.removeEventListener('mouseup',   dropTargetMouseup);
+                dropTarget.classList.remove('drag-ready');
+              });
             }
-            
-            draggingNodeWidgets.forEach(function(draggingNodeWidget) {
-            
-              var newPos = {
-                x: draggingNodeWidget.dragStartPosition.x + cursorOffset.x,
-                y: draggingNodeWidget.dragStartPosition.y + cursorOffset.y,
-              }
-          
-              draggingNodeWidget.style.left = newPos.x + 'px';
-              draggingNodeWidget.style.top  = newPos.y + 'px';
-            
-              self.updateConnectorsForNodeWidget(draggingNodeWidget);
-            });
-            
-            self.selectedSetWidgets.forEach(function(selectedSetWidget) {
-              
-              var newPos = {
-                x: selectedSetWidget.dragStartPosition.x + cursorOffset.x,
-                y: selectedSetWidget.dragStartPosition.y + cursorOffset.y,
-              }
-              
-              selectedSetWidget.style.left = newPos.x + 'px';
-              selectedSetWidget.style.top  = newPos.y + 'px';
-              selectedSetWidget.position = newPos;
-            });
-            
-            return false;
-          }
-          
-          function finishDragging(event) {
-            event.preventDefault();
-          
-            window.removeEventListener('mousemove', handleMousemove);
-            window.removeEventListener('mouseup',   finishDragging);
-            document.body.style.cursor = 'auto';
-            draggingNodeWidgets.forEach(function(nodeWidget) {
-              nodeWidget.classList.remove('dragging');
-            });
-            
-            self.dropTargets.forEach(function(dropTarget) {
-              dropTarget.removeEventListener('mouseover', dropTargetMouseover);
-              dropTarget.removeEventListener('mouseout',  dropTargetMouseout);
-              dropTarget.removeEventListener('mouseup',   dropTargetMouseup);
-              dropTarget.classList.remove('drag-ready');
-            });
-            
-            return false;
-          }
-          
-          window.addEventListener('mousemove', handleMousemove);
-          window.addEventListener('mouseup',   finishDragging);
+          });
           
           function dropTargetMouseover(event) {
             var dropTarget = event.currentTarget;
@@ -488,7 +543,6 @@
               self.updateConnectorsForNodeWidget(nodeWidget);
             });
             this.updateStyles();
-            finishDragging(event);
           }
           
           self.dropTargets.forEach(function(dropTarget) {
@@ -571,9 +625,6 @@
         _setupNodeWidgetSelection: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('selected', function(event) {
-            if (self.nodeWidgetsTopLevel.has(nodeWidget)) {
-              self.bringNodeWidgetToFront(nodeWidget);
-            }
             if (!self.selectedNodeWidgets.has(nodeWidget)) {
               self.selectNodeWidgets([nodeWidget], event.detail.ctrlKey);
             }
@@ -914,30 +965,30 @@
             }
           });
           
+          self.classList.add('dragging-connectors');
+          
           self.captureMouse(event, {
             mousemove: function(options) {
-              var cursorPos = {
-                x: dragStartPos.x + options.dragDelta.x,
-                y: dragStartPos.y + options.dragDelta.y,
-              }
-              
               if (!self.draggingConnectorNodes.via) {
                 self.draggingConnectors.forEach(function(draggingConnector) {
                   draggingConnector.set('viaPos', {
-                    x: cursorPos.x + self.viewMargin,
-                    y: cursorPos.y + self.viewMargin,
+                    x: options.currentPosView.x + self.viewMargin,
+                    y: options.currentPosView.y + self.viewMargin,
                   });
                 });
               } else if(!self.draggingConnectorNodes.to) {
                 self.draggingConnectors.forEach(function(draggingConnector) {
                   draggingConnector.set('toPos', {
-                    x: cursorPos.x + self.viewMargin,
-                    y: cursorPos.y + self.viewMargin,
+                    x: options.currentPosView.x + self.viewMargin,
+                    y: options.currentPosView.y + self.viewMargin,
                   });
                 });
               }
             },
             mouseup: function() {
+            
+              self.classList.remove('dragging-connectors');
+            
               self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
                 if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
                   otherNodeWidget.removeEventListener('mouseover', handleOtherNodeMouseover);
@@ -1000,13 +1051,7 @@
           
           nodeWidget.addEventListener('contextMenu', function(event) {
             if (!self.draggingConnectors.length) {
-            
-              var nodeWidgetPos = self.getNodeWidgetCenter(nodeWidget);
-              
-              self.openSelectionMenu({
-                x: nodeWidgetPos.x,
-                y: nodeWidgetPos.y,
-              });
+              self.openSelectionMenu(event.detail);
             }
           });
         },
@@ -1077,10 +1122,7 @@
           });
           
           connector.addEventListener('contextMenu', function(event) {
-            self.openSelectionMenu({
-              x: event.detail.offsetX,
-              y: event.detail.offsetY,
-            });
+            self.openSelectionMenu(event.detail);
           });
           
           return connector;
@@ -1151,7 +1193,6 @@
           var self = this;
           setWidget.addEventListener('selected', function(event) {
             if (event.target === setWidget) {
-              self.bringSetWidgetToFront(setWidget);
               if (!self.selectedSetWidgets.has(setWidget)) {
                 if (!event.detail.ctrlKey) {
                   self.deselect();
@@ -1182,10 +1223,7 @@
             if (event.detail.target === setWidget.widgetHandle) {
               if (!self.draggingConnectors.length) {
               
-                self.openSelectionMenu({
-                  x: setWidget.position.x + event.detail.offsetX,
-                  y: setWidget.position.y + event.detail.offsetY,
-                });
+                self.openSelectionMenu(event.detail);
               }
             }
           });
@@ -1197,7 +1235,6 @@
           this.dropTargets.delete(event.detail);
         },
         openBackgroundMenu: function(position) {
-          this.lastMenuPosition = position;
           this.$.backgroundDropdown.style.position = 'absolute';
           this.$.backgroundDropdown.style.left = position.x + 'px';
           this.$.backgroundDropdown.style.top  = position.y + 'px';
@@ -1206,12 +1243,13 @@
         closeBackgroundMenu: function() {
           this.$.backgroundDropdown.style.display = 'none';
         },
-        openSelectionMenu: function(position) {
+        openSelectionMenu: function(event) {
           this.closeBackgroundMenu();
           
+          var surfaceRect = this.getBoundingClientRect();
           this.$.selectionDropdown.style.position = 'absolute';
-          this.$.selectionDropdown.style.left = position.x + 'px';
-          this.$.selectionDropdown.style.top  = position.y + 'px';
+          this.$.selectionDropdown.style.left = (event.pageX - surfaceRect.left) + 'px';
+          this.$.selectionDropdown.style.top  = (event.pageY - surfaceRect.top)  + 'px';
           this.$.selectionDropdown.style.display = 'block';
         },
         closeSelectionMenu() {
