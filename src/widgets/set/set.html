@@ -72,12 +72,18 @@
           self.widgetBody   = self.$.widgetBody;
           
           require(['client', 'node_id'], function(client, node_id) {
+            self.client  = client;
             self.node_id = node_id;
             self.refreshSet();
-            client.web.onLinks(function(linksAdded, linksRemoved) {
-              self.updateSet(linksAdded, linksRemoved);
-            });
+            self.onLinks = self.onLinks.bind(self);
+            client.web.onLinks(self.onLinks);
           });
+        },
+        detached: function() {
+          this.client.web.removeLinksListener(this.onLinks);
+        },
+        onLinks: function(linksAdded, linksRemoved) {
+          this.updateSet(linksAdded, linksRemoved);
         },
         nodeWidgetCreated: function(event) {
           this.nodeWidgets.add(event.detail);
@@ -201,7 +207,7 @@
                 }
               }
             });
-            client.setLinks(links);
+            client.addLinks(links);
           });
         },
       });

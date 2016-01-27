@@ -66,15 +66,7 @@ define(['./node_id'], function(node_id) {
     this._onNodeNames.add(callback);
   }
   
-  Web.prototype.setLink = function(link) {
-    var linkKey = node_id.linkToKey(link);
-    if (!this.links.has(linkKey)) {
-      this.links.add(linkKey);
-      this._notifyLinks([link], []);
-    }
-  }
-  
-  Web.prototype.setLinks = function(links) {
+  Web.prototype.addLinks = function(links) {
     var self = this;
     var newLinks = [];
     links.forEach(function(link) {
@@ -89,11 +81,18 @@ define(['./node_id'], function(node_id) {
     }
   }
   
-  Web.prototype.unsetLink = function(link) {
-    var linkKey = node_id.linkToKey(link);
-    if (this.links.has(linkKey)) {
-      this.links.delete(linkKey);
-      this._notifyLinks([], [link]);
+  Web.prototype.removeLinks = function(links) {
+    var self = this;
+    var removedLinks = [];
+    links.forEach(function(link) {
+      var linkKey = node_id.linkToKey(link);
+      if (self.links.has(linkKey)) {
+        self.links.delete(linkKey);
+        removedLinks.push(link);
+      }
+    });
+    if (removedLinks.length > 0) {
+      self._notifyLinks([], removedLinks);
     }
   }
   
@@ -134,6 +133,10 @@ define(['./node_id'], function(node_id) {
     this._onLinks.add(callback);
   }
   
+  Web.prototype.removeLinksListener = function(callback) {
+    this._onLinks.delete(callback);
+  }
+  
   Web.prototype._notifyNodeNames = function(nodes) {
     if (typeof nodes === 'undefined') {
       nodes = this.getNodeNames();
@@ -145,7 +148,7 @@ define(['./node_id'], function(node_id) {
   }
   
   Web.prototype._notifyLinks = function(linksAdded, linksRemoved) {
-    var callbacks = new Set(this._onLinks);
+    var callbacks = Array.from(this._onLinks);
     callbacks.forEach(function(callback) {
       callback(linksAdded, linksRemoved);
     });

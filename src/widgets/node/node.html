@@ -76,6 +76,8 @@
               self.set('name', client.getNodeName(self.id_));
             }
             
+            self.widgetId = node_id.make();
+            
             client.web.onNodeNames(function(nodes) {
               nodes.forEach(function(node) {
                 if (node_id.equal(node.id, self.id_)) {

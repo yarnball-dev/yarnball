@@ -29,16 +29,12 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     web.setNodeName(node.id, node.name);
   });
   
-  socket.on('setLinks', function(links) {
-    web.setLinks(links);
+  socket.on('addLinks', function(links) {
+    web.addLinks(links);
   });
   
-  socket.on('setLink', function(link) {
-    web.setLink(link);
-  });
-  
-  socket.on('unsetLink', function(link) {
-    web.unsetLink(link);
+  socket.on('removeLinks', function(links) {
+    web.removeLinks(links);
   });
   
   return {
@@ -56,16 +52,19 @@ define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
     getNodeName: function(id) {
       return web.getNodeName(id);
     },
-    setLink: function(link) {
-      web.setLink(link);
-      socket.emit('setLink', link);
+    addLinks: function(links) {
+      web.addLinks(links);
+      socket.emit('addLinks', Array.from(links));
     },
-    setLinks: function(links) {
-      web.setLinks(links);
+    removeLinks: function(links) {
+      web.removeLinks(links);
+      socket.emit('removeLinks', Array.from(links));
     },
-    unsetLink: function(link) {
-      web.unsetLink(link);
-      socket.emit('unsetLink', link);
+    onLinks: function(callback) {
+      web.onLinks(callback);
+    },
+    removeLinksListener: function(callback) {
+      web.removeLinksListener(callback);
     },
   }
 });

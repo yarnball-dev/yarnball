@@ -40,11 +40,11 @@ linksReader.on('line', function(line) {
   var fromString = line.slice(0, 32);
   var viaString  = line.slice(32 + 1, 32 + 1 + 32);
   var toString   = line.slice(32 + 1 + 32 + 1, 32 + 1 + 32 + 1 + 32);
-  web.setLink({
+  web.addLinks([{
     from: node_id.fromHex(fromString),
     via:  node_id.fromHex(viaString),
     to:   node_id.fromHex(toString),
-  });
+  }]);
 });
 
 io.on('connection', function(socket) {
@@ -55,7 +55,7 @@ io.on('connection', function(socket) {
   });
   
   socket.emit('setNodeNames', web.getNodeNames());
-  socket.emit('setLinks',     web.getLinks());
+  socket.emit('addLinks',     web.getLinks());
   
   socket.on('setNodeName', function(node) {
     console.log('Setting ' + node_id.toHex(node.id) + ' name to "' + node.name + '"');
@@ -65,14 +65,14 @@ io.on('connection', function(socket) {
     }
   });
   
-  socket.on('setLink', function(link) {
-    web.setLink(link);
-    socket.broadcast.emit('setLink', link);
+  socket.on('addLinks', function(links) {
+    web.addLinks(links);
+    socket.broadcast.emit('addLinks', links);
   });
   
-  socket.on('unsetLink', function(link) {
-    web.unsetLink(link);
-    socket.broadcast.emit('unsetLink', link);
+  socket.on('removeLinks', function(links) {
+    web.removeLinks(links);
+    socket.broadcast.emit('removeLinks', links);
   });
 });
 
