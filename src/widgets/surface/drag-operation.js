@@ -11,22 +11,21 @@ define(function() {
     var surface = self.surface;
     
     if (event.detail.shiftKey) {
-      surface.copySelected();
+      var newWidgets = surface.duplicateWidgets(surface.getSelectedWidgets());
+      surface.selectWidgets(newWidgets);
     }
 
-    var draggingNodeWidgets = new Set(surface.selectedNodeWidgets);
+    var draggingWidgets     = surface.getSelectedWidgets();
+    var draggingNodeWidgets = surface.getSelectedWidgetsOfType('yb-node');
     
     if (draggingNodeWidgets.size) {
       surface.classList.add('dragging-nodes');
     }
     
     // Initialize widget drag start positions
-    draggingNodeWidgets.forEach(function(nodeWidget) {
-      nodeWidget.dragStartPosition = surface.getNodePosition(nodeWidget);
+    draggingWidgets.forEach(function(nodeWidget) {
+      nodeWidget.dragStartPosition = surface.getWidgetPosition(nodeWidget);
       nodeWidget.classList.add('dragging');
-    });
-    surface.selectedSetWidgets.forEach(function(setWidget) {
-      setWidget.dragStartPosition = setWidget.position;
     });
     
     
@@ -34,7 +33,7 @@ define(function() {
     
     var dragdropAreasToDraggingNodes = new Map();
     draggingNodeWidgets.forEach(function(nodeWidget) {
-      if (!surface.nodeWidgetsTopLevel.has(nodeWidget)) {
+      if (!surface.isTopLevelWidget(nodeWidget)) {
         var dragdropArea = surface.getWidgetDragdropAreaParent(nodeWidget);
         if (dragdropArea) {
           if (dragdropAreasToDraggingNodes.has(dragdropArea)) {
@@ -57,7 +56,7 @@ define(function() {
       }
       
       event.detail.detachedWidgets.forEach(function(nodeWidget) {
-        surface.attachNodeWidget(nodeWidget, nodeWidget.dragStartPosition);
+        surface.attachWidget(nodeWidget, nodeWidget.dragStartPosition);
       });
     }
     
@@ -76,11 +75,11 @@ define(function() {
       if (dragdropArea.dropOnHover) {
       
         var topLevelDraggingWidgets = Array.from(draggingNodeWidgets).filter(function(nodeWidget) {
-          return surface.nodeWidgetsTopLevel.has(nodeWidget);
+          return surface.isTopLevelWidget(nodeWidget);
         });
         
         var detachedWidgets = Array.from(topLevelDraggingWidgets).map(function(nodeWidget) {
-          return surface.detachNodeWidget(nodeWidget);
+          return surface.detachWidget(nodeWidget);
         });
         
         dragdropArea.fire('widgetsDraggedIn', {
@@ -132,33 +131,15 @@ define(function() {
       mousemove: function(options) {
       
         // Move top-level node widgets
-        draggingNodeWidgets.forEach(function(draggingNodeWidget) {
+        draggingWidgets.forEach(function(draggingWidget) {
         
-          if (surface.nodeWidgetsTopLevel.has(draggingNodeWidget)) {
+          if (surface.isTopLevelWidget(draggingWidget) && !(draggingWidget.tagName === 'yb-connector'.toUpperCase())) {
         
-            var newPos = {
-              x: draggingNodeWidget.dragStartPosition.x + options.dragDeltaView.x,
-              y: draggingNodeWidget.dragStartPosition.y + options.dragDeltaView.y,
-            }
-            
-            draggingNodeWidget.style.left = newPos.x + 'px';
-            draggingNodeWidget.style.top  = newPos.y + 'px';
-          
-            surface.updateConnectorsForNodeWidget(draggingNodeWidget);
+            surface.setWidgetPosition(draggingWidget, {
+              x: draggingWidget.dragStartPosition.x + options.dragDeltaView.x,
+              y: draggingWidget.dragStartPosition.y + options.dragDeltaView.y,
+            });
           }
-        });
-        
-        // Move set widgets
-        surface.selectedSetWidgets.forEach(function(selectedSetWidget) {
-          
-          var newPos = {
-            x: selectedSetWidget.dragStartPosition.x + options.dragDeltaView.x,
-            y: selectedSetWidget.dragStartPosition.y + options.dragDeltaView.y,
-          }
-          
-          selectedSetWidget.style.left = newPos.x + 'px';
-          selectedSetWidget.style.top  = newPos.y + 'px';
-          selectedSetWidget.position = newPos;
         });
         
         // Move node widgets in drag-drop areas
@@ -175,8 +156,8 @@ define(function() {
       
         surface.classList.remove('dragging-nodes');
     
-        draggingNodeWidgets.forEach(function(nodeWidget) {
-          nodeWidget.classList.remove('dragging');
+        draggingWidgets.forEach(function(widget) {
+          widget.classList.remove('dragging');
         });
         
         surface.dragdropAreas.forEach(function(dragdropArea) {
@@ -207,20 +188,9 @@ define(function() {
   return {
     install: function(surface) {
       
-      surface.addEventListener('nodeWidgetAttached', function(event) {
-        var nodeWidget = event.detail;
-        nodeWidget.addEventListener('dragStart', function(event) {
-          if (!surface.hasOperation()) {
-            event.preventDefault();
-            surface.beginOperation(DragOperation, event);
-            return false;
-          }
-        });
-      });
-      
-      surface.addEventListener('setWidgetAttached', function(event) {
-        var setWidget = event.detail;
-        setWidget.addEventListener('dragStart', function(event) {
+      surface.addEventListener('widgetAttached', function(event) {
+        var widget = event.detail;
+        widget.addEventListener('dragStart', function(event) {
           if (!surface.hasOperation()) {
             event.preventDefault();
             surface.beginOperation(DragOperation, event);

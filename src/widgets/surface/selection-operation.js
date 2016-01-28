@@ -4,13 +4,8 @@ define(function() {
 
   }
   
-  SelectionOperation.prototype.begin = function(event, nodeWidget, setWidget) {
-    if (nodeWidget) {
-      this.surface.selectNodeWidgets([nodeWidget], event.detail.ctrlKey);
-    }
-    if (setWidget) {
-      this.surface.selectSetWidgets([setWidget], event.detail.ctrlKey);
-    }
+  SelectionOperation.prototype.begin = function(mouseEvent, widget) {
+    this.surface.selectWidgets([widget], mouseEvent.ctrlKey);
     this.surface.finishOperation(this);
   }
   
@@ -25,26 +20,19 @@ define(function() {
   return {
     install: function(surface) {
       
-      surface.addEventListener('nodeWidgetAttached', function(event) {
-        var nodeWidget = event.detail;
-        nodeWidget.addEventListener('selected', function(event) {
-          if (!surface.hasOperation()) {
-            if (!surface.selectedNodeWidgets.has(nodeWidget)) {
-              surface.beginOperation(SelectionOperation, event, nodeWidget);
-            }
+      function handleWidgetSelected(event) {
+        if (!surface.hasOperation()) {
+          if (!surface.isWidgetSelected(event.detail.widget)) {
+            surface.beginOperation(SelectionOperation, event.detail.mouseEvent, event.detail.widget);
           }
-        });
-      });
+        }
+      }
       
-      surface.addEventListener('setWidgetAttached', function(event) {
-        var setWidget = event.detail;
-        setWidget.addEventListener('selected', function(event) {
-          if (!surface.hasOperation()) {
-            if (!surface.selectedSetWidgets.has(setWidget)) {
-              surface.beginOperation(SelectionOperation, event, null, setWidget);
-            }
-          }
-        });
+      surface.addEventListener('widgetAttached', function(event) {
+        event.detail.addEventListener('selected', handleWidgetSelected);
+      });
+      surface.addEventListener('widgetDetached', function(event) {
+        event.detail.removeEventListener('selected', handleWidgetSelected);
       });
     }
   }

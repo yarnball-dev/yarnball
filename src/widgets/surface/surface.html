@@ -81,27 +81,22 @@
           self.viewTranslate = {x: 0, y: 0};
           self.viewScale     = 1.0;
           self.viewOrigin    = {x: 0, y: 0};
+          self.viewMargin    = 10000;
           
-          self.viewMargin = 10000;
+          self.widgets       = new Set();
+          self.widgetsOfType = new Map();
+          self.widgetsTopLevel = new Set();
           
-          self.nodeWidgets         = new Set();
-          self.nodeWidgetsTopLevel = new Set();
+          self.selectedWidgets = new Set();
           
           self.nodesToWidgets = new Map();
           
-          self.connectors = new Set();
           self.connectorsFrom = new Map();
           self.connectorsVia  = new Map();
           self.connectorsTo   = new Map();
           self.activeConnectors = new Set();
           self.linksToConnectors = new Map();
           self.nodeWidgetsToConnectors = new Map();
-          
-          self.selectedNodeWidgets = new Set();
-          self.selectedConnectors  = new Set();
-          self.selectedSetWidgets  = new Set();
-          
-          self.setWidgets = new Set();
           
           self.dragdropAreas = new Set();
           
@@ -129,12 +124,10 @@
             self.onLinks = self.onLinks.bind(self);
             client.onLinks(self.onLinks);
         
-            self.createNodeWidget({x: 100, y: 40},  '52f9cf0e223d559931856acc98400f21');
-            self.createNodeWidget({x: 100, y: 100}, '1264ed87a8274e5188f9020954811805');
-            self.createNodeWidget({x: 100, y: 160}, '5c4d67cf88fd9c5dbc841dee378b6b4b');
-            self.createNodeWidget({x: 185, y: 160}, '7e1b27583610201f8b48941d3637b13f');
-            
-//             self.createSetWidget({x: 400, y: 50});
+            self.attachWidget(self.createNodeWidget(node_id.fromHex('52f9cf0e223d559931856acc98400f21')), {x: 100, y: 40});
+            self.attachWidget(self.createNodeWidget(node_id.fromHex('1264ed87a8274e5188f9020954811805')), {x: 100, y: 100});
+            self.attachWidget(self.createNodeWidget(node_id.fromHex('5c4d67cf88fd9c5dbc841dee378b6b4b')), {x: 100, y: 160});
+            self.attachWidget(self.createNodeWidget(node_id.fromHex('7e1b27583610201f8b48941d3637b13f')), {x: 185, y: 160});
           });
           
           // Install operations
@@ -147,7 +140,7 @@
               '/widgets/surface/drag-operation.js',
               '/widgets/surface/new-connector-drag-operation.js',
             ],
-            function(panOperation, boxSelectionOperation) {
+            function() {
               var operations = Array.from(arguments);
               operations.forEach(function(operation) {
                 operation.install(self);
@@ -179,10 +172,8 @@
         },
         listeners: {
           contextmenu: 'oncontextmenu',
-          nodeWidgetAttached:   'nodeWidgetAttached',
-          nodeWidgetDetached:   'nodeWidgetDetached',
-          setWidgetAttached:    'setWidgetAttached',
-          setWidgetDetached:    'setWidgetDetached',
+          widgetAttached: 'widgetAttached',
+          widgetDetached: 'widgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
         },
@@ -319,6 +310,7 @@
         },
         backgroundMousedown: function(event) {
         
+          this.closeBackgroundMenu();
           this.closeSelectionMenu();
           
           if (!event.ctrlKey) {
@@ -365,39 +357,42 @@
             }
           }
         },
-        getNodePosition: function(nodeWidget) {
-          var nodeRect = this.getElementRectInView(nodeWidget);
+        getWidgetsTopLevel: function() {
+          return new Set(this.widgetsTopLevel);
+        },
+        getWidgetsTopLevelOfType: function(type) {
+          var self = this;
+          return new Set(Array.from(self.getWidgetsOfType(type)).filter(function(widget) {
+            return self.widgetsTopLevel.has(widget);
+          }));
+        },
+        getWidgetsOfType: function(type) {
+          return new Set(Array.from(this.widgets).filter(function(widget) {
+            return widget.tagName === type.toUpperCase();
+          }));
+        },
+        getWidgetPosition: function(widget) {
+          var viewRect = this.getElementRectInView(widget);
           return {
-            x: nodeRect.left,
-            y: nodeRect.top,
+            x: viewRect.left,
+            y: viewRect.top,
           }
         },
-        getNodeWidgetCenter: function(nodeWidget) {
-          var nodeRect = this.getElementRectInView(nodeWidget);
+        getWidgetCenter: function(widget) {
+          var nodeRect = this.getElementRectInView(widget);
           return {
             x: nodeRect.left + (nodeRect.width  / 2),
             y: nodeRect.top  + (nodeRect.height / 2),
           }
         },
-        getNodeWidgetsInRect: function(rect) {
+        getWidgetsInRect: function(rect) {
           var self = this;
-          return Array.from(self.nodeWidgets).filter(function(nodeWidget) {
-            var nodeRect = self.getElementRectInView(nodeWidget);
-            return !(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
-                     nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top);
-          });
-        },
-        getSetWidgetsInRect: function(rect) {
-          return Array.from(this.setWidgets).filter(function(setWidget) {
-            var setClientRect = setWidget.widgetHandle.getBoundingClientRect();
-            var setRect = {
-              left:   setWidget.position.x,
-              top:    setWidget.position.y,
-              right:  setWidget.position.x + setClientRect.width,
-              bottom: setWidget.position.y + setClientRect.height,
+          return Array.from(self.widgets).filter(function(widget) {
+            if (widget.widgetHandle) {
+              var widgetRect = self.getElementRectInView(widget.widgetHandle);
+              return !(widgetRect.left > rect.right  || widgetRect.right  < rect.left ||
+                      widgetRect.top  > rect.bottom || widgetRect.bottom < rect.top);
             }
-            return !(setRect.left > rect.right  || setRect.right  < rect.left ||
-                     setRect.top  > rect.bottom || setRect.bottom < rect.top);
           });
         },
         getWidgetsForNode: function(id) {
@@ -407,6 +402,12 @@
           } else {
             return new Set();
           }
+        },
+        getTopLevelWidgetsForNode: function(id) {
+          var self = this;
+          return new Set(Array.from(self.getWidgetsForNode(id)).filter(function(widget) {
+            return self.isTopLevelWidget(widget);
+          }));
         },
         getWidgetDragdropAreaParent: function(widget) {
           if (widget.parentNode) {
@@ -419,12 +420,12 @@
             return null;
           }
         },
-        getNodeWidgetTriplesForLink: function(link, nodeWidgets) {
+        getTopLevelNodeWidgetTriplesForLink: function(link, nodeWidgets) {
           var self = this;
           
-          var nodeWidgetsFrom = self.getWidgetsForNode(link.from);
-          var nodeWidgetsVia  = self.getWidgetsForNode(link.via);
-          var nodeWidgetsTo   = self.getWidgetsForNode(link.to);
+          var nodeWidgetsFrom = self.getTopLevelWidgetsForNode(link.from);
+          var nodeWidgetsVia  = self.getTopLevelWidgetsForNode(link.via);
+          var nodeWidgetsTo   = self.getTopLevelWidgetsForNode(link.to);
           
           if (nodeWidgets) {
             nodeWidgetsFrom = Array.from(nodeWidgetsFrom).filter(function(nodeWidget) {
@@ -462,9 +463,9 @@
             return Math.sqrt(dx*dx + dy*dy);
           }
           
-          var fromPos = this.getNodeWidgetCenter(nodeWidgetTriple.from);
-          var viaPos  = this.getNodeWidgetCenter(nodeWidgetTriple.via);
-          var toPos   = this.getNodeWidgetCenter(nodeWidgetTriple.to);
+          var fromPos = this.getWidgetCenter(nodeWidgetTriple.from);
+          var viaPos  = this.getWidgetCenter(nodeWidgetTriple.via);
+          var toPos   = this.getWidgetCenter(nodeWidgetTriple.to);
           
           return distance(fromPos, viaPos) + distance(viaPos, toPos);
         },
@@ -477,7 +478,7 @@
             existingConnectors: [],
           }
         
-          var nodeWidgetTriples = self.getNodeWidgetTriplesForLink(link, nodeWidgets);
+          var nodeWidgetTriples = self.getTopLevelNodeWidgetTriplesForLink(link, nodeWidgets);
           if (!nodeWidgetTriples.length) {
             return returnValues;
           }
@@ -525,11 +526,20 @@
           }
         },
         getConnectorsBetweenNodeWidgets: function(nodeWidgets) {
-          return Array.from(this.connectors).filter(function(connector) {
+          return Array.from(this.getWidgetsOfType('yb-connector')).filter(function(connector) {
             return nodeWidgets.has(connector.fromWidget) &&
                    nodeWidgets.has(connector.viaWidget) &&
                    nodeWidgets.has(connector.toWidget);
           });
+        },
+        getConnectorsTouchingNodeWidgets: function(nodeWidgets) {
+          var connectors = new Set();
+          nodeWidgets.forEach(function(nodeWidget) {
+            nodeWidget.connectors().forEach(function(connector) {
+              connectors.add(connector);
+            });
+          });
+          return connectors;
         },
         getConnectorForNodeWidgetTriple: function(nodeWidgetsTriple) {
           var nodeWidgetsLinkKey = this.node_id.linkToKey({
@@ -547,7 +557,7 @@
             if (!self.activeConnectors.has(connector)) {
               animation.then(
                 function() {
-                  self.removeConnector(connector);
+                  self.removeWidget(connector);
                 },
                 function() { }
               );
@@ -558,7 +568,7 @@
           removeConnectorAnimations.forEach(function(animation, connector) {
             animation.then(
               function() {
-                self.removeConnector(connector);
+                self.removeWidget(connector);
               },
               function() { }
             );
@@ -580,7 +590,6 @@
           var self = this;
           var animationDuration = 300;
           if (connector.highlightAnimation) {
-            console.log('cancelling existing connector highlight animation');
             connector.highlightAnimation.cancel();
             connector.highlightAnimation = null;
           }
@@ -603,98 +612,139 @@
           );
           return connector.highlightAnimation.finished;
         },
-        createNodeWidget: function(position, id) {
-        
-          var self = this;
+        createNodeWidget: function(id) {
         
           var nodeWidget = document.createElement('yb-node');
           if (!id) {
-            id = self.node_id.makeHex();
+            id = this.node_id.make();
           }
-          nodeWidget.nodeId = id;
-          nodeWidget.style.position = 'absolute';
-          nodeWidget.style.left = position.x + 'px';
-          nodeWidget.style.top  = position.y + 'px';
-          
-          nodeWidget.addEventListener('dimensionsChanged', function(event) {
-            self.updateConnectorsForNodeWidget(nodeWidget);
-          });
-          
-          self.nodeWidgetsTopLevel.add(nodeWidget);
-          
-          var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(id));
-          
-          if (!self.nodesToWidgets.has(idMapKey)) {
-            self.nodesToWidgets.set(idMapKey, new Set([nodeWidget]));
-          } else {
-            self.nodesToWidgets.get(idMapKey).add(nodeWidget);
-          }
-          
-          Polymer.dom(self.viewRoot).appendChild(nodeWidget);
+          nodeWidget.set('nodeId', this.node_id.toHex(id));
           
           return nodeWidget;
         },
-        attachNodeWidget: function(nodeWidget, position) {
+        attachWidget: function(widget, position) {
           var self = this;
-        
-          nodeWidget.style.position = 'absolute';
-          nodeWidget.style.left = position.x + 'px';
-          nodeWidget.style.top  = position.y + 'px';
           
-          nodeWidget.addEventListener('dimensionsChanged', function(event) {
-            self.updateConnectorsForNodeWidget(nodeWidget);
-          });
-          
-          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
-            self.nodeWidgetsTopLevel.add(nodeWidget);
-            self._setupNodeWidgetMenu(nodeWidget);
+          if (position) {
+            widget.style.position = 'absolute';
+            widget.style.left = position.x + 'px';
+            widget.style.top  = position.y + 'px';
           }
           
-          var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId));
+          Polymer.dom(self.viewRoot).appendChild(widget);
+        },
+        detachWidget: function(widget) {
+          widget.classList.remove('yb-surface');
+          this.widgetDetached({detail: widget});
+          return Polymer.dom(this.viewRoot).removeChild(widget);
+        },
+        removeWidget: function(widget) {
+          this.widgetDetached({detail: widget});
+          Polymer.dom(this.viewRoot).removeChild(widget);
+        },
+        widgetAttached: function(event) {
+          var self = this;
           
-          if (!self.nodesToWidgets.has(idMapKey)) {
-            self.nodesToWidgets.set(idMapKey, new Set([nodeWidget]));
+          var widget = event.detail;
+          
+          if (!self.widgets.has(widget)) {
+          
+            self.widgets.add(widget);
+            
+            var widgetType = widget.tagName.toLowerCase();
+            
+            if (!self.widgetsOfType.has()) {
+              self.widgetsOfType.set(widgetType, new Set([widget]))
+            } else {
+              self.widgetsOfType.get(widgetType).add(widget);
+            }
+            
+            if (widgetType === 'yb-node') {
+            
+              var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId));
+              
+              if (!self.nodesToWidgets.has(idMapKey)) {
+                self.nodesToWidgets.set(idMapKey, new Set([widget]));
+              } else {
+                self.nodesToWidgets.get(idMapKey).add(widget);
+              }
+            
+              self._setupNodeWidgetHighlighting(widget);
+              self._setupNodeWidgetMenu(widget);
+              
+            } else if (widgetType === 'yb-set') {
+            
+              self._setupSetWidgetMenu(widget);
+            }
+          }
+          
+          if (widget.parentNode === self.viewRoot) {
+            if (!self.widgetsTopLevel.has(widget)) {
+              self.widgetsTopLevel.add(widget);
+              widget.addEventListener('dimensionsChanged', function(event) {
+                self.updateConnectorsForNodeWidget(widget);
+              });
+            }
           } else {
-            self.nodesToWidgets.get(idMapKey).add(nodeWidget);
-          }
-          
-          Polymer.dom(self.viewRoot).appendChild(nodeWidget);
-        },
-        detachNodeWidget: function(nodeWidget) {
-          nodeWidget.classList.remove('yb-surface');
-          this.nodeWidgetDetached({detail: nodeWidget});
-          return Polymer.dom(this.viewRoot).removeChild(nodeWidget);
-        },
-        nodeWidgetAttached: function(event) {
-          var nodeWidget = event.detail;
-          if (!this.nodeWidgets.has(nodeWidget)) {
-            this.nodeWidgets.add(nodeWidget);
-            this._setupNodeWidgetHighlighting(nodeWidget);
-            this._setupNodeWidgetMenu(nodeWidget);
+            self.widgetsTopLevel.delete(widget);
           }
         },
-        nodeWidgetDetached: function(event) {
+        widgetDetached: function(event) {
           var self = this;
         
-          var nodeWidget = event.detail;
+          var widget = event.detail;
           
-          self.nodeWidgets.delete(nodeWidget);
+          var widgetType = widget.tagName.toLowerCase();
           
-          if (self.nodeWidgetsTopLevel.has(nodeWidget)) {
+          if (widgetType === 'yb-node') {
           
-            var connectors = Array.from(nodeWidget.connectors());
-            connectors.forEach(function(connector) {
-              self.removeConnector(connector);
+            if (self.widgetsTopLevel.has(widget)) {
+            
+              Array.from(widget.connectors()).forEach(function(connector) {
+                self.removeWidget(connector);
+              });
+            }
+            
+          } else if (widgetType === 'yb-connector') {
+          
+            var linkKey = self.node_id.linkToKey({
+              from: self.node_id.fromHex(widget.fromWidget.nodeId),
+              via:  self.node_id.fromHex(widget.viaWidget.nodeId),
+              to:   self.node_id.fromHex(widget.toWidget.nodeId),
             });
-          
-            self.nodeWidgetsTopLevel.delete(nodeWidget);
+            if (self.linksToConnectors.has(linkKey)) {
+              var connectors = self.linksToConnectors.get(linkKey);
+              connectors.delete(widget);
+              if (connectors.size === 0) {
+                self.linksToConnectors.delete(linkKey);
+              }
+            }
+            
+            var nodeWidgetsKey = self.node_id.linkToKey({
+              from: widget.fromWidget.widgetId,
+              via:  widget.viaWidget.widgetId,
+              to:   widget.toWidget.widgetId,
+            });
+            self.nodeWidgetsToConnectors.delete(nodeWidgetsKey);
+            
+            widget.fromWidget.connectorsFrom.delete(widget);
+            widget.viaWidget.connectorsVia.delete(widget);
+            widget.toWidget.connectorsTo.delete(widget);
+            
+            if (widget.highlightAnimation) {
+              widget.highlightAnimation.cancel();
+              widget.highlightAnimation = null;
+            }
           }
+          
+          self.widgets.delete(widget);
+          self.widgetsTopLevel.delete(widget);
         },
         _setupNodeWidgetHighlighting: function(nodeWidget) {
           var self = this;
           nodeWidget.addEventListener('mouseover', function(event) {
             var nodeCopies = [];
-            self.nodeWidgets.forEach(function(otherNodeWidget) {
+            self.getWidgetsOfType('yb-node').forEach(function(otherNodeWidget) {
               if (otherNodeWidget !== nodeWidget && otherNodeWidget.nodeId === nodeWidget.nodeId) {
                 nodeCopies.push(otherNodeWidget);
                 otherNodeWidget.set('highlighted', true);
@@ -712,9 +762,6 @@
           });
         },
         bringNodeWidgetToFront: function(nodeWidget) {
-          if (this.nodeWidgetsTopLevel.has(nodeWidget)) {
-            Polymer.dom(this.viewRoot).appendChild(nodeWidget);
-          }
         },
         bringConnectorToFront: function(connector) {
           Polymer.dom(this.viewRoot).appendChild(connector);
@@ -722,254 +769,128 @@
         bringSetWidgetToFront: function(setWidget) {
           Polymer.dom(this.viewRoot).appendChild(setWidget);
         },
-        selectNodeWidgets: function(nodeWidgets, appendSelection) {
-          var self = this;
-          
-          nodeWidgets = new Set(nodeWidgets);
-        
-          if (!appendSelection) {
-            self.selectedNodeWidgets.forEach(function(nodeWidget) {
-              if (!nodeWidgets.has(nodeWidget)) {
-                nodeWidget.set('selected', false);
-              }
-            });
-          }
-          
-          nodeWidgets.forEach(function(nodeWidget) {
-            if (!self.selectedNodeWidgets.has(nodeWidget)) {
-              nodeWidget.set('selected', true);
-              if (appendSelection) {
-                self.selectedNodeWidgets.add(nodeWidget);
-              }
-            }
-          });
-          
-          if (!appendSelection) {
-          
-            self.selectedNodeWidgets = new Set(nodeWidgets);
-            
-            self.selectedConnectors.forEach(function(connector) {
-              connector.set('selected', false);
-            });
-            self.selectedConnectors.clear();
-            
-            self.selectedSetWidgets.forEach(function(setWidget) {
-              setWidget.set('selected', false);
-            });
-            self.selectedSetWidgets.clear();
-          }
+        isWidgetSelected: function(widget) {
+          return this.selectedWidgets.has(widget);
         },
-        selectSetWidgets: function(setWidgets, appendSelection) {
+        selectWidgets: function(widgets, appendSelection) {
           var self = this;
           
-          setWidgets = new Set(setWidgets);
-        
-          if (!appendSelection) {
-            self.selectedSetWidgets.forEach(function(setWidget) {
-              if (!setWidgets.has(setWidget)) {
-                setWidget.set('selected', false);
-              }
+          widgets = new Set(widgets);
+          
+          if (appendSelection) {
+            self.selectedWidgets.forEach(function(widget) {
+              widgets.add(widget);
             });
           }
           
-          setWidgets.forEach(function(setWidget) {
-            if (!self.selectedSetWidgets.has(setWidget)) {
-              setWidget.set('selected', true);
-              if (appendSelection) {
-                self.selectedSetWidgets.add(setWidget);
-              }
+          // Deselect previously selected widgets
+          self.selectedWidgets.forEach(function(widget) {
+            if (!widgets.has(widget)) {
+              widget.set('selected', false);
             }
           });
           
-          if (!appendSelection) {
+          // Select new widgets
+          widgets.forEach(function(widget) {
+            if (!self.selectedWidgets.has(widget)) {
+              widget.set('selected', true);
+            }
+          });
           
-            self.selectedSetWidgets = new Set(setWidgets);
-            
-            self.selectedConnectors.forEach(function(connector) {
-              connector.set('selected', false);
-            });
-            self.selectedConnectors.clear();
-            
-            self.selectedNodeWidgets.forEach(function(nodeWidget) {
-              nodeWidget.set('selected', false);
-            });
-            self.selectedNodeWidgets.clear();
-          }
+          self.selectedWidgets = widgets;
         },
         deselect: function() {
-          this.selectedNodeWidgets.forEach(function(nodeWidget) {
-            nodeWidget.set('selected', false);
+          this.selectedWidgets.forEach(function(widget) {
+            widget.set('selected', false);
           });
-          this.selectedNodeWidgets.clear();
-          
-          this.selectedConnectors.forEach(function(connector) {
-            connector.set('selected', false);
-          });
-          this.selectedConnectors.clear();
-          
-          this.selectedSetWidgets.forEach(function(setWidget) {
-            setWidget.set('selected', false);
-          });
-          this.selectedSetWidgets.clear();
+          this.selectedWidgets.clear();
         },
-        removeSelectedWidgets: function() {
+        isTopLevelWidget: function(widget) {
+          return widget.parentNode === this.viewRoot;
+        },
+        setWidgetPosition: function(widget, position) {
+          widget.style.left = position.x + 'px';
+          widget.style.top  = position.y + 'px';
+          
+          if (widget.tagName === 'yb-node'.toUpperCase()) {
+            this.updateConnectorsForNodeWidget(widget);
+          }
+        },
+        getSelectedWidgets: function() {
+          return new Set(this.selectedWidgets);
+        },
+        getSelectedWidgetsTopLevel: function() {
           var self = this;
-          
-          var connectorsToDelete = new Set(self.selectedConnectors);
-          self.selectedNodeWidgets.forEach(function(nodeWidget) {
-            nodeWidget.connectors().forEach(function(connector) {
-              connectorsToDelete.add(connector);
-            });
-          });
-          
-          // Delete node widgets
-          self.selectedNodeWidgets.forEach(function(nodeWidget) {
-            self.nodeWidgetDetached(nodeWidget);
-            Polymer.dom(self.viewRoot).removeChild(nodeWidget);
-          });
-          self.nodeWidgets = new Set(Array.from(self.nodeWidgets).filter(function(nodeWidget) {
-            return !self.selectedNodeWidgets.has(nodeWidget);
-          }));
-          self.nodeWidgetsTopLevel = new Set(Array.from(self.nodeWidgetsTopLevel).filter(function(nodeWidget) {
-            return !self.selectedNodeWidgets.has(nodeWidget);
-          }));
-          self.selectedNodeWidgets.clear();
-          
-          connectorsToDelete.forEach(function(connector) {
-            connector.set('selected', false);
-            self.hideConnector(connector);
-          });
-          
-          // Find affected links
-          var affectedLinks = new Set();
-          self.selectedConnectors.forEach(function(connector) {
-            affectedLinks.add(self.node_id.linkToKey({
-              from: self.node_id.fromHex(connector.fromWidget.nodeId),
-              via:  self.node_id.fromHex(connector.viaWidget.nodeId),
-              to:   self.node_id.fromHex(connector.toWidget.nodeId)
-            }));
-          });
-          
-          self.selectedConnectors.clear();
-          
-          // Delete set widgets
-          var setWidgetsToDelete = new Set(self.selectedSetWidgets);
-          setWidgetsToDelete.forEach(function(setWidget) {
-            self.removeSetWidget(setWidget);
-          });
-          
-          return new Set(Array.from(affectedLinks).map(function(linkKey) {
-            return self.node_id.linkFromKey(linkKey);
+          return new Set(Array.from(self.selectedWidgets).filter(function(widget) {
+            return self.isTopLevelWidget(widget);
           }));
         },
-        removeConnector: function(connector) {
-          
-          Polymer.dom(this.viewRoot).removeChild(connector);
-          
-          this.connectors.delete(connector);
-          
-          var linkKey = this.node_id.linkToKey({
-            from: this.node_id.fromHex(connector.fromWidget.nodeId),
-            via:  this.node_id.fromHex(connector.viaWidget.nodeId),
-            to:   this.node_id.fromHex(connector.toWidget.nodeId),
-          });
-          var connectors = this.linksToConnectors.get(linkKey);
-          if (connectors.size === 0) {
-            this.linksToConnectors.delete(linkKey);
-          }
-          
-          var nodeWidgetsKey = this.node_id.linkToKey({
-            from: connector.fromWidget.widgetId,
-            via:  connector.viaWidget.widgetId,
-            to:   connector.toWidget.widgetId,
-          });
-          this.nodeWidgetsToConnectors.delete(nodeWidgetsKey);
-          
-          connector.fromWidget.connectorsFrom.delete(connector);
-          connector.viaWidget.connectorsVia.delete(connector);
-          connector.toWidget.connectorsTo.delete(connector);
-          
-          if (connector.highlightAnimation) {
-            connector.highlightAnimation.cancel();
-            connector.highlightAnimation = null;
-          }
+        getSelectedWidgetsOfType: function(type) {
+          return new Set(Array.from(this.selectedWidgets).filter(function(widget) {
+            return widget.tagName === type.toUpperCase();
+          }));
         },
         hideConnector: function(connector) {
           var self = this;
           self.activateConnector(connector, false);
           self.highlightConnector(connector, {color: '#E05749', fadeOut: true, reverse: true}).then(
             function() {
-              self.removeConnector(connector);
+              self.removeWidget(connector);
             },
             function() { }
           );
         },
-        copySelected: function(offset) {
+        duplicateWidgets: function(widgets, offset) {
           var self = this;
           
-          var newNodeWidgets = new Set();
-          var newConnectors  = new Set();
-          var newSetWidgets  = new Set();
+          var newWidgets = [];
           
           var oldToNewNodeWidgetMap = new Map();
           
-          self.selectedNodeWidgets.forEach(function(nodeWidget) {
-          
-            var nodePos = self.getNodePosition(nodeWidget);
+          // Duplcate nodes and sets
+          widgets.forEach(function(widget) {
+            var widgetType = widget.tagName.toLowerCase();
             
-            var newPosition = {
-              x: nodePos.x + (offset || 0),
-              y: nodePos.y + (offset || 0),
+            var newWidget = null;
+            
+            if (widgetType === 'yb-node') {
+              newWidget = self.createNodeWidget(self.node_id.fromHex(widget.nodeId));
+              oldToNewNodeWidgetMap.set(widget, newWidget);
+            } else if (widgetType === 'yb-set') {
+              newWidget = self.createSetWidget(widget.getFilter());
             }
             
-            var newNodeWidget = self.createNodeWidget(newPosition, nodeWidget.nodeId);
-            newNodeWidgets.add(newNodeWidget);
-            
-            nodeWidget.set('selected', false);
-            newNodeWidget.set('selected', true);
-            
-            oldToNewNodeWidgetMap.set(nodeWidget, newNodeWidget);
-          });
-          
-          self.selectedConnectors.forEach(function(connector) {
-            
-            if (self.selectedNodeWidgets.has(connector.fromWidget) &&
-                self.selectedNodeWidgets.has(connector.viaWidget) &&
-                self.selectedNodeWidgets.has(connector.toWidget)) {
-              
-              var newConnector = self.createConnector({
-                from: oldToNewNodeWidgetMap.get(connector.fromWidget),
-                via:  oldToNewNodeWidgetMap.get(connector.viaWidget),
-                to:   oldToNewNodeWidgetMap.get(connector.toWidget)
-              });
-              newConnectors.add(newConnector);
-              
-              connector.set('selected', false);
-              newConnector.set('selected', true);
+            if (newWidget) {
+              var widgetPosition = self.getWidgetPosition(widget);
+              var newPosition = {
+                x: widgetPosition.x + (offset || 0),
+                y: widgetPosition.y + (offset || 0),
+              }
+              self.attachWidget(newWidget, newPosition);
+              newWidgets.push(newWidget);
             }
           });
           
-          self.selectedSetWidgets.forEach(function(setWidget) {
-          
-            var newPosition = {
-              x: setWidget.position.x + (offset || 0),
-              y: setWidget.position.y + (offset || 0),
+          // Duplcate connectors
+          widgets.forEach(function(widget) {
+            var widgetType = widget.tagName.toLowerCase();
+            
+            if (widgetType === 'yb-connector') {
+              if (widgets.has(widget.fromWidget) &&
+                  widgets.has(widget.viaWidget) &&
+                  widgets.has(widget.toWidget)) {
+                
+                var newConnector = self.createConnector({
+                  from: oldToNewNodeWidgetMap.get(widget.fromWidget),
+                  via:  oldToNewNodeWidgetMap.get(widget.viaWidget),
+                  to:   oldToNewNodeWidgetMap.get(widget.toWidget),
+                });
+                newWidgets.push(newConnector);
+              }
             }
-          
-            var newSetWidget = self.createSetWidget(newPosition);
-            newSetWidget.set('from', setWidget.from);
-            newSetWidget.set('via',  setWidget.via);
-            newSetWidget.set('to',   setWidget.to);
-            
-            newSetWidgets.add(newSetWidget);
-            
-            setWidget.set('selected', false);
-            newSetWidget.set('selected', true);
           });
           
-          self.selectedNodeWidgets = newNodeWidgets;
-          self.selectedConnectors  = newConnectors;
-          self.selectedSetWidgets  = newSetWidgets;
+          return newWidgets;
         },
         revealNodeWidgetTriples: function(nodeWidgets) {
           var self = this;
@@ -1029,7 +950,7 @@
                 if (!activate) {
                   animation.then(
                     function() {
-                      self.removeConnector(connector);
+                      self.removeWidget(connector);
                     },
                     function() { }
                   );
@@ -1043,7 +964,7 @@
                   if (!activate) {
                     animation.then(
                       function() {
-                        self.removeConnector(connector);
+                        self.removeWidget(connector);
                       },
                       function() { }
                     );
@@ -1058,10 +979,6 @@
         _setupNodeWidgetMenu: function(nodeWidget) {
           var self = this;
           
-          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
-            return;
-          }
-          
           nodeWidget.addEventListener('contextMenu', function(event) {
             if (!self.hasOperation()) {
               self.openSelectionMenu(event.detail);
@@ -1073,8 +990,6 @@
           var self = this;
         
           var connector = document.createElement('yb-connector');
-          
-          self.connectors.add(connector);
           
           options = options || {};
           
@@ -1130,9 +1045,9 @@
             self.connectorsTo.get(nodeWidgets.to).push(connector);
           }
           
-          var fromCenter = self.getNodeWidgetCenter(nodeWidgets.from);
-          var viaCenter  = self.getNodeWidgetCenter(nodeWidgets.via);
-          var toCenter   = self.getNodeWidgetCenter(nodeWidgets.to);
+          var fromCenter = self.getWidgetCenter(nodeWidgets.from);
+          var viaCenter  = self.getWidgetCenter(nodeWidgets.via);
+          var toCenter   = self.getWidgetCenter(nodeWidgets.to);
           
           connector.set('fromPos', {
             x: fromCenter.x + self.viewMargin,
@@ -1148,10 +1063,9 @@
           });
           
           self._setupConnectorHighlight(connector);
-          self._setupConnectorSelection(connector);
           self._setupConnectorMenu(connector);
           
-          Polymer.dom(self.viewRoot).appendChild(connector);
+          self.attachWidget(connector);
           
           return connector;
         },
@@ -1159,18 +1073,6 @@
           var self = this;
           connector.addEventListener('mouseover', function(event) {
             self.bringConnectorToFront(connector);
-          });
-        },
-        _setupConnectorSelection: function(connector) {
-          var self = this;
-          connector.addEventListener('selected', function(event) {
-            if (!self.selectedConnectors.has(connector)) {
-              if (!event.detail.ctrlKey) {
-                self.deselect();
-              }
-              self.selectedConnectors.add(connector);
-              connector.set('selected', true);
-            }
           });
         },
         _setupConnectorMenu: function(connector) {
@@ -1208,7 +1110,7 @@
         updateConnectorsForNodeWidget: function(nodeWidget) {
           var self = this;
           
-          var nodeCenter = self.getNodeWidgetCenter(nodeWidget);
+          var nodeCenter = self.getWidgetCenter(nodeWidget);
           
           if (self.connectorsFrom.has(nodeWidget)) {
             var connectorsFrom = self.connectorsFrom.get(nodeWidget);
@@ -1238,16 +1140,21 @@
             })
           }
         },
-        createSetWidget: function(position) {
+        createSetWidget: function(filter) {
         
           var setWidget = document.createElement('yb-set');
           
-          setWidget.style.position = 'absolute';
-          setWidget.style.left = position.x + 'px';
-          setWidget.style.top  = position.y + 'px';
-          setWidget.position = position;
-          
-          Polymer.dom(this.viewRoot).appendChild(setWidget);
+          if (filter) {
+            if (filter.from) {
+              setWidget.set('from', this.node_id.toHex(filter.from));
+            }
+            if (filter.via) {
+              setWidget.set('via', this.node_id.toHex(filter.via));
+            }
+            if (filter.to) {
+              setWidget.set('to', this.node_id.toHex(filter.to));
+            }
+          }
           
           return setWidget;
         },
@@ -1261,14 +1168,6 @@
             self.dragdropAreas.delete(dragdropArea);
           });
           Polymer.dom(self.viewRoot).removeChild(setWidget);
-        },
-        setWidgetAttached: function(event) {
-          var setWidget = event.detail;
-          this.setWidgets.add(setWidget);
-          this._setupSetWidgetMenu(setWidget);
-        },
-        setWidgetDetached: function(event) {
-//           var setWidget = event.detail;
         },
         _setupSetWidgetMenu: function(setWidget) {
           var self = this;
@@ -1309,35 +1208,61 @@
         },
         menuItem_CreateNode: function() {
           this.closeBackgroundMenu();
-          this.createNodeWidget(this.lastMenuPosition);
+          var newWidget = this.createNodeWidget();
+          this.attachWidget(newWidget, this.lastMenuPosition);
         },
         menuItem_CreateSet: function() {
           this.closeBackgroundMenu();
-          this.createSetWidget(this.lastMenuPosition);
+          var setWidget = this.createSetWidget();
+          this.attachWidget(setWidget, this.lastMenuPosition);
         },
         menuItem_DeleteSelected: function() {
           var self = this;
           self.closeSelectionMenu();
-          var linksToDelete = self.removeSelectedWidgets();
-          self.client.removeLinks(linksToDelete);
+          
+          var widgetsToRemove = new Set(self.getSelectedWidgetsTopLevel());
+          
+          self.getConnectorsTouchingNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
+            widgetsToRemove.add(connector);
+          });
+          
+          var linkKeysToRemove = new Set(Array.from(self.getSelectedWidgetsOfType('yb-connector')).map(function(connector) {
+            return self.node_id.linkToKey(connector.link());
+          }));
+          var linksToRemove = Array.from(linkKeysToRemove).map(function(linkKey) {
+            return self.node_id.linkFromKey(linkKey);
+          });
+          
+          widgetsToRemove.forEach(function(widget) {
+            self.removeWidget(widget);
+          });
+
+          self.client.removeLinks(linksToRemove);
         },
         menuItem_HideSelected: function() {
-          this.closeSelectionMenu();
-          this.removeSelectedWidgets();
+          var self = this;
+          self.closeSelectionMenu();
+          self.getSelectedWidgetsTopLevel().forEach(function(widget) {
+            self.removeWidget(widget);
+          });
         },
         menuItem_CopySelected: function() {
           this.closeSelectionMenu();
           var offset = 10;
-          this.copySelected(offset);
+          var newWidgets = this.duplicateWidgets(this.getSelectedWidgets(), offset);
+          this.selectWidgets(newWidgets);
         },
         menuItem_RevealLinks: function() {
           this.closeSelectionMenu();
-          this.revealLinksBetweenNodeWidgets(this.selectedNodeWidgets, true);
+          this.revealLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'), true);
         },
         menuItem_HideLinks: function() {
           var self = this;
           this.closeSelectionMenu();
-          var connectors = new Set(Array.from(this.selectedConnectors).concat(this.getConnectorsBetweenNodeWidgets(this.selectedNodeWidgets)));
+          var connectors = self.getSelectedWidgetsOfType('yb-connector');
+          self.getConnectorsBetweenNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
+            connectors.add(connector);
+          });
           connectors.forEach(function(connector) {
             self.hideConnector(connector);
           });

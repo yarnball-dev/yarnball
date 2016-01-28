@@ -19,8 +19,7 @@ define(function() {
     
     self.surface.boxSelection.classList.remove('hidden');
     
-    var alreadySelectedNodeWidgets = new Set(self.surface.selectedNodeWidgets);
-    var alreadySelectedSetWidgets  = new Set(self.surface.selectedSetWidgets);
+    var alreadySelectedWidgets = new Set(self.surface.selectedWidgets);
     
     self.surface.captureMouse(event, {
       cursor: 'crosshair',
@@ -40,21 +39,15 @@ define(function() {
         self.surface.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
         self.surface.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
         
-        var nodesToSelect = new Set(self.surface.getNodeWidgetsInRect(currentSelectionRect));
-        alreadySelectedNodeWidgets.forEach(function(nodeWidget) {
-          nodesToSelect.add(nodeWidget);
+        var widgetsToSelect = new Set(self.surface.getWidgetsInRect(currentSelectionRect));
+        alreadySelectedWidgets.forEach(function(widget) {
+          widgetsToSelect.add(widget);
         });
-        self.surface.selectNodeWidgets(nodesToSelect, true);
-        
-        var setWidgetsToSelect = new Set(self.surface.getSetWidgetsInRect(currentSelectionRect));
-        alreadySelectedSetWidgets.forEach(function(nodeWidget) {
-          setWidgetsToSelect.add(nodeWidget);
-        });
-        self.surface.selectSetWidgets(setWidgetsToSelect, true);
+        self.surface.selectWidgets(widgetsToSelect, true);
       },
       mouseup: function(event) {
         self.surface.boxSelection.classList.add('hidden');
-        self.surface.revealLinksBetweenNodeWidgets(self.surface.selectedNodeWidgets, false);
+        self.surface.revealLinksBetweenNodeWidgets(self.surface.getSelectedWidgetsOfType('yb-node'), false);
         self.surface.finishOperation(self);
       }
     });

@@ -40,12 +40,20 @@
           self.path.setAttributeNS(null, 'class', 'connector-path yb-connector');
           self.$.svg.appendChild(this.path);
           
+          self.widgetHandle = self.path;
+          
           self.path.addEventListener('mousedown', function(event) {
-            self.fire('selected', event);
+            self.fire('selected', {
+              widget: self,
+              mouseEvent: event,
+            });
             if (event.button === 2) {
               self.fire('contextMenu', event);
             }
           });
+        },
+        attached: function() {
+          this.fire('widgetAttached', this);
         },
         link: function() {
           if (this.fromWidget &&

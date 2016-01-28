@@ -8,29 +8,28 @@ define(function() {
     var self = this;
     var surface = self.surface;
     
-    if (!surface.selectedNodeWidgets.has(nodeWidget)) {
-      surface.selectNodeWidgets([nodeWidget]);
+    if (!surface.isWidgetSelected(nodeWidget)) {
+      surface.selectWidgets([nodeWidget], true);
     }
     
-    var nodePos = surface.getNodePosition(nodeWidget);
+    var widgetPos = surface.getWidgetPosition(nodeWidget);
     
     var cursorPos = {
-      x: nodePos.x + event.detail.offsetX,
-      y: nodePos.y + event.detail.offsetY,
+      x: widgetPos.x + event.detail.offsetX,
+      y: widgetPos.y + event.detail.offsetY,
     }
 
-    surface.draggingConnectorNodes = {
-      from: new Set(surface.selectedNodeWidgets),
+    var draggingConnectorNodes = {
+      from: new Set(surface.getSelectedWidgetsOfType('yb-node')),
       via:  null,
       to:   null,
     }
     
     var draggingConnectors = [];
-    surface.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
+    draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
       var draggingConnector = document.createElement('yb-connector');
-      draggingConnector.classList.add('inactive');
-      draggingConnector.classList.add('dragging');
-      var nodeCenter = surface.getNodeWidgetCenter(fromNodeWidget);
+      draggingConnector.classList.add('inactive', 'dragging');
+      var nodeCenter = surface.getWidgetCenter(fromNodeWidget);
       draggingConnector.set('fromPos', {
         x: nodeCenter.x + surface.viewMargin,
         y: nodeCenter.y + surface.viewMargin,
@@ -41,10 +40,10 @@ define(function() {
     
     function handleOtherNodeMouseover(event) {
       var otherNodeWidget = event.currentTarget;
-      var otherNodeCenter = surface.getNodeWidgetCenter(otherNodeWidget);
-      if (!surface.draggingConnectorNodes.via) {
-        if (!surface.draggingConnectorNodes.from.has(otherNodeWidget)) {
-          surface.draggingConnectorNodes.via = otherNodeWidget;
+      var otherNodeCenter = surface.getWidgetCenter(otherNodeWidget);
+      if (!draggingConnectorNodes.via) {
+        if (!draggingConnectorNodes.from.has(otherNodeWidget)) {
+          draggingConnectorNodes.via = otherNodeWidget;
           draggingConnectors.forEach(function(draggingConnector) {
             draggingConnector.set('viaPos', {
               x: otherNodeCenter.x + surface.viewMargin,
@@ -52,9 +51,9 @@ define(function() {
             });
           });
         }
-      } else if (!surface.draggingConnectorNodes.to) {
-        if (otherNodeWidget !== surface.draggingConnectorNodes.via) {
-          surface.draggingConnectorNodes.to = otherNodeWidget;
+      } else if (!draggingConnectorNodes.to) {
+        if (otherNodeWidget !== draggingConnectorNodes.via) {
+          draggingConnectorNodes.to = otherNodeWidget;
           draggingConnectors.forEach(function(draggingConnector) {
             draggingConnector.set('toPos', {
               x: otherNodeCenter.x + surface.viewMargin,
@@ -65,8 +64,8 @@ define(function() {
       }
     }
     
-    surface.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
-      if (!surface.draggingConnectorNodes.from.has(otherNodeWidget)) {
+    surface.getWidgetsTopLevelOfType('yb-node').forEach(function(otherNodeWidget) {
+      if (!draggingConnectorNodes.from.has(otherNodeWidget)) {
         otherNodeWidget.addEventListener('mouseover', handleOtherNodeMouseover);
       }
     });
@@ -75,14 +74,14 @@ define(function() {
     
     surface.captureMouse(event, {
       mousemove: function(options) {
-        if (!surface.draggingConnectorNodes.via) {
+        if (!draggingConnectorNodes.via) {
           draggingConnectors.forEach(function(draggingConnector) {
             draggingConnector.set('viaPos', {
               x: options.currentPosView.x + surface.viewMargin,
               y: options.currentPosView.y + surface.viewMargin,
             });
           });
-        } else if(!surface.draggingConnectorNodes.to) {
+        } else if(!draggingConnectorNodes.to) {
           draggingConnectors.forEach(function(draggingConnector) {
             draggingConnector.set('toPos', {
               x: options.currentPosView.x + surface.viewMargin,
@@ -95,22 +94,22 @@ define(function() {
       
         surface.classList.remove('dragging-connectors');
       
-        surface.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
-          if (!surface.draggingConnectorNodes.from.has(otherNodeWidget)) {
+        surface.getWidgetsTopLevelOfType('yb-node').forEach(function(otherNodeWidget) {
+          if (!draggingConnectorNodes.from.has(otherNodeWidget)) {
             otherNodeWidget.removeEventListener('mouseover', handleOtherNodeMouseover);
           }
         });
         
-        if (surface.draggingConnectorNodes.via &&
-            surface.draggingConnectorNodes.to) {
+        if (draggingConnectorNodes.via &&
+            draggingConnectorNodes.to) {
           
           var newLinks = [];
           
-          surface.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
+          draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
             var nodeWidgetTriple = {
               from: fromNodeWidget,
-              via:  surface.draggingConnectorNodes.via,
-              to:   surface.draggingConnectorNodes.to,
+              via:  draggingConnectorNodes.via,
+              to:   draggingConnectorNodes.to,
             }
             var connector = surface.getConnectorForNodeWidgetTriple(nodeWidgetTriple);
             if (connector) {
@@ -118,14 +117,14 @@ define(function() {
             } else {
               surface.createConnector({
                 from: fromNodeWidget,
-                via:  surface.draggingConnectorNodes.via,
-                to:   surface.draggingConnectorNodes.to,
+                via:  draggingConnectorNodes.via,
+                to:   draggingConnectorNodes.to,
               });
             }
             newLinks.push({
               from: surface.node_id.fromHex(fromNodeWidget.nodeId),
-              via:  surface.node_id.fromHex(surface.draggingConnectorNodes.via.nodeId),
-              to:   surface.node_id.fromHex(surface.draggingConnectorNodes.to.nodeId)
+              via:  surface.node_id.fromHex(draggingConnectorNodes.via.nodeId),
+              to:   surface.node_id.fromHex(draggingConnectorNodes.to.nodeId)
             });
           });
           
@@ -152,17 +151,30 @@ define(function() {
   
   return {
     install: function(surface) {
-      surface.addEventListener('nodeWidgetAttached', function(event) {
-        var nodeWidget = event.detail;
-        nodeWidget.addEventListener('rightButtonDragStart', function(event) {
-          if (surface.nodeWidgetsTopLevel.has(nodeWidget)) {
-            if (!surface.hasOperation()) {
-              event.preventDefault();
-              surface.beginOperation(NewConnectorDragOperation, event, nodeWidget);
-              return false;
-            }
+      
+      function handleDragStart(event) {
+        var nodeWidget = event.detail.widget;
+        if (surface.isTopLevelWidget(nodeWidget)) {
+          if (!surface.hasOperation()) {
+            event.preventDefault();
+            surface.beginOperation(NewConnectorDragOperation, event.detail.mouseEvent, nodeWidget);
+            return false;
           }
-        });
+        }
+      }
+      
+      surface.addEventListener('widgetAttached', function(event) {
+        var widget = event.detail;
+        if (widget.tagName === 'yb-node'.toUpperCase()) {
+          widget.addEventListener('rightButtonDragStart', handleDragStart);
+        }
+      });
+      
+      surface.addEventListener('widgetDetached', function(event) {
+        var widget = event.detail;
+        if (widget.tagName === 'yb-node'.toUpperCase()) {
+          widget.removeEventListener('rightButtonDragStart', handleDragStart);
+        }
       });
     }
   }

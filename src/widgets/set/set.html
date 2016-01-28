@@ -53,17 +53,16 @@
           },
         },
         created: function() {
-          this.nodeWidgets      = new Set();
-          this.nodeWidgetsInSet = new Map();
-          
+          this.widgets = new Set();
           this.dragdropAreas = new Set();
+          this.nodeWidgetsInSet = new Map();
         },
         attached: function() {
-          this.fire('setWidgetAttached', this);
+          this.fire('widgetAttached', this);
         },
         listeners: {
-          nodeWidgetAttached:  'nodeWidgetAttached',
-          nodeWidgetDetached:  'nodeWidgetDetached',
+          widgetAttached:  'widgetAttached',
+          widgetDetached:  'widgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
         },
@@ -159,11 +158,11 @@
         onLinks: function(linksAdded, linksRemoved) {
           this.updateSet(linksAdded, linksRemoved);
         },
-        nodeWidgetAttached: function(event) {
-          this.nodeWidgets.add(event.detail);
+        widgetAttached: function(event) {
+          this.widgets.add(event.detail);
         },
-        nodeWidgetDetached: function(event) {
-          this.nodeWidgets.delete(event.detail);
+        widgetDetached: function(event) {
+          this.widgets.delete(event.detail);
         },
         dragdropAreaAttached: function(event) {
           this.dragdropAreas.add(event.detail);
@@ -173,13 +172,19 @@
         },
         mousedown: function(event) {
           if (event.target === this.widgetHandle && event.button === 0) {
-            this.fire('selected',  event);
+            this.fire('selected',  {
+              widget: this,
+              mouseEvent: event,
+            });
             this.fire('dragStart', event);
           }
         },
         mouseup: function(event) {
           if (event.button === 2) {
-            this.fire('selected',    event);
+            this.fire('selected',    {
+              widget: this,
+              mouseEvent: event,
+            });
             this.fire('contextMenu', event);
           }
         },
@@ -188,6 +193,13 @@
         },
         isFilterValid: function() {
           return ((this.from ? 1:0) + (this.via ? 1:0) + (this.to ? 1:0)) === 2;
+        },
+        getFilter: function() {
+          return {
+            from: this.from ? this.node_id.fromHex(this.from) : null,
+            via:  this.via  ? this.node_id.fromHex(this.via)  : null,
+            to:   this.to   ? this.node_id.fromHex(this.to)   : null,
+          }
         },
         filterLinks: function(links) {
           
@@ -272,18 +284,16 @@
           var nodeWidget = document.createElement('yb-node');
           nodeWidget.nodeId = this.node_id.toHex(nodeId);
           Polymer.dom(this.$.setContent).appendChild(nodeWidget);
-          this.nodeWidgets.add(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(nodeId), nodeWidget);
         },
         attachNodeWidget: function(nodeWidget) {
           nodeWidget.style.position = null;
           Polymer.dom(this.$.setContent).appendChild(nodeWidget);
-          this.nodeWidgets.add(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
         },
         removeNodeWidget: function(nodeId) {
           var nodeWidget = this.nodeWidgetsInSet.get(this.node_id.toMapKey(nodeId));
-          this.nodeWidgets.delete(nodeWidget);
+          this.widgets.delete(nodeWidget);
           this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
           Polymer.dom(this.$.setContent).removeChild(nodeWidget);
         },
