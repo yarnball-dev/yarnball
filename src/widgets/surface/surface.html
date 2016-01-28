@@ -1,6 +1,7 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
 <link rel="import" href="../../bower_components/iron-dropdown/iron-dropdown.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../../bower_components/paper-menu/paper-menu.html">
 <link rel="import" href="../../bower_components/paper-item/paper-item.html">
 <link rel="import" href="../../bower_components/paper-item/paper-icon-item.html">
@@ -24,6 +25,10 @@
       <div id="boxSelection" class="hidden"></div>
     
     </div>
+    
+    <paper-button id="fullscreenButton" on-tap="toggleFullscreen">
+      <iron-icon icon="icons:fullscreen" item-icon></iron-icon>
+    </paper-button>
     
     <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
@@ -82,6 +87,7 @@
           self.viewScale     = 1.0;
           self.viewOrigin    = {x: 0, y: 0};
           self.viewMargin    = 10000;
+          self.fullscreenEnabled = false;
           
           self.widgets       = new Set();
           self.widgetsOfType = new Map();
@@ -147,6 +153,57 @@
               });
             }
           );
+        },
+        toggleFullscreen: function() {
+        
+          if (!self.fullscreenEnabled) {
+        
+            if (this.requestFullscreen) {
+              this.requestFullscreen();
+            } else if (this.msRequestFullscreen) {
+              this.msRequestFullscreen();
+            } else if (this.mozRequestFullScreen) {
+              this.mozRequestFullScreen();
+            } else if (this.webkitRequestFullscreen) {
+              this.webkitRequestFullscreen();
+            }
+            
+            this.styleBeforeFullscreen = {
+              position: this.style.position,
+              left:     this.style.left,
+              top:      this.style.top,
+              right:    this.style.right,
+              bottom:   this.style.bottom,
+            }
+            
+            this.style.display = 'fixed';
+            this.style.left   = 0;
+            this.style.top    = 0;
+            this.style.right  = 0;
+            this.style.bottom = 0;
+            
+            self.fullscreenEnabled = true;
+            
+          } else {
+          
+            if (document.requestFullscreen) {
+              document.exitFullscreen();
+            } else if (document.msExitFullscreen) {
+              document.msExitFullscreen();
+            } else if (document.mozExitFullScreen) {
+              document.mozExitFullScreen();
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            }          
+          
+            this.style.position = this.styleBeforeFullscreen.position;
+            this.style.left     = this.styleBeforeFullscreen.left;
+            this.style.top      = this.styleBeforeFullscreen.top;
+            this.style.right    = this.styleBeforeFullscreen.right;
+            this.style.bottom   = this.styleBeforeFullscreen.bottom;
+            
+            self.fullscreenEnabled = false;
+          }
         },
         detached: function() {
           this.client.removeLinksListener(this.onLinks);
