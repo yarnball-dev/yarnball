@@ -15,11 +15,22 @@ define(function() {
       surface.selectWidgets(newWidgets);
     }
 
-    var draggingWidgets     = surface.getSelectedWidgets();
-    var draggingNodeWidgets = surface.getSelectedWidgetsOfType('yb-node');
+    var draggingWidgets = surface.getSelectedWidgets();
     
-    if (draggingNodeWidgets.size) {
-      surface.classList.add('dragging-nodes');
+    // Prevent dragging nested widgets
+    draggingWidgets = new Set(Array.from(draggingWidgets).filter(function(widget) {
+      var parentNode = widget.parentNode;
+      while (parentNode && parentNode !== surface.viewRoot) {
+        if (draggingWidgets.has(parentNode)) {
+          return false;
+        }
+        parentNode = parentNode.parentNode;
+      }
+      return true;
+    }));
+    
+    if (draggingWidgets.size) {
+      surface.classList.add('dragging-widgets');
     }
     
     // Initialize widget drag start positions
@@ -32,7 +43,7 @@ define(function() {
     // Setup drag-drop
     
     var dragdropAreasToDraggingNodes = new Map();
-    draggingNodeWidgets.forEach(function(nodeWidget) {
+    draggingWidgets.forEach(function(nodeWidget) {
       if (!surface.isTopLevelWidget(nodeWidget)) {
         var dragdropArea = surface.getWidgetDragdropAreaParent(nodeWidget);
         if (dragdropArea) {
@@ -74,8 +85,8 @@ define(function() {
       
       if (dragdropArea.dropOnHover) {
       
-        var widgetsToDrop = Array.from(draggingNodeWidgets).filter(function(nodeWidget) {
-          return surface.isTopLevelWidget(nodeWidget);
+        var widgetsToDrop = Array.from(draggingWidgets).filter(function(widget) {
+          return surface.isTopLevelWidget(widget);
         });
         
         if (dragdropArea.dropRequestHandler) {
@@ -126,9 +137,20 @@ define(function() {
       if (!dragdropArea.dropRequestHandler) {
         return true;
       }
-      
       var allowedWidgets = dragdropArea.dropRequestHandler(draggingWidgets);
       return Array.from(allowedWidgets).length !== 0;
+    });
+    
+    // Prevent dropping onto a dragdrop area that is being dragged
+    dropTargets = dropTargets.filter(function(dragdropArea) {
+      var parentNode = dragdropArea.parentNode;
+      while (parentNode && parentNode !== surface.viewRoot) {
+        if (draggingWidgets.has(parentNode)) {
+          return false;
+        }
+        parentNode = parentNode.parentNode;
+      }
+      return true;
     });
     
     dropTargets.forEach(function(dragdropArea) {
