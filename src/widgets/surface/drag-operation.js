@@ -74,11 +74,15 @@ define(function() {
       
       if (dragdropArea.dropOnHover) {
       
-        var topLevelDraggingWidgets = Array.from(draggingNodeWidgets).filter(function(nodeWidget) {
+        var widgetsToDrop = Array.from(draggingNodeWidgets).filter(function(nodeWidget) {
           return surface.isTopLevelWidget(nodeWidget);
         });
         
-        var detachedWidgets = Array.from(topLevelDraggingWidgets).map(function(nodeWidget) {
+        if (dragdropArea.dropRequestHandler) {
+          widgetsToDrop = dragdropArea.dropRequestHandler(widgetsToDrop);
+        }
+        
+        var detachedWidgets = Array.from(widgetsToDrop).map(function(nodeWidget) {
           return surface.detachWidget(nodeWidget);
         });
         
@@ -105,16 +109,27 @@ define(function() {
     function dragdropAreaMouseup(event) {
       var dragdropArea = event.currentTarget;
       dragdropArea.classList.remove('drop-hover');
-      dragdropArea.fire('nodes-dropped', draggingNodeWidgets);
+      var widgetsToDrop = draggingNodeWidgets;
+      if (dragdropArea.dropRequestHandler) {
+        widgetsToDrop = dragdropArea.dropRequestHandler(widgetsToDrop);
+      }
+      dragdropArea.fire('nodes-dropped', widgetsToDrop);
+      
       draggingNodeWidgets.forEach(function(nodeWidget) {
-        nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
-        nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
-        surface.updateConnectorsForNodeWidget(nodeWidget);
+        surface.setWidgetPosition(nodeWidget, nodeWidget.dragStartPosition);
       });
-      this.updateStyles();
     }
     
-    surface.dragdropAreas.forEach(function(dragdropArea) {
+    var dropTargets = Array.from(surface.getDragdropAreas()).filter(function(dragdropArea) {
+      if (!dragdropArea.dropRequestHandler) {
+        return true;
+      }
+      
+      var allowedWidgets = dragdropArea.dropRequestHandler(draggingWidgets);
+      return Array.from(allowedWidgets).length !== 0;
+    });
+    
+    dropTargets.forEach(function(dragdropArea) {
       if (dragdropArea.enabled) {
         dragdropArea.addEventListener('mouseover', dragdropAreaMouseover);
         dragdropArea.addEventListener('mouseout',  dragdropAreaMouseout);

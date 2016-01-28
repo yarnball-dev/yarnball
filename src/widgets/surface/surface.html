@@ -549,6 +549,9 @@
           });
           return this.nodeWidgetsToConnectors.get(nodeWidgetsLinkKey);
         },
+        getDragdropAreas: function() {
+          return new Set(this.dragdropAreas);
+        },
         onLinks: function(linksAdded, linksRemoved) {
           var self = this;
           

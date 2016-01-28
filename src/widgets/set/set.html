@@ -81,6 +81,18 @@
             client.web.onLinks(self.onLinks);
           });
           
+          self.$.setContent.dropRequestHandler = function(widgets) {
+            return Array.from(widgets).filter(function(widget) {
+              if (widget.tagName !== 'yb-node'.toUpperCase()) {
+                return false;
+              }
+              
+              return !Array.from(self.nodeWidgetsInSet.values()).some(function(existingNodeWidget) {
+                return existingNodeWidget.nodeId === widget.nodeId;
+              });
+            });
+          }
+          
           self.$.setContent.addEventListener('widgetDragStart', function(event) {
             event.detail.widgets.forEach(function(nodeWidget) {
               nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
@@ -97,8 +109,6 @@
             }));
             
             if (widgetsDraggedOut.size > 0) {
-            
-              console.log('widgets dragged out');
             
               var nodeIds = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
                 return self.node_id.fromHex(nodeWidget.nodeId);
@@ -124,7 +134,6 @@
           });
           
           self.$.setContent.addEventListener('widgetsDraggedIn', function(event) {
-            console.log('widgets dragged in');
             var nodeIds = [];
             event.detail.widgets.forEach(function(nodeWidget) {
               self.attachNodeWidget(nodeWidget);
