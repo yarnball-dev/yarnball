@@ -1,10 +1,10 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
-<link rel="import" href="drop-target-styles.html">
+<link rel="import" href="dragdrop-area-styles.html">
 
-<dom-module id="yb-drop-target">
+<dom-module id="yb-dragdrop-area">
 
-  <style include="drop-target-styles"></style>
+  <style include="dragdrop-area-styles"></style>
 
   <template>
     <content></content>
@@ -15,20 +15,25 @@
       'use strict';
       
       Polymer({
-        is: 'yb-drop-target',
+        is: 'yb-dragdrop-area',
         properties: {
           enabled: {
             type: Boolean,
             value: true,
             notify: true,
             observer: 'enabledChanged',
-          }
+          },
+          dropOnHover: {
+            type: Boolean,
+            value: false,
+            reflectToAttribute: true,
+          },
         },
         ready: function() {
           this.classList.toggle('enabled', this.enabled);
         },
         attached: function() {
-          this.fire('dropTargetAttached', this);
+          this.fire('dragdropAreaAttached', this);
         },
         enabledChanged: function(enabled) {
           this.classList.toggle('enabled', enabled);

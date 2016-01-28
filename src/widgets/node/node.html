@@ -90,10 +90,10 @@
           });
         },
         attached: function() {
-          this.fire('nodeWidgetCreated', this);
+          this.fire('nodeWidgetAttached', this);
         },
         detached: function() {
-//           this.fire('nodeWidgetDestroyed', this);
+//           this.fire('nodeWidgetDetached', this);
         },
         connectors: function() {
           var connectors = new Set();

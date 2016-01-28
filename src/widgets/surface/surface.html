@@ -105,7 +105,7 @@
           
           self.setWidgets = new Set();
           
-          self.dropTargets = new Set();
+          self.dragdropAreas = new Set();
           
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
@@ -140,10 +140,10 @@
         },
         listeners: {
           contextmenu: 'oncontextmenu',
-          nodeWidgetCreated:   'nodeWidgetCreated',
-          nodeWidgetDestroyed: 'nodeWidgetDestroyed',
-          dropTargetAttached: 'dropTargetAttached',
-          dropTargetDetached: 'dropTargetDetached',
+          nodeWidgetAttached:   'nodeWidgetAttached',
+          nodeWidgetDetached:   'nodeWidgetDetached',
+          dragdropAreaAttached: 'dragdropAreaAttached',
+          dragdropAreaDetached: 'dragdropAreaDetached',
         },
         captureMouse: function(event, options) {
         
@@ -425,26 +425,23 @@
           }
         },
         getNodePosition: function(nodeWidget) {
-          var nodeRect = this.getNodeWidgetRect(nodeWidget);
+          var nodeRect = this.getElementRectInView(nodeWidget);
           return {
             x: nodeRect.left,
             y: nodeRect.top,
           }
         },
         getNodeWidgetCenter: function(nodeWidget) {
-          var nodeRect = this.getNodeWidgetRect(nodeWidget);
+          var nodeRect = this.getElementRectInView(nodeWidget);
           return {
             x: nodeRect.left + (nodeRect.width  / 2),
             y: nodeRect.top  + (nodeRect.height / 2),
           }
         },
-        getNodeWidgetRect: function(nodeWidget) {
-          return this.getElementRectInView(nodeWidget);
-        },
         getNodeWidgetsInRect: function(rect) {
           var self = this;
           return Array.from(self.nodeWidgets).filter(function(nodeWidget) {
-            var nodeRect = self.getNodeWidgetRect(nodeWidget);
+            var nodeRect = self.getElementRectInView(nodeWidget);
             return !(nodeRect.left > rect.right  || nodeRect.right  < rect.left ||
                      nodeRect.top  > rect.bottom || nodeRect.bottom < rect.top);
           });
@@ -468,6 +465,17 @@
             return this.nodesToWidgets.get(idMapKey);
           } else {
             return new Set();
+          }
+        },
+        getWidgetDragdropAreaParent: function(widget) {
+          if (widget.parentNode) {
+            if (widget.parentNode.tagName === 'yb-dragdrop-area'.toUpperCase()) {
+              return widget.parentNode;
+            } else {
+              return this.getWidgetDragdropAreaParent(widget.parentNode);
+            }
+          } else {
+            return null;
           }
         },
         getNodeWidgetTriplesForLink: function(link, nodeWidgets) {
@@ -654,50 +662,144 @@
           );
           return connector.highlightAnimation.finished;
         },
-        startDraggingSelected: function(event, copy) {
+        startDraggingSelected: function(event) {
           var self = this;
           
-          if (copy || event.detail.shiftKey) {
-            self.copySelected();
-          }
-        
-          var cursorStartPos = {
-            x: event.detail.pageX,
-            y: event.detail.pageY,
+          var draggingNodeWidgets = new Set(self.selectedNodeWidgets);
+          
+          if (draggingNodeWidgets.size) {
+            self.classList.add('dragging-nodes');
           }
           
-          var draggingNodeWidgets = new Set(Array.from(self.selectedNodeWidgets).filter(function(nodeWidget) {
-            return self.nodeWidgetsTopLevel.has(nodeWidget);
-          }));
-          
+          // Initialize widget drag start positions
           draggingNodeWidgets.forEach(function(nodeWidget) {
             nodeWidget.dragStartPosition = self.getNodePosition(nodeWidget);
             nodeWidget.classList.add('dragging');
           });
-          
           self.selectedSetWidgets.forEach(function(setWidget) {
             setWidget.dragStartPosition = setWidget.position;
           });
           
-          self.classList.add('dragging-nodes');
+          
+          // Setup drag-drop
+          
+          var dragdropAreasToDraggingNodes = new Map();
+          draggingNodeWidgets.forEach(function(nodeWidget) {
+            if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
+              var dragdropArea = self.getWidgetDragdropAreaParent(nodeWidget);
+              if (dragdropArea) {
+                if (dragdropAreasToDraggingNodes.has(dragdropArea)) {
+                  dragdropAreasToDraggingNodes.get(dragdropArea).add(nodeWidget);
+                } else {
+                  dragdropAreasToDraggingNodes.set(dragdropArea, new Set([nodeWidget]));
+                }
+              }
+            }
+          });
+          
+          function handleDragdropAreaDraggedOut(event) {
+            var draggingNodesForArea = dragdropAreasToDraggingNodes.get(event.detail.dragdropArea);
+            event.detail.oldWidgets.forEach(function(nodeWidget) {
+              draggingNodesForArea.delete(nodeWidget);
+            });
+            if (draggingNodesForArea.size === 0) {
+              event.detail.dragdropArea.removeEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
+              dragdropAreasToDraggingNodes.delete(event.detail.dragdropArea);
+            }
+            
+            event.detail.detachedWidgets.forEach(function(nodeWidget) {
+              self.attachNodeWidget(nodeWidget, nodeWidget.dragStartPosition);
+            });
+          }
+          
+          dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
+            dragdropArea.fire('widgetDragStart', {
+              widgets: nodeWidgets,
+              mouseEvent: event.detail,
+            });
+            dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
+          });
+          
+          function dragdropAreaMouseover(event) {
+            var dragdropArea = event.currentTarget;
+            dragdropArea.classList.add('drop-hover');
+            
+            if (dragdropArea.dropOnHover) {
+            
+              var topLevelDraggingWidgets = Array.from(draggingNodeWidgets).filter(function(nodeWidget) {
+                return self.nodeWidgetsTopLevel.has(nodeWidget);
+              });
+              
+              var detachedWidgets = Array.from(topLevelDraggingWidgets).map(function(nodeWidget) {
+                return self.detachNodeWidget(nodeWidget);
+              });
+              
+              dragdropArea.fire('widgetsDraggedIn', {
+                dragdropArea: dragdropArea,
+                widgets: detachedWidgets,
+                mouseEvent: event,
+              });
+              
+              if (!dragdropAreasToDraggingNodes.has(dragdropArea)) {
+                dragdropAreasToDraggingNodes.set(dragdropArea, new Set(detachedWidgets));
+                dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
+              } else {
+                detachedWidgets.forEach(function(nodeWidget) {
+                  dragdropAreasToDraggingNodes.get(dragdropArea).add(nodeWidget);
+                });
+              }
+            }
+          }
+          function dragdropAreaMouseout(event) {
+            var dragdropArea = event.currentTarget;
+            dragdropArea.classList.remove('drop-hover');
+          }
+          function dragdropAreaMouseup(event) {
+            var dragdropArea = event.currentTarget;
+            dragdropArea.classList.remove('drop-hover');
+            dragdropArea.fire('nodes-dropped', draggingNodeWidgets);
+            draggingNodeWidgets.forEach(function(nodeWidget) {
+              nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
+              nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
+              self.updateConnectorsForNodeWidget(nodeWidget);
+            });
+            this.updateStyles();
+          }
+          
+          self.dragdropAreas.forEach(function(dragdropArea) {
+            if (dragdropArea.enabled) {
+              dragdropArea.addEventListener('mouseover', dragdropAreaMouseover);
+              dragdropArea.addEventListener('mouseout',  dragdropAreaMouseout);
+              dragdropArea.addEventListener('mouseup',   dragdropAreaMouseup);
+              dragdropArea.classList.add('drop-ready');
+            }
+          });
+          
+          
+          // Begin drag
           
           self.captureMouse(event.detail, {
             cursor: '-webkit-grabbing',
             mousemove: function(options) {
             
+              // Move top-level node widgets
               draggingNodeWidgets.forEach(function(draggingNodeWidget) {
               
-                var newPos = {
-                  x: draggingNodeWidget.dragStartPosition.x + options.dragDeltaView.x,
-                  y: draggingNodeWidget.dragStartPosition.y + options.dragDeltaView.y,
-                }
-                
-                draggingNodeWidget.style.left = newPos.x + 'px';
-                draggingNodeWidget.style.top  = newPos.y + 'px';
+                if (self.nodeWidgetsTopLevel.has(draggingNodeWidget)) {
               
-                self.updateConnectorsForNodeWidget(draggingNodeWidget);
+                  var newPos = {
+                    x: draggingNodeWidget.dragStartPosition.x + options.dragDeltaView.x,
+                    y: draggingNodeWidget.dragStartPosition.y + options.dragDeltaView.y,
+                  }
+                  
+                  draggingNodeWidget.style.left = newPos.x + 'px';
+                  draggingNodeWidget.style.top  = newPos.y + 'px';
+                
+                  self.updateConnectorsForNodeWidget(draggingNodeWidget);
+                }
               });
               
+              // Move set widgets
               self.selectedSetWidgets.forEach(function(selectedSetWidget) {
                 
                 var newPos = {
@@ -710,6 +812,14 @@
                 selectedSetWidget.position = newPos;
               });
               
+              // Move node widgets in drag-drop areas
+              dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
+                dragdropArea.fire('widgetDrag', {
+                  widgets: nodeWidgets,
+                  options: options,
+                });
+              });
+              
               return false;
             },
             mouseup: function() {
@@ -720,41 +830,17 @@
                 nodeWidget.classList.remove('dragging');
               });
               
-              self.dropTargets.forEach(function(dropTarget) {
-                dropTarget.removeEventListener('mouseover', dropTargetMouseover);
-                dropTarget.removeEventListener('mouseout',  dropTargetMouseout);
-                dropTarget.removeEventListener('mouseup',   dropTargetMouseup);
-                dropTarget.classList.remove('drag-ready');
+              self.dragdropAreas.forEach(function(dragdropArea) {
+                dragdropArea.removeEventListener('mouseover', dragdropAreaMouseover);
+                dragdropArea.removeEventListener('mouseout',  dragdropAreaMouseout);
+                dragdropArea.removeEventListener('mouseup',   dragdropAreaMouseup);
+                dragdropArea.classList.remove('drop-ready');
               });
-            }
-          });
-          
-          function dropTargetMouseover(event) {
-            var dropTarget = event.currentTarget;
-            dropTarget.classList.add('drag-hover');
-          }
-          function dropTargetMouseout(event) {
-            var dropTarget = event.currentTarget;
-            dropTarget.classList.remove('drag-hover');
-          }
-          function dropTargetMouseup(event) {
-            var dropTarget = event.currentTarget;
-            dropTarget.classList.remove('drag-hover');
-            dropTarget.fire('nodes-dropped', draggingNodeWidgets);
-            draggingNodeWidgets.forEach(function(nodeWidget) {
-              nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
-              nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
-              self.updateConnectorsForNodeWidget(nodeWidget);
-            });
-            this.updateStyles();
-          }
-          
-          self.dropTargets.forEach(function(dropTarget) {
-            if (dropTarget.enabled) {
-              dropTarget.addEventListener('mouseover', dropTargetMouseover);
-              dropTarget.addEventListener('mouseout',  dropTargetMouseout);
-              dropTarget.addEventListener('mouseup',   dropTargetMouseup);
-              dropTarget.classList.add('drag-ready');
+              
+              dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
+                dragdropArea.fire('widgetDragFinish', nodeWidgets);
+                dragdropArea.removeEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
+              });
             }
           });
         },
@@ -789,7 +875,40 @@
           
           return nodeWidget;
         },
-        nodeWidgetCreated: function(event) {
+        attachNodeWidget: function(nodeWidget, position) {
+          var self = this;
+        
+          nodeWidget.style.position = 'absolute';
+          nodeWidget.style.left = position.x + 'px';
+          nodeWidget.style.top  = position.y + 'px';
+          
+          nodeWidget.addEventListener('dimensionsChanged', function(event) {
+            self.updateConnectorsForNodeWidget(nodeWidget);
+          });
+          
+          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
+            self.nodeWidgetsTopLevel.add(nodeWidget);
+            self._setupNodeWidgetConnectorDragging(nodeWidget);
+            self._setupNodeWidgetMenu(nodeWidget);
+          }
+          
+          var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId));
+          
+          if (!self.nodesToWidgets.has(idMapKey)) {
+            self.nodesToWidgets.set(idMapKey, new Set([nodeWidget]));
+          } else {
+            self.nodesToWidgets.get(idMapKey).add(nodeWidget);
+          }
+          
+          Polymer.dom(self.viewRoot).appendChild(nodeWidget);
+        },
+        detachNodeWidget: function(nodeWidget) {
+          nodeWidget.classList.remove('yb-surface');
+          this.nodeWidgetDetached({detail: nodeWidget});
+          return Polymer.dom(this.viewRoot).removeChild(nodeWidget);
+        },
+        nodeWidgetAttached: function(event) {
+          console.log('nodeWidgetAttached');
           var nodeWidget = event.detail;
           if (!this.nodeWidgets.has(nodeWidget)) {
             this.nodeWidgets.add(nodeWidget);
@@ -800,17 +919,22 @@
             this._setupNodeWidgetMenu(nodeWidget);
           }
         },
-        nodeWidgetDestroyed: function(event) {
+        nodeWidgetDetached: function(event) {
+          var self = this;
+        
+          console.log('nodeWidgetDetached');
           var nodeWidget = event.detail;
           
-          this.nodeWidgets.delete(nodeWidget);
+          self.nodeWidgets.delete(nodeWidget);
           
-          if (this.nodeWidgetsTopLevel.has(nodeWidget)) {
-            this.nodeWidgetsTopLevel.delete(nodeWidget);
-          }
+          if (self.nodeWidgetsTopLevel.has(nodeWidget)) {
           
-          if (this.selectedNodeWidgets.has(nodeWidget)) {
-            this.selectedNodeWidgets.delete(nodeWidget);
+            var connectors = Array.from(nodeWidget.connectors());
+            connectors.forEach(function(connector) {
+              self.removeConnector(connector);
+            });
+          
+            self.nodeWidgetsTopLevel.delete(nodeWidget);
           }
         },
         _setupNodeWidgetHighlighting: function(nodeWidget) {
@@ -931,7 +1055,7 @@
           
           // Delete node widgets
           self.selectedNodeWidgets.forEach(function(nodeWidget) {
-            self.nodeWidgetDestroyed(nodeWidget);
+            self.nodeWidgetDetached(nodeWidget);
             Polymer.dom(self.viewRoot).removeChild(nodeWidget);
           });
           self.nodeWidgets = new Set(Array.from(self.nodeWidgets).filter(function(nodeWidget) {
@@ -1166,8 +1290,10 @@
           var self = this;
           nodeWidget.addEventListener('dragStart', function(event) {
             event.preventDefault();
-            var copy = !self.nodeWidgetsTopLevel.has(event.target);
-            self.startDraggingSelected(event, copy);
+            if (event.detail.shiftKey) {
+              self.copySelected();
+            }
+            self.startDraggingSelected(event);
             return false;
           });
         },
@@ -1298,25 +1424,24 @@
         _setupNodeWidgetConnectorDragging: function(nodeWidget) {
           var self = this;
           
-          if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
-            return;
-          }
-        
           nodeWidget.addEventListener('rightButtonDragStart', function(event) {
             event.preventDefault();
             
-            if (!self.selectedNodeWidgets.has(nodeWidget)) {
-              self.selectNodeWidgets([nodeWidget]);
+            if (self.nodeWidgetsTopLevel.has(nodeWidget)) {
+            
+              if (!self.selectedNodeWidgets.has(nodeWidget)) {
+                self.selectNodeWidgets([nodeWidget]);
+              }
+              
+              var nodePos = self.getNodePosition(nodeWidget);
+              
+              var cursorPos = {
+                x: nodePos.x + event.detail.offsetX,
+                y: nodePos.y + event.detail.offsetY,
+              }
+              
+              self.startNewConnectorDragFromSelected(event.detail, cursorPos);
             }
-            
-            var nodePos = self.getNodePosition(nodeWidget);
-            
-            var cursorPos = {
-              x: nodePos.x + event.detail.offsetX,
-              y: nodePos.y + event.detail.offsetY,
-            }
-            
-            self.startNewConnectorDragFromSelected(event.detail, cursorPos);
           });
         },
         _setupNodeWidgetMenu: function(nodeWidget) {
@@ -1526,8 +1651,8 @@
             self.selectedSetWidgets.delete(setWidget);
           }
           self.setWidgets.delete(setWidget);
-          setWidget.dropTargets.forEach(function(dropTarget) {
-            self.dropTargets.delete(dropTarget);
+          setWidget.dragdropAreas.forEach(function(dragdropArea) {
+            self.dragdropAreas.delete(dragdropArea);
           });
           Polymer.dom(self.viewRoot).removeChild(setWidget);
         },
@@ -1554,6 +1679,9 @@
           setWidget.addEventListener('dragStart', function(event) {
             if (event.detail.target === setWidget.widgetHandle) {
               event.detail.preventDefault();
+              if (event.detail.shiftKey) {
+                self.copySelected();
+              }
               self.startDraggingSelected(event);
               return false;
             }
@@ -1570,11 +1698,11 @@
             }
           });
         },
-        dropTargetAttached: function(event) {
-          this.dropTargets.add(event.detail);
+        dragdropAreaAttached: function(event) {
+          this.dragdropAreas.add(event.detail);
         },
-        dropTargetDetached: function(event) {
-          this.dropTargets.delete(event.detail);
+        dragdropAreaDetached: function(event) {
+          this.dragdropAreas.delete(event.detail);
         },
         openBackgroundMenu: function(position) {
           this.$.backgroundDropdown.style.position = 'absolute';

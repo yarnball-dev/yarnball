@@ -3,7 +3,7 @@
 <link rel="import" href="set-styles.html">
 
 <link rel="import" href="../selector/selector.html">
-<link rel="import" href="../drop-target/drop-target.html">
+<link rel="import" href="../dragdrop-area/dragdrop-area.html">
 
 <dom-module id="yb-set">
 
@@ -19,8 +19,8 @@
         <span class="connector"></span>
         <yb-selector id="toSelector"   node-id="{{to}}">  </yb-selector>
       </div>
-      <yb-drop-target id="setContent" on-nodes-dropped="nodesDropped">
-      </yb-drop-target>
+      <yb-dragdrop-area id="setContent" on-nodes-dropped="nodesDropped" drop-on-hover>
+      </yb-dragdrop-area>
     </div>
   </template>
   
@@ -56,13 +56,13 @@
           this.nodeWidgets      = new Set();
           this.nodeWidgetsInSet = new Map();
           
-          this.dropTargets = new Set();
+          this.dragdropAreas = new Set();
         },
         listeners: {
-          nodeWidgetCreated:   'nodeWidgetCreated',
-          nodeWidgetDestroyed: 'nodeWidgetDestroyed',
-          dropTargetAttached:  'dropTargetAttached',
-          dropTargetDetached:  'dropTargetDetached',
+          nodeWidgetAttached:  'nodeWidgetAttached',
+          nodeWidgetDetached:  'nodeWidgetDetached',
+          dragdropAreaAttached: 'dragdropAreaAttached',
+          dragdropAreaDetached: 'dragdropAreaDetached',
         },
         ready: function() {
         
@@ -78,6 +78,77 @@
             self.onLinks = self.onLinks.bind(self);
             client.web.onLinks(self.onLinks);
           });
+          
+          self.$.setContent.addEventListener('widgetDragStart', function(event) {
+            event.detail.widgets.forEach(function(nodeWidget) {
+              nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
+            });
+          });
+          
+          self.$.setContent.addEventListener('widgetDrag', function(event) {
+          
+            var setContentRect = self.$.setContent.getBoundingClientRect();
+          
+            var widgetsDraggedOut = new Set(Array.from(event.detail.widgets).filter(function(nodeWidget) {
+              var distanceDragged = Math.abs(event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX);
+              return distanceDragged > (setContentRect.width / 2)
+            }));
+            
+            if (widgetsDraggedOut.size > 0) {
+            
+              console.log('widgets dragged out');
+            
+              var nodeIds = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
+                return self.node_id.fromHex(nodeWidget.nodeId);
+              });
+              var detachedWidgets = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
+                nodeWidget.style.transform = null;
+                nodeWidget.classList.remove('yb-set');
+                return Polymer.dom(self.$.setContent).removeChild(nodeWidget);
+              });
+              self.$.setContent.fire('widgetsDraggedOut', {
+                dragdropArea: self.$.setContent,
+                oldWidgets: widgetsDraggedOut,
+                detachedWidgets: detachedWidgets,
+              });
+              self.removeNodes(nodeIds);
+            }
+            
+            event.detail.widgets.forEach(function(nodeWidget) {
+              if (!widgetsDraggedOut.has(nodeWidget)) {
+                nodeWidget.style.transform = 'translateX(' + (event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX) + 'px)';
+              }
+            });
+          });
+          
+          self.$.setContent.addEventListener('widgetsDraggedIn', function(event) {
+            console.log('widgets dragged in');
+            var nodeIds = [];
+            event.detail.widgets.forEach(function(nodeWidget) {
+              self.attachNodeWidget(nodeWidget);
+              nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
+              nodeIds.push(self.node_id.fromHex(nodeWidget.nodeId));
+            });
+            self.addNodes(nodeIds);
+          });
+          
+          self.$.setContent.addEventListener('widgetDragFinish', function(event) {
+            event.detail.forEach(function(nodeWidget) {
+              nodeWidget.style.transform = null;
+//               nodeWidget.animate(
+//                 [
+//                   {transform: nodeWidget.style.transform},
+//                   {transform: 'translateX(0px)'},
+//                 ],
+//                 {
+//                   duration: 150,
+//                   easing: 'ease-out',
+//                 }
+//               ).finished.then(function() {
+//                 nodeWidget.style.transform = null;
+//               });
+            });
+          });
         },
         detached: function() {
           this.client.web.removeLinksListener(this.onLinks);
@@ -85,17 +156,17 @@
         onLinks: function(linksAdded, linksRemoved) {
           this.updateSet(linksAdded, linksRemoved);
         },
-        nodeWidgetCreated: function(event) {
+        nodeWidgetAttached: function(event) {
           this.nodeWidgets.add(event.detail);
         },
-        nodeWidgetDestroyed: function(event) {
+        nodeWidgetDetached: function(event) {
           this.nodeWidgets.delete(event.detail);
         },
-        dropTargetAttached: function(event) {
-          this.dropTargets.add(event.detail);
+        dragdropAreaAttached: function(event) {
+          this.dragdropAreas.add(event.detail);
         },
-        dropTargetDetached: function(event) {
-          this.dropTargets.delete(event.detail);
+        dragdropAreaDetached: function(event) {
+          this.dragdropAreas.delete(event.detail);
         },
         mousedown: function(event) {
           if (event.target === this.widgetHandle && event.button === 0) {
@@ -159,12 +230,40 @@
           var self = this;
           
           self.filterLinks(linksAdded).forEach(function(nodeId) {
-            self.addNodeWidget(nodeId);
+            if (!self.nodeWidgetsInSet.has(self.node_id.toMapKey(nodeId))) {
+              self.addNodeWidget(nodeId);
+            }
           });
           
           self.filterLinks(linksRemoved).forEach(function(nodeId) {
             self.removeNodeWidget(nodeId);
           });
+        },
+        addNodes: function(nodeIds) {
+          var self = this;
+          if (self.isFilterValid()) {
+            var links = Array.from(nodeIds).map(function(nodeId) {
+              return {
+                from: self.from ? self.node_id.fromHex(self.from) : nodeId,
+                via:  self.via  ? self.node_id.fromHex(self.via)  : nodeId,
+                to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
+              }
+            });
+            self.client.addLinks(links);
+          }
+        },
+        removeNodes: function(nodeIds) {
+          var self = this;
+          if (self.isFilterValid()) {
+            var links = Array.from(nodeIds).map(function(nodeId) {
+              return {
+                from: self.from ? self.node_id.fromHex(self.from) : nodeId,
+                via:  self.via  ? self.node_id.fromHex(self.via)  : nodeId,
+                to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
+              }
+            });
+            self.client.removeLinks(links);
+          }
         },
         addNodeWidget: function(nodeId) {
           var nodeWidget = document.createElement('yb-node');
@@ -172,6 +271,12 @@
           Polymer.dom(this.$.setContent).appendChild(nodeWidget);
           this.nodeWidgets.add(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(nodeId), nodeWidget);
+        },
+        attachNodeWidget: function(nodeWidget) {
+          nodeWidget.style.position = null;
+          Polymer.dom(this.$.setContent).appendChild(nodeWidget);
+          this.nodeWidgets.add(nodeWidget);
+          this.nodeWidgetsInSet.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
         },
         removeNodeWidget: function(nodeId) {
           var nodeWidget = this.nodeWidgetsInSet.get(this.node_id.toMapKey(nodeId));
