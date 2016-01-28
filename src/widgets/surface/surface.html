@@ -19,7 +19,7 @@
   
     <div id="viewRoot">
     
-      <div id="background" on-mousedown="backgroundMousedown" on-wheel="backgroundWheel"></div>
+      <div id="background" on-mousedown="backgroundMousedown"></div>
     
       <div id="boxSelection" class="hidden"></div>
     
@@ -97,8 +97,6 @@
           self.linksToConnectors = new Map();
           self.nodeWidgetsToConnectors = new Map();
           
-          self.draggingConnectors = [];
-          
           self.selectedNodeWidgets = new Set();
           self.selectedConnectors  = new Set();
           self.selectedSetWidgets  = new Set();
@@ -106,6 +104,8 @@
           self.setWidgets = new Set();
           
           self.dragdropAreas = new Set();
+          
+          self.currentOperation = null;
           
           require(['client', 'node_id'], function(client, node_id) {
             self.client  = client;
@@ -117,6 +117,8 @@
           var self = this;
           
           self.viewRoot = self.$.viewRoot;
+          self.background = self.$.background;
+          self.boxSelection = self.$.boxSelection;
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
         
@@ -134,14 +136,53 @@
             
 //             self.createSetWidget({x: 400, y: 50});
           });
+          
+          // Install operations
+          require(
+            [
+              '/widgets/surface/pan-operation.js',
+              '/widgets/surface/zoom-operation.js',
+              '/widgets/surface/selection-operation.js',
+              '/widgets/surface/box-selection-operation.js',
+              '/widgets/surface/drag-operation.js',
+              '/widgets/surface/new-connector-drag-operation.js',
+            ],
+            function(panOperation, boxSelectionOperation) {
+              var operations = Array.from(arguments);
+              operations.forEach(function(operation) {
+                operation.install(self);
+              });
+            }
+          );
         },
         detached: function() {
           this.client.removeLinksListener(this.onLinks);
+        },
+        hasOperation: function() {
+          return this.currentOperation !== null;
+        },
+        beginOperation: function(operation /* ... */) {
+          if (this.currentOperation != null) {
+            return null;
+          }
+          this.currentOperation = new operation();
+          this.currentOperation.surface = this;
+          var args = Array.prototype.slice.call(arguments, 1);
+          this.currentOperation.begin.apply(this.currentOperation, args);
+          return this.currentOperation;
+        },
+        finishOperation: function(operation) {
+          operation.finish();
+          if (this.currentOperation === operation) {
+            this.currentOperation = null;
+          }
         },
         listeners: {
           contextmenu: 'oncontextmenu',
           nodeWidgetAttached:   'nodeWidgetAttached',
           nodeWidgetDetached:   'nodeWidgetDetached',
+          setWidgetAttached:    'setWidgetAttached',
+          setWidgetDetached:    'setWidgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
         },
@@ -240,17 +281,6 @@
           
           window.addEventListener('mouseup',   mouseup);
         },
-        startViewDrag: function(event) {
-          var self = this;
-          event.preventDefault();
-          self.captureMouse(event, {
-            cursor: '-webkit-grabbing',
-            mousemove: function(options) {
-              self.moveView(options.currentDeltaPage);
-            }
-          });
-          return false;
-        },
         setView: function(translate, scale, origin) {
           this.viewTranslate = translate;
           this.viewScale     = scale;
@@ -300,17 +330,7 @@
             y: event.offsetY - this.viewMargin,
           }
         
-          if (event.button === 0) {
-          
-            this.closeBackgroundMenu();
-
-            return this.startBoxSelection(event);
-            
-          } else if (event.button === 1) {
-          
-            return this.startViewDrag(event);
-            
-          } else if (event.button === 2) {
+          if (event.button === 2) {
           
             this.lastMenuPosition = cursorPosition;
           
@@ -322,85 +342,6 @@
             });
             return false;
           }
-        },
-        backgroundWheel: function(event) {
-          
-          var cursorPosView = {
-            x: event.offsetX - this.viewMargin,
-            y: event.offsetY - this.viewMargin,
-          }
-          
-          var zoomSpeed = null;
-          if (event.deltaMode === 0) { // Pixels
-            zoomSpeed = 0.08;
-          } else if (event.deltaMode === 1) { // Lines
-            zoomSpeed = 0.16;
-          } else if (event.deltaMode === 2) { // Pages
-            zoomSpeed = 0.2;
-          } else {
-            zoomSpeed = 0.08;
-          }
-          
-          var zoomOffset = (event.deltaY < 0) ? zoomSpeed : -zoomSpeed;
-          
-          this.zoomOnPosition(cursorPosView, zoomOffset);
-        },
-        startBoxSelection: function(event) {
-        
-          event.preventDefault();
-        
-          var self = this;
-          
-          var dragStartOffset = {
-            x: event.offsetX + self.$.background.offsetLeft,
-            y: event.offsetY + self.$.background.offsetTop,
-          }
-          
-          self.$.boxSelection.style.left = dragStartOffset.x + 'px';
-          self.$.boxSelection.style.top  = dragStartOffset.y + 'px';
-          self.$.boxSelection.style.width  = '0';
-          self.$.boxSelection.style.height = '0';
-          
-          self.$.boxSelection.classList.remove('hidden');
-          
-          var alreadySelectedNodeWidgets = new Set(self.selectedNodeWidgets);
-          var alreadySelectedSetWidgets  = new Set(self.selectedSetWidgets);
-          
-          self.captureMouse(event, {
-            cursor: 'crosshair',
-            mousemove: function(options) {
-            
-              var currentSelectionRect = {
-                left:   Math.min(dragStartOffset.x, dragStartOffset.x + options.dragDeltaView.x),
-                top:    Math.min(dragStartOffset.y, dragStartOffset.y + options.dragDeltaView.y),
-                right:  Math.max(dragStartOffset.x, dragStartOffset.x + options.dragDeltaView.x),
-                bottom: Math.max(dragStartOffset.y, dragStartOffset.y + options.dragDeltaView.y),
-              }
-              
-              self.$.boxSelection.style.left   = currentSelectionRect.left + 'px';
-              self.$.boxSelection.style.top    = currentSelectionRect.top  + 'px';
-              self.$.boxSelection.style.width  = (currentSelectionRect.right  - currentSelectionRect.left) + 'px';
-              self.$.boxSelection.style.height = (currentSelectionRect.bottom - currentSelectionRect.top)  + 'px';
-              
-              var nodesToSelect = new Set(self.getNodeWidgetsInRect(currentSelectionRect));
-              alreadySelectedNodeWidgets.forEach(function(nodeWidget) {
-                nodesToSelect.add(nodeWidget);
-              });
-              self.selectNodeWidgets(nodesToSelect);
-              
-              var setWidgetsToSelect = new Set(self.getSetWidgetsInRect(currentSelectionRect));
-              alreadySelectedSetWidgets.forEach(function(nodeWidget) {
-                setWidgetsToSelect.add(nodeWidget);
-              });
-              self.selectSetWidgets(setWidgetsToSelect);
-            },
-            mouseup: function(event) {
-              self.$.boxSelection.classList.add('hidden');
-              self.revealLinksBetweenNodeWidgets(self.selectedNodeWidgets, false);
-            }
-          });
-          
-          return false;
         },
         getElementRectInView: function(element) {
           if (!element.offsetParent || (element.offsetParent === this.viewRoot)) {
@@ -662,188 +603,6 @@
           );
           return connector.highlightAnimation.finished;
         },
-        startDraggingSelected: function(event) {
-          var self = this;
-          
-          var draggingNodeWidgets = new Set(self.selectedNodeWidgets);
-          
-          if (draggingNodeWidgets.size) {
-            self.classList.add('dragging-nodes');
-          }
-          
-          // Initialize widget drag start positions
-          draggingNodeWidgets.forEach(function(nodeWidget) {
-            nodeWidget.dragStartPosition = self.getNodePosition(nodeWidget);
-            nodeWidget.classList.add('dragging');
-          });
-          self.selectedSetWidgets.forEach(function(setWidget) {
-            setWidget.dragStartPosition = setWidget.position;
-          });
-          
-          
-          // Setup drag-drop
-          
-          var dragdropAreasToDraggingNodes = new Map();
-          draggingNodeWidgets.forEach(function(nodeWidget) {
-            if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
-              var dragdropArea = self.getWidgetDragdropAreaParent(nodeWidget);
-              if (dragdropArea) {
-                if (dragdropAreasToDraggingNodes.has(dragdropArea)) {
-                  dragdropAreasToDraggingNodes.get(dragdropArea).add(nodeWidget);
-                } else {
-                  dragdropAreasToDraggingNodes.set(dragdropArea, new Set([nodeWidget]));
-                }
-              }
-            }
-          });
-          
-          function handleDragdropAreaDraggedOut(event) {
-            var draggingNodesForArea = dragdropAreasToDraggingNodes.get(event.detail.dragdropArea);
-            event.detail.oldWidgets.forEach(function(nodeWidget) {
-              draggingNodesForArea.delete(nodeWidget);
-            });
-            if (draggingNodesForArea.size === 0) {
-              event.detail.dragdropArea.removeEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
-              dragdropAreasToDraggingNodes.delete(event.detail.dragdropArea);
-            }
-            
-            event.detail.detachedWidgets.forEach(function(nodeWidget) {
-              self.attachNodeWidget(nodeWidget, nodeWidget.dragStartPosition);
-            });
-          }
-          
-          dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
-            dragdropArea.fire('widgetDragStart', {
-              widgets: nodeWidgets,
-              mouseEvent: event.detail,
-            });
-            dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
-          });
-          
-          function dragdropAreaMouseover(event) {
-            var dragdropArea = event.currentTarget;
-            dragdropArea.classList.add('drop-hover');
-            
-            if (dragdropArea.dropOnHover) {
-            
-              var topLevelDraggingWidgets = Array.from(draggingNodeWidgets).filter(function(nodeWidget) {
-                return self.nodeWidgetsTopLevel.has(nodeWidget);
-              });
-              
-              var detachedWidgets = Array.from(topLevelDraggingWidgets).map(function(nodeWidget) {
-                return self.detachNodeWidget(nodeWidget);
-              });
-              
-              dragdropArea.fire('widgetsDraggedIn', {
-                dragdropArea: dragdropArea,
-                widgets: detachedWidgets,
-                mouseEvent: event,
-              });
-              
-              if (!dragdropAreasToDraggingNodes.has(dragdropArea)) {
-                dragdropAreasToDraggingNodes.set(dragdropArea, new Set(detachedWidgets));
-                dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
-              } else {
-                detachedWidgets.forEach(function(nodeWidget) {
-                  dragdropAreasToDraggingNodes.get(dragdropArea).add(nodeWidget);
-                });
-              }
-            }
-          }
-          function dragdropAreaMouseout(event) {
-            var dragdropArea = event.currentTarget;
-            dragdropArea.classList.remove('drop-hover');
-          }
-          function dragdropAreaMouseup(event) {
-            var dragdropArea = event.currentTarget;
-            dragdropArea.classList.remove('drop-hover');
-            dragdropArea.fire('nodes-dropped', draggingNodeWidgets);
-            draggingNodeWidgets.forEach(function(nodeWidget) {
-              nodeWidget.style.left = nodeWidget.dragStartPosition.x + 'px';
-              nodeWidget.style.top  = nodeWidget.dragStartPosition.y + 'px';
-              self.updateConnectorsForNodeWidget(nodeWidget);
-            });
-            this.updateStyles();
-          }
-          
-          self.dragdropAreas.forEach(function(dragdropArea) {
-            if (dragdropArea.enabled) {
-              dragdropArea.addEventListener('mouseover', dragdropAreaMouseover);
-              dragdropArea.addEventListener('mouseout',  dragdropAreaMouseout);
-              dragdropArea.addEventListener('mouseup',   dragdropAreaMouseup);
-              dragdropArea.classList.add('drop-ready');
-            }
-          });
-          
-          
-          // Begin drag
-          
-          self.captureMouse(event.detail, {
-            cursor: '-webkit-grabbing',
-            mousemove: function(options) {
-            
-              // Move top-level node widgets
-              draggingNodeWidgets.forEach(function(draggingNodeWidget) {
-              
-                if (self.nodeWidgetsTopLevel.has(draggingNodeWidget)) {
-              
-                  var newPos = {
-                    x: draggingNodeWidget.dragStartPosition.x + options.dragDeltaView.x,
-                    y: draggingNodeWidget.dragStartPosition.y + options.dragDeltaView.y,
-                  }
-                  
-                  draggingNodeWidget.style.left = newPos.x + 'px';
-                  draggingNodeWidget.style.top  = newPos.y + 'px';
-                
-                  self.updateConnectorsForNodeWidget(draggingNodeWidget);
-                }
-              });
-              
-              // Move set widgets
-              self.selectedSetWidgets.forEach(function(selectedSetWidget) {
-                
-                var newPos = {
-                  x: selectedSetWidget.dragStartPosition.x + options.dragDeltaView.x,
-                  y: selectedSetWidget.dragStartPosition.y + options.dragDeltaView.y,
-                }
-                
-                selectedSetWidget.style.left = newPos.x + 'px';
-                selectedSetWidget.style.top  = newPos.y + 'px';
-                selectedSetWidget.position = newPos;
-              });
-              
-              // Move node widgets in drag-drop areas
-              dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
-                dragdropArea.fire('widgetDrag', {
-                  widgets: nodeWidgets,
-                  options: options,
-                });
-              });
-              
-              return false;
-            },
-            mouseup: function() {
-            
-              self.classList.remove('dragging-nodes');
-          
-              draggingNodeWidgets.forEach(function(nodeWidget) {
-                nodeWidget.classList.remove('dragging');
-              });
-              
-              self.dragdropAreas.forEach(function(dragdropArea) {
-                dragdropArea.removeEventListener('mouseover', dragdropAreaMouseover);
-                dragdropArea.removeEventListener('mouseout',  dragdropAreaMouseout);
-                dragdropArea.removeEventListener('mouseup',   dragdropAreaMouseup);
-                dragdropArea.classList.remove('drop-ready');
-              });
-              
-              dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
-                dragdropArea.fire('widgetDragFinish', nodeWidgets);
-                dragdropArea.removeEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
-              });
-            }
-          });
-        },
         createNodeWidget: function(position, id) {
         
           var self = this;
@@ -888,7 +647,6 @@
           
           if (!self.nodeWidgetsTopLevel.has(nodeWidget)) {
             self.nodeWidgetsTopLevel.add(nodeWidget);
-            self._setupNodeWidgetConnectorDragging(nodeWidget);
             self._setupNodeWidgetMenu(nodeWidget);
           }
           
@@ -908,21 +666,16 @@
           return Polymer.dom(this.viewRoot).removeChild(nodeWidget);
         },
         nodeWidgetAttached: function(event) {
-          console.log('nodeWidgetAttached');
           var nodeWidget = event.detail;
           if (!this.nodeWidgets.has(nodeWidget)) {
             this.nodeWidgets.add(nodeWidget);
             this._setupNodeWidgetHighlighting(nodeWidget);
-            this._setupNodeWidgetSelection(nodeWidget);
-            this._setupNodeWidgetDragging(nodeWidget);
-            this._setupNodeWidgetConnectorDragging(nodeWidget);
             this._setupNodeWidgetMenu(nodeWidget);
           }
         },
         nodeWidgetDetached: function(event) {
           var self = this;
         
-          console.log('nodeWidgetDetached');
           var nodeWidget = event.detail;
           
           self.nodeWidgets.delete(nodeWidget);
@@ -956,14 +709,6 @@
             }
             nodeWidget.addEventListener('mouseout', stopHighlighting);
             nodeWidget.addEventListener('detached', stopHighlighting);
-          });
-        },
-        _setupNodeWidgetSelection: function(nodeWidget) {
-          var self = this;
-          nodeWidget.addEventListener('selected', function(event) {
-            if (!self.selectedNodeWidgets.has(nodeWidget)) {
-              self.selectNodeWidgets([nodeWidget], event.detail.ctrlKey);
-            }
           });
         },
         bringNodeWidgetToFront: function(nodeWidget) {
@@ -1014,18 +759,42 @@
             self.selectedSetWidgets.clear();
           }
         },
-        selectSetWidgets: function(setWidgets) {
-          this.selectedSetWidgets.forEach(function(setWidget) {
-            if (!setWidgets.has(setWidget)) {
-              setWidget.set('selected', false);
+        selectSetWidgets: function(setWidgets, appendSelection) {
+          var self = this;
+          
+          setWidgets = new Set(setWidgets);
+        
+          if (!appendSelection) {
+            self.selectedSetWidgets.forEach(function(setWidget) {
+              if (!setWidgets.has(setWidget)) {
+                setWidget.set('selected', false);
+              }
+            });
+          }
+          
+          setWidgets.forEach(function(setWidget) {
+            if (!self.selectedSetWidgets.has(setWidget)) {
+              setWidget.set('selected', true);
+              if (appendSelection) {
+                self.selectedSetWidgets.add(setWidget);
+              }
             }
           });
           
-          setWidgets.forEach(function(setWidget) {
-            setWidget.set('selected', true);
-          });
+          if (!appendSelection) {
           
-          this.selectedSetWidgets = new Set(setWidgets);
+            self.selectedSetWidgets = new Set(setWidgets);
+            
+            self.selectedConnectors.forEach(function(connector) {
+              connector.set('selected', false);
+            });
+            self.selectedConnectors.clear();
+            
+            self.selectedNodeWidgets.forEach(function(nodeWidget) {
+              nodeWidget.set('selected', false);
+            });
+            self.selectedNodeWidgets.clear();
+          }
         },
         deselect: function() {
           this.selectedNodeWidgets.forEach(function(nodeWidget) {
@@ -1286,164 +1055,6 @@
             }
           });
         },
-        _setupNodeWidgetDragging: function(nodeWidget) {
-          var self = this;
-          nodeWidget.addEventListener('dragStart', function(event) {
-            event.preventDefault();
-            if (event.detail.shiftKey) {
-              self.copySelected();
-            }
-            self.startDraggingSelected(event);
-            return false;
-          });
-        },
-        startNewConnectorDragFromSelected: function(event, dragStartPos) {
-          var self = this;
-          
-          self.draggingConnectorNodes = {
-            from: new Set(self.selectedNodeWidgets),
-            via:  null,
-            to:   null,
-          }
-          
-          self.draggingConnectors = [];
-          self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
-            var draggingConnector = document.createElement('yb-connector');
-            draggingConnector.classList.add('inactive');
-            draggingConnector.classList.add('dragging');
-            var nodeCenter = self.getNodeWidgetCenter(fromNodeWidget);
-            draggingConnector.set('fromPos', {
-              x: nodeCenter.x + self.viewMargin,
-              y: nodeCenter.y + self.viewMargin,
-            });
-            Polymer.dom(self.viewRoot).appendChild(draggingConnector);
-            self.draggingConnectors.push(draggingConnector);
-          });
-          
-          function handleOtherNodeMouseover(event) {
-            var otherNodeWidget = event.currentTarget;
-            var otherNodeCenter = self.getNodeWidgetCenter(otherNodeWidget);
-            if (!self.draggingConnectorNodes.via) {
-              if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
-                self.draggingConnectorNodes.via = otherNodeWidget;
-                self.draggingConnectors.forEach(function(draggingConnector) {
-                  draggingConnector.set('viaPos', {
-                    x: otherNodeCenter.x + self.viewMargin,
-                    y: otherNodeCenter.y + self.viewMargin,
-                  });
-                });
-              }
-            } else if (!self.draggingConnectorNodes.to) {
-              if (otherNodeWidget !== self.draggingConnectorNodes.via) {
-                self.draggingConnectorNodes.to = otherNodeWidget;
-                self.draggingConnectors.forEach(function(draggingConnector) {
-                  draggingConnector.set('toPos', {
-                    x: otherNodeCenter.x + self.viewMargin,
-                    y: otherNodeCenter.y + self.viewMargin,
-                  });
-                });
-              }
-            }
-          }
-          
-          self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
-            if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
-              otherNodeWidget.addEventListener('mouseover', handleOtherNodeMouseover);
-            }
-          });
-          
-          self.classList.add('dragging-connectors');
-          
-          self.captureMouse(event, {
-            mousemove: function(options) {
-              if (!self.draggingConnectorNodes.via) {
-                self.draggingConnectors.forEach(function(draggingConnector) {
-                  draggingConnector.set('viaPos', {
-                    x: options.currentPosView.x + self.viewMargin,
-                    y: options.currentPosView.y + self.viewMargin,
-                  });
-                });
-              } else if(!self.draggingConnectorNodes.to) {
-                self.draggingConnectors.forEach(function(draggingConnector) {
-                  draggingConnector.set('toPos', {
-                    x: options.currentPosView.x + self.viewMargin,
-                    y: options.currentPosView.y + self.viewMargin,
-                  });
-                });
-              }
-            },
-            mouseup: function() {
-            
-              self.classList.remove('dragging-connectors');
-            
-              self.nodeWidgetsTopLevel.forEach(function(otherNodeWidget) {
-                if (!self.draggingConnectorNodes.from.has(otherNodeWidget)) {
-                  otherNodeWidget.removeEventListener('mouseover', handleOtherNodeMouseover);
-                }
-              });
-              
-              if (self.draggingConnectorNodes.via &&
-                  self.draggingConnectorNodes.to) {
-                
-                var newLinks = [];
-                
-                self.draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
-                  var nodeWidgetTriple = {
-                    from: fromNodeWidget,
-                    via:  self.draggingConnectorNodes.via,
-                    to:   self.draggingConnectorNodes.to,
-                  }
-                  var connector = self.getConnectorForNodeWidgetTriple(nodeWidgetTriple);
-                  if (connector) {
-                    self.activateConnector(connector);
-                  } else {
-                    self.createConnector({
-                      from: fromNodeWidget,
-                      via:  self.draggingConnectorNodes.via,
-                      to:   self.draggingConnectorNodes.to,
-                    });
-                  }
-                  newLinks.push({
-                    from: self.node_id.fromHex(fromNodeWidget.nodeId),
-                    via:  self.node_id.fromHex(self.draggingConnectorNodes.via.nodeId),
-                    to:   self.node_id.fromHex(self.draggingConnectorNodes.to.nodeId)
-                  });
-                });
-                
-                self.client.addLinks(newLinks);
-              }
-              
-              self.draggingConnectors.forEach(function(draggingConnector) {
-                Polymer.dom(self.viewRoot).removeChild(draggingConnector);
-              });
-              self.draggingConnectors = [];
-            },
-            blockEvents: false
-          });
-        },
-        _setupNodeWidgetConnectorDragging: function(nodeWidget) {
-          var self = this;
-          
-          nodeWidget.addEventListener('rightButtonDragStart', function(event) {
-            event.preventDefault();
-            
-            if (self.nodeWidgetsTopLevel.has(nodeWidget)) {
-            
-              if (!self.selectedNodeWidgets.has(nodeWidget)) {
-                self.selectNodeWidgets([nodeWidget]);
-              }
-              
-              var nodePos = self.getNodePosition(nodeWidget);
-              
-              var cursorPos = {
-                x: nodePos.x + event.detail.offsetX,
-                y: nodePos.y + event.detail.offsetY,
-              }
-              
-              self.startNewConnectorDragFromSelected(event.detail, cursorPos);
-            }
-          });
-        },
         _setupNodeWidgetMenu: function(nodeWidget) {
           var self = this;
           
@@ -1452,7 +1063,7 @@
           }
           
           nodeWidget.addEventListener('contextMenu', function(event) {
-            if (!self.draggingConnectors.length) {
+            if (!self.hasOperation()) {
               self.openSelectionMenu(event.detail);
             }
           });
@@ -1636,12 +1247,7 @@
           setWidget.style.top  = position.y + 'px';
           setWidget.position = position;
           
-          this._setupSetWidgetSelection(setWidget);
-          this._setupSetWidgetMenu(setWidget);
-          this._setupSetWidgetDragging(setWidget);
-          
           Polymer.dom(this.viewRoot).appendChild(setWidget);
-          this.setWidgets.add(setWidget);
           
           return setWidget;
         },
@@ -1656,43 +1262,19 @@
           });
           Polymer.dom(self.viewRoot).removeChild(setWidget);
         },
-        _setupSetWidgetSelection: function(setWidget) {
-          var self = this;
-          setWidget.addEventListener('selected', function(event) {
-            if (event.target === setWidget) {
-              if (!self.selectedSetWidgets.has(setWidget)) {
-                if (!event.detail.ctrlKey) {
-                  self.deselect();
-                }
-                self.selectedSetWidgets.add(setWidget);
-                setWidget.set('selected', true);
-              }
-            } else if (self.nodeWidgets.has(event.target)) {
-              if (!self.selectedNodeWidgets.has(event.target)) {
-                self.selectNodeWidgets([event.target], event.detail.ctrlKey);
-              }
-            }
-          });
+        setWidgetAttached: function(event) {
+          var setWidget = event.detail;
+          this.setWidgets.add(setWidget);
+          this._setupSetWidgetMenu(setWidget);
         },
-        _setupSetWidgetDragging: function(setWidget) {
-          var self = this;
-          setWidget.addEventListener('dragStart', function(event) {
-            if (event.detail.target === setWidget.widgetHandle) {
-              event.detail.preventDefault();
-              if (event.detail.shiftKey) {
-                self.copySelected();
-              }
-              self.startDraggingSelected(event);
-              return false;
-            }
-          });
+        setWidgetDetached: function(event) {
+//           var setWidget = event.detail;
         },
         _setupSetWidgetMenu: function(setWidget) {
           var self = this;
           setWidget.addEventListener('contextMenu', function(event) {
             if (event.detail.target === setWidget.widgetHandle) {
-              if (!self.draggingConnectors.length) {
-              
+              if (!self.hasOperation()) {
                 self.openSelectionMenu(event.detail);
               }
             }

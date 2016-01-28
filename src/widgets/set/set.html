@@ -58,6 +58,9 @@
           
           this.dragdropAreas = new Set();
         },
+        attached: function() {
+          this.fire('setWidgetAttached', this);
+        },
         listeners: {
           nodeWidgetAttached:  'nodeWidgetAttached',
           nodeWidgetDetached:  'nodeWidgetDetached',
