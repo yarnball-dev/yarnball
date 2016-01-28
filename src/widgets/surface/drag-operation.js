@@ -109,14 +109,16 @@ define(function() {
     function dragdropAreaMouseup(event) {
       var dragdropArea = event.currentTarget;
       dragdropArea.classList.remove('drop-hover');
-      var widgetsToDrop = draggingNodeWidgets;
+      var widgetsToDrop = draggingWidgets;
       if (dragdropArea.dropRequestHandler) {
         widgetsToDrop = dragdropArea.dropRequestHandler(widgetsToDrop);
       }
       dragdropArea.fire('nodes-dropped', widgetsToDrop);
       
-      draggingNodeWidgets.forEach(function(nodeWidget) {
-        surface.setWidgetPosition(nodeWidget, nodeWidget.dragStartPosition);
+      draggingWidgets.forEach(function(widget) {
+        if (surface.isTopLevelWidget(widget)) {
+          surface.setWidgetPosition(widget, widget.dragStartPosition);
+        }
       });
     }
     

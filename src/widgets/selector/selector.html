@@ -35,6 +35,12 @@
         },
         ready: function() {
           this.classList.toggle('is-empty', this.nodeId ? false : true);
+          
+          this.$.dropTarget.dropRequestHandler = function(widgets) {
+            return Array.from(widgets).filter(function(widget) {
+              return widget.tagName === 'yb-node'.toUpperCase();
+            });
+          }
         
           if (this.nodeId) {
             this.nodeWidget = document.createElement('yb-node');
@@ -45,9 +51,9 @@
           }
         },
         nodesDropped: function(event) {
-          var nodeWidgets = event.detail;
-          if (nodeWidgets.size === 1) {
-            var nodeWidget = Array.from(nodeWidgets)[0];
+          var nodeWidgets = Array.from(event.detail);
+          if (nodeWidgets.length === 1) {
+            var nodeWidget = nodeWidgets[0];
             this.set('nodeId', nodeWidget.nodeId);
           }
         },
