@@ -110,7 +110,15 @@ gulp.task('browser', ['default', 'watch'], function() {
       "dist/*.svg",
       "dist/*.png",
       "dist/widgets/**/*.svg",
-    ]
+    ],
+    snippetOptions: {
+      rule: {
+        match: '<span id="browser-sync-binding"></span>',
+        fn: function (snippet) {
+          return snippet;
+        }
+      }
+    },
   });
 });
 

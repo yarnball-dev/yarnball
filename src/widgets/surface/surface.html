@@ -186,16 +186,16 @@
             
           } else {
           
-            if (document.requestFullscreen) {
+            if (document.exitFullscreen) {
               document.exitFullscreen();
             } else if (document.msExitFullscreen) {
               document.msExitFullscreen();
-            } else if (document.mozExitFullScreen) {
-              document.mozExitFullScreen();
+            } else if (document.mozCancelFullScreen) {
+              document.mozCancelFullScreen();
             } else if (document.webkitExitFullscreen) {
               document.webkitExitFullscreen();
-            }          
-          
+            }       
+            
             this.style.position = this.styleBeforeFullscreen.position;
             this.style.left     = this.styleBeforeFullscreen.left;
             this.style.top      = this.styleBeforeFullscreen.top;
@@ -234,6 +234,28 @@
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
         },
+        translateMouseEvent: function(event) {
+          var targetBoundingClientRect = event.target.getBoundingClientRect();
+          var viewRootBoundingClientRect = this.viewRoot.getBoundingClientRect();
+          return {
+            positionPage: {
+              x: event.pageX,
+              y: event.pageY,
+            },
+            positionClient: {
+              x: event.clientX,
+              y: event.clientY,
+            },
+            positionView: {
+              x: (event.clientX - viewRootBoundingClientRect.left) / this.viewScale,
+              y: (event.clientY - viewRootBoundingClientRect.top)  / this.viewScale,
+            },
+            positionTarget: {
+              x: (event.clientX - targetBoundingClientRect.left) / this.viewScale,
+              y: (event.clientY - targetBoundingClientRect.top)  / this.viewScale,
+            },
+          }
+        },
         captureMouse: function(event, options) {
         
           var self = this;
@@ -244,20 +266,9 @@
             document.body.style.cursor = options.cursor;
           }
           
-          var startPosPage = {
-            x: event.pageX,
-            y: event.pageY,
-          }
-          
-          var eventTargetRectView = self.getElementRectInView(event.target);
-          
-          var startPosView = {
-            x: eventTargetRectView.left + event.offsetX,
-            y: eventTargetRectView.top  + event.offsetY,
-          }
-          
-          var lastPosPage = startPosPage;
-          var lastPosView = startPosView;
+          var startMouseEventTranslated = self.translateMouseEvent(event);
+
+          var lastMouseEventTranslated = startMouseEventTranslated;
           
           self.classList.add('mouse-captured');
           
@@ -266,42 +277,34 @@
           function mousemove(event) {
           
             event.stopImmediatePropagation();
-          
-            var currentPosPage = {
-              x: event.pageX,
-              y: event.pageY,
-            }
-          
-            var currentPosView = {
-              x: event.offsetX - self.viewMargin,
-              y: event.offsetY - self.viewMargin,
-            }
-          
+            
+            var mouseEventTranslated = self.translateMouseEvent(event);
+            
             var dragDeltaView = {
-              x: (event.offsetX - self.viewMargin) - startPosView.x,
-              y: (event.offsetY - self.viewMargin) - startPosView.y,
+              x: mouseEventTranslated.positionView.x - startMouseEventTranslated.positionView.x,
+              y: mouseEventTranslated.positionView.y - startMouseEventTranslated.positionView.y,
             }
             
             var dragDeltaPage = {
-              x: event.pageX - startPosPage.x,
-              y: event.pageY - startPosPage.y,
+              x: mouseEventTranslated.positionPage.x - startMouseEventTranslated.positionPage.x,
+              y: mouseEventTranslated.positionPage.y - startMouseEventTranslated.positionPage.y,
             }
             
             var currentDeltaPage = {
-              x: currentPosPage.x - lastPosPage.x,
-              y: currentPosPage.y - lastPosPage.y,
+              x: mouseEventTranslated.positionPage.x - lastMouseEventTranslated.positionPage.x,
+              y: mouseEventTranslated.positionPage.y - lastMouseEventTranslated.positionPage.y,
             }
             
             var currentDeltaView = {
-              x: currentPosView.x - lastPosView.x,
-              y: currentPosView.y - lastPosView.y,
+              x: mouseEventTranslated.positionView.x - lastMouseEventTranslated.positionView.x,
+              y: mouseEventTranslated.positionView.y - lastMouseEventTranslated.positionView.y,
             }
-          
+            
             if ('mousemove' in options) {
               options.mousemove({
                 event: event,
-                currentPosPage: currentPosPage,
-                currentPosView: currentPosView,
+                currentPosPage: mouseEventTranslated.positionPage,
+                currentPosView: mouseEventTranslated.positionView,
                 dragDeltaPage: dragDeltaPage,
                 dragDeltaView: dragDeltaView,
                 currentDeltaPage: currentDeltaPage,
@@ -309,8 +312,7 @@
               });
             }
             
-            lastPosPage = currentPosPage;
-            lastPosView = currentPosView;
+            lastMouseEventTranslated = mouseEventTranslated;
           }
           
           function mouseup(event) {
@@ -392,26 +394,16 @@
             return false;
           }
         },
-        getElementRectInView: function(element) {
-          if (!element.offsetParent || (element.offsetParent === this.viewRoot)) {
-            return {
-              left:   element.offsetLeft,
-              top:    element.offsetTop,
-              right:  element.offsetLeft + element.offsetWidth,
-              bottom: element.offsetTop  + element.offsetHeight,
-              width:  element.offsetWidth,
-              height: element.offsetHeight,
-            }
-          } else {
-            var offsetParentRect = this.getElementRectInView(element.offsetParent);
-            return {
-              left:   offsetParentRect.left + element.offsetLeft,
-              top:    offsetParentRect.top  + element.offsetTop,
-              right:  offsetParentRect.left + element.offsetLeft + element.offsetWidth,
-              bottom: offsetParentRect.top  + element.offsetTop  + element.offsetHeight,
-              width:  element.offsetWidth,
-              height: element.offsetHeight,
-            }
+        getElementViewRect: function(element) {
+          var elementClientRect = element.getBoundingClientRect();
+          var viewRootClientRect = this.viewRoot.getBoundingClientRect();
+          return {
+            left:   (elementClientRect.left   - viewRootClientRect.left) / this.viewScale,
+            top:    (elementClientRect.top    - viewRootClientRect.top)  / this.viewScale,
+            right:  (elementClientRect.right  - viewRootClientRect.left) / this.viewScale,
+            bottom: (elementClientRect.bottom - viewRootClientRect.top)  / this.viewScale,
+            width:  elementClientRect.width / this.viewScale,
+            height: elementClientRect.height / this.viewScale,
           }
         },
         getWidgetsTopLevel: function() {
@@ -429,14 +421,14 @@
           }));
         },
         getWidgetPosition: function(widget) {
-          var viewRect = this.getElementRectInView(widget);
+          var viewRect = this.getElementViewRect(widget);
           return {
             x: viewRect.left,
             y: viewRect.top,
           }
         },
         getWidgetCenter: function(widget) {
-          var nodeRect = this.getElementRectInView(widget);
+          var nodeRect = this.getElementViewRect(widget);
           return {
             x: nodeRect.left + (nodeRect.width  / 2),
             y: nodeRect.top  + (nodeRect.height / 2),
@@ -446,7 +438,7 @@
           var self = this;
           return Array.from(self.widgets).filter(function(widget) {
             if (widget.widgetHandle) {
-              var widgetRect = self.getElementRectInView(widget.widgetHandle);
+              var widgetRect = self.getElementViewRect(widget.widgetHandle);
               return !(widgetRect.left > rect.right  || widgetRect.right  < rect.left ||
                       widgetRect.top  > rect.bottom || widgetRect.bottom < rect.top);
             }
