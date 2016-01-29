@@ -80,6 +80,9 @@
       
       Polymer({
         is: 'yb-surface',
+        behaviors: [
+          Polymer.IronA11yKeysBehavior,
+        ],
         created: function() {
           var self = this;
           
@@ -370,8 +373,21 @@
             this.viewOrigin
           );
         },
-        zoomView: function(scaleMultiplier) {
-          this.setView(this.viewTranslate, this.viewScale * scaleMultiplier, this.viewOrigin);
+        zoom: function(zoomOffset) {
+          var surfaceRect = this.getBoundingClientRect();
+          var viewRootRect = this.viewRoot.getBoundingClientRect();
+          var surfaceCenter = {
+            x: surfaceRect.left + (surfaceRect.width  / 2),
+            y: surfaceRect.top  + (surfaceRect.height / 2),
+          }
+          this.zoomOnPosition(
+            {
+              x: (surfaceCenter.x - viewRootRect.left) / this.viewScale,
+              y: (surfaceCenter.y - viewRootRect.top)  / this.viewScale,
+            },
+            zoomOffset,
+            true
+          );
         },
         zoomOnPosition: function(position, zoomOffset) {
           this.setView(
@@ -399,6 +415,8 @@
             this.deselect();
           }
           
+          this.focus();
+          
           var cursorPosition = {
             x: event.offsetX - this.viewMargin,
             y: event.offsetY - this.viewMargin,
@@ -416,6 +434,50 @@
             });
             return false;
           }
+        },
+        keyBindings: {
+          'backspace':  'handleKey_Backspace',
+          'del delete': 'handleKey_Del',
+          'ctrl+a':     'handleKey_CtrlA',
+          'ctrl+d':     'handleKey_CtrlD',
+          'pageup':     'handleKey_PageUp',
+          'pagedown':   'handleKey_PageDown',
+          'ctrl+enter': 'handleKey_CtrlEnter',
+        },
+        handleKey_Backspace: function(event) {
+          event.preventDefault();
+          this.hideSelectedWidgets();
+          return false;
+        },
+        handleKey_Del: function(event) {
+          event.preventDefault();
+          this.deleteSelected();
+          return false;
+        },
+        handleKey_CtrlA: function(event) {
+          event.preventDefault();
+          this.selectAll();
+          return false;
+        },
+        handleKey_CtrlD: function(event) {
+          event.preventDefault();
+          this.deselect();
+          return false;
+        },
+        handleKey_PageUp: function(event) {
+          event.preventDefault();
+          this.zoom(0.2);
+          return false;
+        },
+        handleKey_PageDown: function(event) {
+          event.preventDefault();
+          this.zoom(-0.2);
+          return false;
+        },
+        handleKey_CtrlEnter: function(event) {
+          event.preventDefault();
+          this.toggleFullscreen();
+          return false;
         },
         getElementViewRect: function(element) {
           var elementClientRect = element.getBoundingClientRect();
@@ -874,6 +936,9 @@
           
           self.selectedWidgets = widgets;
         },
+        selectAll: function() {
+          this.selectWidgets(this.widgets);
+        },
         deselect: function() {
           this.selectedWidgets.forEach(function(widget) {
             widget.set('selected', false);
@@ -904,6 +969,34 @@
           return new Set(Array.from(this.selectedWidgets).filter(function(widget) {
             return widget.tagName === type.toUpperCase();
           }));
+        },
+        hideSelectedWidgets: function() {
+          var self = this;
+          self.getSelectedWidgetsTopLevel().forEach(function(widget) {
+            self.removeWidget(widget);
+          });
+        },
+        deleteSelected: function() {
+          var self = this;
+        
+          var widgetsToRemove = new Set(self.getSelectedWidgetsTopLevel());
+          
+          self.getConnectorsTouchingNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
+            widgetsToRemove.add(connector);
+          });
+          
+          var linkKeysToRemove = new Set(Array.from(self.getSelectedWidgetsOfType('yb-connector')).map(function(connector) {
+            return self.node_id.linkToKey(connector.link());
+          }));
+          var linksToRemove = Array.from(linkKeysToRemove).map(function(linkKey) {
+            return self.node_id.linkFromKey(linkKey);
+          });
+          
+          widgetsToRemove.forEach(function(widget) {
+            self.removeWidget(widget);
+          });
+
+          self.client.removeLinks(linksToRemove);
         },
         hideConnector: function(connector) {
           var self = this;
@@ -1292,34 +1385,12 @@
           this.attachWidget(setWidget, this.lastMenuPosition);
         },
         menuItem_DeleteSelected: function() {
-          var self = this;
-          self.closeSelectionMenu();
-          
-          var widgetsToRemove = new Set(self.getSelectedWidgetsTopLevel());
-          
-          self.getConnectorsTouchingNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
-            widgetsToRemove.add(connector);
-          });
-          
-          var linkKeysToRemove = new Set(Array.from(self.getSelectedWidgetsOfType('yb-connector')).map(function(connector) {
-            return self.node_id.linkToKey(connector.link());
-          }));
-          var linksToRemove = Array.from(linkKeysToRemove).map(function(linkKey) {
-            return self.node_id.linkFromKey(linkKey);
-          });
-          
-          widgetsToRemove.forEach(function(widget) {
-            self.removeWidget(widget);
-          });
-
-          self.client.removeLinks(linksToRemove);
+          this.closeSelectionMenu();
+          this.deleteSelected();
         },
         menuItem_HideSelected: function() {
-          var self = this;
-          self.closeSelectionMenu();
-          self.getSelectedWidgetsTopLevel().forEach(function(widget) {
-            self.removeWidget(widget);
-          });
+          this.closeSelectionMenu();
+          this.hideSelectedWidgets();
         },
         menuItem_CopySelected: function() {
           this.closeSelectionMenu();
