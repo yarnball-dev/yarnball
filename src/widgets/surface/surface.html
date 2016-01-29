@@ -87,7 +87,7 @@
           self.viewScale     = 1.0;
           self.viewOrigin    = {x: 0, y: 0};
           self.viewMargin    = 10000;
-          self.fullscreenEnabled = false;
+          self.isFullscreen  = false;
           
           self.widgets       = new Set();
           self.widgetsOfType = new Map();
@@ -153,11 +153,53 @@
               });
             }
           );
+          
+          // Fullscreen event handling
+          self.handleFullscreenEvent       = self.handleFullscreenEvent.bind(self);
+          self.handleWebkitFullscreenEvent = self.handleWebkitFullscreenEvent.bind(self);
+          self.handleMozFullscreenEvent    = self.handleMozFullscreenEvent.bind(self);
+          self.handleMSFullscreenEvent     = self.handleMSFullscreenEvent.bind(self);
+          if (self.requestFullscreen) {
+            document.addEventListener('fullscreenchange',       self.handleFullscreenEvent);
+          } else if (self.webkitRequestFullscreen) {
+            document.addEventListener('webkitfullscreenchange', self.handleWebkitFullscreenEvent);
+          } else if (self.mozRequestFullScreen) {
+            document.addEventListener('mozfullscreenchange',    self.handleMozFullscreenEvent);
+          } else if (self.msRequestFullscreen) {
+            document.addEventListener('MSFullscreenChange',     self.handleMSFullscreenEvent);
+          }
         },
-        toggleFullscreen: function() {
-        
-          if (!self.fullscreenEnabled) {
-        
+        detached: function() {
+          this.client.removeLinksListener(this.onLinks);
+          
+          if (self.requestFullscreen) {
+            document.removeEventListener('fullscreenchange',       self.handleFullscreenEvent);
+          } else if (self.webkitRequestFullscreen) {
+            document.removeEventListener('webkitfullscreenchange', self.handleWebkitFullscreenEvent);
+          } else if (self.mozRequestFullScreen) {
+            document.removeEventListener('mozfullscreenchange',    self.handleMozFullscreenEvent);
+          } else if (self.msRequestFullscreen) {
+            document.removeEventListener('MSFullscreenChange',     self.handleMSFullscreenEvent);
+          }
+        },
+        handleFullscreenEvent: function(event) {
+          this.isFullscreen = document.fullscreenEnabled && document.fullscreenElement === this;
+          this.classList.toggle('fullscreen', this.isFullscreen);
+        },
+        handleWebkitFullscreenEvent: function(event) {
+          this.isFullscreen = document.webkitFullscreenEnabled && document.webkitFullscreenElement === this;
+          this.classList.toggle('fullscreen', this.isFullscreen);
+        },
+        handleMozFullscreenEvent: function(event) {
+          this.isFullscreen = document.mozFullScreenEnabled && document.mozFullScreenElement === this;
+          this.classList.toggle('fullscreen', this.isFullscreen);
+        },
+        handleMSFullscreenEvent: function(event) {
+          this.isFullscreen = document.msFullscreenEnabled && document.msFullscreenElement === this;
+          this.classList.toggle('fullscreen', this.isFullscreen);
+        },
+        enterFullscreen: function(event) {
+          if (!this.isFullscreen) {
             if (this.requestFullscreen) {
               this.requestFullscreen();
             } else if (this.msRequestFullscreen) {
@@ -167,46 +209,27 @@
             } else if (this.webkitRequestFullscreen) {
               this.webkitRequestFullscreen();
             }
-            
-            this.styleBeforeFullscreen = {
-              position: this.style.position,
-              left:     this.style.left,
-              top:      this.style.top,
-              right:    this.style.right,
-              bottom:   this.style.bottom,
-            }
-            
-            this.style.display = 'fixed';
-            this.style.left   = 0;
-            this.style.top    = 0;
-            this.style.right  = 0;
-            this.style.bottom = 0;
-            
-            self.fullscreenEnabled = true;
-            
-          } else {
-          
-            if (document.exitFullscreen) {
-              document.exitFullscreen();
-            } else if (document.msExitFullscreen) {
-              document.msExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-              document.mozCancelFullScreen();
-            } else if (document.webkitExitFullscreen) {
-              document.webkitExitFullscreen();
-            }       
-            
-            this.style.position = this.styleBeforeFullscreen.position;
-            this.style.left     = this.styleBeforeFullscreen.left;
-            this.style.top      = this.styleBeforeFullscreen.top;
-            this.style.right    = this.styleBeforeFullscreen.right;
-            this.style.bottom   = this.styleBeforeFullscreen.bottom;
-            
-            self.fullscreenEnabled = false;
           }
         },
-        detached: function() {
-          this.client.removeLinksListener(this.onLinks);
+        exitFullscreen: function() {
+          if (this.isFullscreen) {
+            if (document.exitFullscreen) {
+              document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+              document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+              document.msExitFullscreen();
+            }
+          }
+        },
+        toggleFullscreen: function(event) {
+          if (!this.isFullscreen) {
+            this.enterFullscreen(event);
+          } else {
+            this.exitFullscreen();
+          }
         },
         hasOperation: function() {
           return this.currentOperation !== null;
