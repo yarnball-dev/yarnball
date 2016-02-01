@@ -411,20 +411,31 @@
           this.closeBackgroundMenu();
           this.closeSelectionMenu();
           
-          if (!event.ctrlKey) {
-            this.deselect();
-          }
-          
           this.focus();
           
-          var cursorPosition = {
-            x: event.offsetX - this.viewMargin,
-            y: event.offsetY - this.viewMargin,
-          }
-        
-          if (event.button === 2) {
+          var mouseEvent = this.translateMouseEvent(event);
           
-            this.lastMenuPosition = cursorPosition;
+          if (event.button === 0) {
+            
+            if (event.shiftKey) {
+              var nodeWidget = this.createNodeWidget();
+              this.attachWidget(nodeWidget, {
+                x: mouseEvent.positionView.x - 28,
+                y: mouseEvent.positionView.y - 28,
+              });
+            } else {
+              if (!event.ctrlKey) {
+                this.deselect();
+              }
+            }
+            
+          } else if (event.button === 2) {
+          
+            if (!event.ctrlKey) {
+              this.deselect();
+            }
+          
+            this.lastMenuPosition = mouseEvent.positionView;
           
             var surfaceRect = this.getBoundingClientRect();
           
