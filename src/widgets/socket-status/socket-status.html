@@ -1,0 +1,37 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<dom-module id="yb-socket-status">
+
+  <template>
+    <div>[[status]]</div>
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-socket-status',
+        properties: {
+          status: {
+            type: String,
+            value: '',
+          }
+        },
+        created: function() {
+          var self = this;
+          require(['client'], function(client) {
+            self.set('status', client.socket.connected ? 'connected' : 'disconnected');
+            client.socket.on('connect', function() {
+              self.set('status', 'connected');
+            });
+            client.socket.on('disconnect', function() {
+              self.set('status', 'disconnected');
+            });
+          });
+        },
+      });
+    })();
+  </script>
+
+</dom-module>
