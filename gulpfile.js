@@ -76,7 +76,7 @@ gulp.task('widgets-watch', function() {
 
 gulp.task('site-bower', function() {
 //   gulp.src(bowerFiles())
-  gulp.src('bower_components/**/*')
+  return gulp.src('bower_components/**/*')
     .pipe(gulp_if(yargs.argv.production, gulp_if('*.js', uglifyjs())))
 //     .pipe(gulp_if('*.html', htmlmin()))
     .pipe(gulp_if(yargs.argv.production, gulp_if('*.css', cssnano())))
@@ -84,7 +84,7 @@ gulp.task('site-bower', function() {
 });
 
 gulp.task('site-socket-io', function() {
-  gulp.src('node_modules/socket.io-client/**')
+  return gulp.src('node_modules/socket.io-client/**')
     .pipe(gulp_if(yargs.argv.production, gulp_if('*.js', uglifyjs())))
     .pipe(gulp.dest('dist/site/socket.io-client'));
 });
@@ -171,11 +171,12 @@ gulp.task('server-links', function() {
     .pipe(gulp.dest('dist/server/'));
 });
 
-gulp.task('server', ['server-npm', 'server-core', 'server-node-names', 'server-links'], function() {
+gulp.task('server-js', function() {
   return gulp.src('server/*.js')
     .pipe(gulp.dest('dist/server/'));
 });
 
+gulp.task('server', ['server-js', 'server-npm', 'server-core', 'server-node-names', 'server-links']);
 
 gulp.task('default', ['core', 'widgets', 'site', 'server']);
 
