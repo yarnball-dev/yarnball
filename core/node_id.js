@@ -1,6 +1,6 @@
-if (typeof define !== 'function') {
-  var define = require('amdefine')(module);
-}
+// Allow this AMD module to be loaded in Node.js
+// See https://www.npmjs.com/package/amdefine
+if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
 define(function() {
   
