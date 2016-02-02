@@ -183,10 +183,10 @@ gulp.task('default', ['core', 'widgets', 'site', 'server']);
 gulp.task('serve', ['default'], function() {
   spawn(
     'node',
-    ['server.js'],
+    ['server.js', '--serve-static'],
     {
       stdio: 'inherit',
-      cwd: 'dist/site/',
+      cwd: 'dist/server/',
     }
   );
 });

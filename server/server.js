@@ -1,6 +1,7 @@
 var express  = require('express');
 var http     = require('http');
 var socketio = require('socket.io');
+var yargs    = require('yargs');
 var fs       = require('fs');
 var readline = require('readline');
 
@@ -12,7 +13,9 @@ var node_id = require('./core/node_id');
 var web_    = require('./core/web');
 
 
-app.use(express.static('../site'));
+if (yargs.argv['serve-static']) {
+  app.use(express.static('../site'));
+}
 
 var web = web_();
 
