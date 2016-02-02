@@ -111,7 +111,7 @@
           
           self.currentOperation = null;
           
-          require(['client', 'node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id'], function(client, node_id) {
             self.client  = client;
             self.node_id = node_id;
           });
@@ -126,7 +126,7 @@
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
         
-          require(['client', 'node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id'], function(client, node_id) {
             self.client  = client;
             self.node_id = node_id;
             

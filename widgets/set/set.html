@@ -73,7 +73,7 @@
           self.widgetHandle = self.$.widgetHandle;
           self.widgetBody   = self.$.widgetBody;
           
-          require(['client', 'node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id'], function(client, node_id) {
             self.client  = client;
             self.node_id = node_id;
             self.refreshSet();
@@ -232,7 +232,7 @@
           
           self.$.setContent.set('enabled', self.isFilterValid());
           
-          require(['client', 'node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id'], function(client, node_id) {
             self.node_id = node_id;
             var nodeIdKeys = new Set(self.filterLinks(client.web.getLinks()).map(function(nodeId) {
               return self.node_id.toMapKey(nodeId);
@@ -312,7 +312,7 @@
             return;
           }
           var nodeWidgets = event.detail;
-          require(['client', 'node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id'], function(client, node_id) {
             var links = Array.from(nodeWidgets).map(function(nodeWidget) {
               if (!self.from) {
                 return {

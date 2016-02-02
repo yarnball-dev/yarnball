@@ -66,7 +66,7 @@
           self.connectorsVia  = new Set();
           self.connectorsTo   = new Set();
           
-          require(['client', 'node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id'], function(client, node_id) {
           
             self.client = client;
             self.id_ = node_id.fromHex(self.nodeId);

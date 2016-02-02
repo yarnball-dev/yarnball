@@ -20,7 +20,7 @@
         },
         created: function() {
           var self = this;
-          require(['client'], function(client) {
+          require(['core/client'], function(client) {
             self.set('status', client.socket.connected ? 'connected' : 'disconnected');
             client.socket.on('connect', function() {
               self.set('status', 'connected');

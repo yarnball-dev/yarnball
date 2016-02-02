@@ -1,4 +1,4 @@
-define(['socket.io-client/socket.io', 'web'], function(socket_io, web_) {
+define(['socket.io-client/socket.io', 'core/web'], function(socket_io, web_) {
   
   var socket = socket_io();
   
