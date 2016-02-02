@@ -8,11 +8,11 @@ var app = express();
 var server = http.Server(app);
 var io = socketio(server);
 
-var node_id = require('./node_id');
-var web_    = require('./web');
+var node_id = require('./core/node_id');
+var web_    = require('./core/web');
 
 
-app.use(express.static('.'));
+app.use(express.static('../site'));
 
 var web = web_();
 

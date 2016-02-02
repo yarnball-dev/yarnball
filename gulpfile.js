@@ -130,16 +130,6 @@ gulp.task('site-svg', function() {
     .pipe(browserSync.stream());
 });
 
-gulp.task('node-names', function() {
-  gulp.src('site/node_names.txt')
-    .pipe(gulp.dest('dist/site/'));
-});
-
-gulp.task('links', function() {
-  gulp.src('site/links.txt')
-    .pipe(gulp.dest('dist/site/'));
-});
-
 gulp.task('site', [
   'core',
   'widgets',
@@ -150,8 +140,6 @@ gulp.task('site', [
   'site-sass',
   'site-png',
   'site-svg',
-  'node-names',
-  'links',
 ]);
 
 gulp.task('site-watch', ['core-watch', 'widgets-watch'], function() {
@@ -162,17 +150,45 @@ gulp.task('site-watch', ['core-watch', 'widgets-watch'], function() {
 });
 
 
-gulp.task('default', ['core', 'widgets', 'site']);
+
+gulp.task('server-npm', function() {
+  return gulp.src('node_modules/**/*')
+    .pipe(gulp.dest('dist/server/node_modules'));
+});
+
+gulp.task('server-core', function() {
+  return gulp.src('core/**/*')
+    .pipe(gulp.dest('dist/server/core'));
+});
+
+gulp.task('server-node-names', function() {
+  gulp.src('server/node_names.txt')
+    .pipe(gulp.dest('dist/server/'));
+});
+
+gulp.task('server-links', function() {
+  gulp.src('server/links.txt')
+    .pipe(gulp.dest('dist/server/'));
+});
+
+gulp.task('server', ['server-npm', 'server-core', 'server-node-names', 'server-links'], function() {
+  return gulp.src('server/*.js')
+    .pipe(gulp.dest('dist/server/'));
+});
+
+
+gulp.task('default', ['core', 'widgets', 'site', 'server']);
 
 
 gulp.task('serve', ['default'], function() {
-  spawn('node',
-        ['server.js'],
-        {
-          stdio: 'inherit',
-          cwd: 'dist/',
-        }
-       )
+  spawn(
+    'node',
+    ['server.js'],
+    {
+      stdio: 'inherit',
+      cwd: 'dist/site/',
+    }
+  );
 });
 
 gulp.task('browser-sync', ['site', 'site-watch'], function() {
@@ -183,13 +199,13 @@ gulp.task('browser-sync', ['site', 'site-watch'], function() {
       port: 5001,
     },
 //     notify: false,
-    server: {
-      baseDir: './dist/site',
-    },
-//     proxy: {
-//       target: 'localhost:3000',
-//       ws: true
+//     server: {
+//       baseDir: './dist/site',
 //     },
+    proxy: {
+      target: 'localhost:3000',
+      ws: true
+    },
     files: [
       "dist/site/*.html",
       "dist/site/widgets/**/*.html",
