@@ -116,6 +116,8 @@
               var detachedWidgets = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
                 nodeWidget.style.transform = null;
                 nodeWidget.classList.remove('yb-set');
+                self.nodeWidgetsInSet.delete(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)));
+                self.widgets.delete(nodeWidget);
                 return Polymer.dom(self.$.setContent).removeChild(nodeWidget);
               });
               self.$.setContent.fire('widgetsDraggedOut', {
@@ -302,9 +304,11 @@
         },
         removeNodeWidget: function(nodeId) {
           var nodeWidget = this.nodeWidgetsInSet.get(this.node_id.toMapKey(nodeId));
-          this.widgets.delete(nodeWidget);
-          this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
-          Polymer.dom(this.$.setContent).removeChild(nodeWidget);
+          if (nodeWidget) {
+            this.widgets.delete(nodeWidget);
+            this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
+            Polymer.dom(this.$.setContent).removeChild(nodeWidget);
+          }
         },
         nodesDropped: function(event) {
           var self = this;
