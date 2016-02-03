@@ -193,7 +193,7 @@ define(function() {
       },
       mouseup: function() {
       
-        surface.classList.remove('dragging-nodes');
+        surface.classList.remove('dragging-widgets');
     
         draggingWidgets.forEach(function(widget) {
           widget.classList.remove('dragging');
