@@ -9,6 +9,7 @@
 <link rel="import" href="../node/node.html">
 <link rel="import" href="../connector/connector.html">
 <link rel="import" href="../set/set.html">
+<link rel="import" href="../all-nodes/all-nodes.html">
 
 <link rel="import" href="surface-styles.html">
 
@@ -29,6 +30,13 @@
     <paper-button id="fullscreenButton" on-tap="toggleFullscreen">
       <iron-icon icon="icons:fullscreen" item-icon></iron-icon>
     </paper-button>
+    
+    <div id="searchPanel" class="closed">
+      <div class="panel-handle" on-tap="toggleSearchPanel">
+        <iron-icon icon="icons:search" item-icon></iron-icon>
+      </div>
+      <yb-all-nodes id="allNodesList"></yb-all-nodes>
+    </div>
     
     <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
@@ -122,6 +130,7 @@
           
           self.viewRoot = self.$.viewRoot;
           self.background = self.$.background;
+          self.searchPanel = self.$.searchPanel;
           self.boxSelection = self.$.boxSelection;
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
@@ -232,6 +241,16 @@
             this.enterFullscreen(event);
           } else {
             this.exitFullscreen();
+          }
+        },
+        toggleSearchPanel: function() {
+          if (document.activeElement !== this.$.allNodesList.searchTextbox) {
+            this.searchPanel.classList.remove('closed');
+            this.$.allNodesList.searchTextbox.focus();
+            this.$.allNodesList.searchTextbox.select();
+          } else {
+            this.searchPanel.classList.add('closed');
+            this.focus();
           }
         },
         hasOperation: function() {
@@ -454,11 +473,14 @@
           'pageup':     'handleKey_PageUp',
           'pagedown':   'handleKey_PageDown',
           'ctrl+enter': 'handleKey_CtrlEnter',
+          'ctrl+f':     'handleKey_CtrlF',
         },
         handleKey_Backspace: function(event) {
-          event.preventDefault();
-          this.hideSelectedWidgets();
-          return false;
+          if (document.activeElement === this) {
+            event.preventDefault();
+            this.hideSelectedWidgets();
+            return false;
+          }
         },
         handleKey_Del: function(event) {
           event.preventDefault();
@@ -488,6 +510,11 @@
         handleKey_CtrlEnter: function(event) {
           event.preventDefault();
           this.toggleFullscreen();
+          return false;
+        },
+        handleKey_CtrlF: function(event) {
+          event.preventDefault();
+          this.toggleSearchPanel();
           return false;
         },
         getElementViewRect: function(element) {
@@ -533,7 +560,7 @@
         getWidgetsInRect: function(rect) {
           var self = this;
           return Array.from(self.widgets).filter(function(widget) {
-            if (widget.widgetHandle) {
+            if (widget.widgetHandle && !widget.widgetHandle.classList.contains('hidden')) {
               var widgetRect = self.getElementViewRect(widget.widgetHandle);
               return !(widgetRect.left > rect.right  || widgetRect.right  < rect.left ||
                       widgetRect.top  > rect.bottom || widgetRect.bottom < rect.top);
