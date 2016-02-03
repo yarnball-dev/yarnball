@@ -157,6 +157,7 @@
               '/widgets/surface/box-selection-operation.js',
               '/widgets/surface/drag-operation.js',
               '/widgets/surface/new-connector-drag-operation.js',
+              '/widgets/surface/rename-operation.js',
             ],
             function() {
               var operations = Array.from(arguments);
@@ -484,23 +485,28 @@
           'ctrl+enter':         'handleKey_CtrlEnter',
           'ctrl+f':             'handleKey_CtrlF',
           'up down left right': 'handleKey_ArrowKeys',
+          'enter':              'handleKey_Enter',
         },
         handleKey_Backspace: function(event) {
-          if (document.activeElement === this) {
+          if (!this.hasOperation() && document.activeElement === this) {
             event.preventDefault();
             this.hideSelectedWidgets();
             return false;
           }
         },
         handleKey_Del: function(event) {
-          event.preventDefault();
-          this.deleteSelected();
-          return false;
+          if (!this.hasOperation() && document.activeElement === this) {
+            event.preventDefault();
+            this.deleteSelected();
+            return false;
+          }
         },
         handleKey_CtrlA: function(event) {
-          event.preventDefault();
-          this.selectAll();
-          return false;
+          if (!this.hasOperation()) {
+            event.preventDefault();
+            this.selectAll();
+            return false;
+          }
         },
         handleKey_CtrlD: function(event) {
           event.preventDefault();
@@ -528,14 +534,19 @@
           return false;
         },
         handleKey_ArrowKeys: function(event) {
-          var keyToDirection = {
-            ArrowUp:    'up',
-            ArrowDown:  'down',
-            ArrowLeft:  'left',
-            ArrowRight: 'right',
+          if (!this.hasOperation()) {
+            var keyToDirection = {
+              ArrowUp:    'up',
+              ArrowDown:  'down',
+              ArrowLeft:  'left',
+              ArrowRight: 'right',
+            }
+            var direction = keyToDirection[event.detail.keyboardEvent.code];
+            this.moveSelection(direction);
           }
-          var direction = keyToDirection[event.detail.keyboardEvent.code];
-          this.moveSelection(direction);
+        },
+        handleKey_Enter: function(event) {
+          this.fire('enterKey', event);
         },
         getElementViewRect: function(element) {
           var elementClientRect = element.getBoundingClientRect();
@@ -571,10 +582,14 @@
           }
         },
         getWidgetCenter: function(widget) {
-          var nodeRect = this.getElementViewRect(widget);
-          return {
-            x: nodeRect.left + (nodeRect.width  / 2),
-            y: nodeRect.top  + (nodeRect.height / 2),
+          if (widget.widgetHandle && widget.tagName !== 'yb-connector'.toUpperCase()) {
+            var nodeRect = this.getElementViewRect(widget.widgetHandle);
+            return {
+              x: nodeRect.left + (nodeRect.width  / 2),
+              y: nodeRect.top  + (nodeRect.height / 2),
+            }
+          } else {
+            return null;
           }
         },
         getWidgetsInRect: function(rect) {
@@ -594,7 +609,7 @@
           var closestWidgetDistance = null;
           self.widgets.forEach(function(otherWidget) {
             var otherWidgetPosition = self.getWidgetCenter(otherWidget);
-            if (otherWidget !== widget && !self.isWidgetHidden(otherWidget) && self.direction(widgetPosition, otherWidgetPosition) === direction) {
+            if (otherWidget !== widget && otherWidgetPosition && !self.isWidgetHidden(otherWidget) && self.direction(widgetPosition, otherWidgetPosition) === direction) {
               var distanceToWidget = self.distance(widgetPosition, otherWidgetPosition);
               if (closestWidget === null || (distanceToWidget < closestWidgetDistance)) {
                 closestWidget = otherWidget;
@@ -1032,7 +1047,15 @@
           self.selectedWidgets = widgets;
         },
         selectAll: function() {
-          this.selectWidgets(this.widgets);
+          var self = this;
+          var nonHiddenWidgets = Array.from(this.widgets).filter(function(widget) {
+            return !self.isWidgetHidden(widget);
+          });
+          self.selectWidgets(nonHiddenWidgets);
+          var nodeWidgets = nonHiddenWidgets.filter(function(widget) {
+            return widget.tagName === 'yb-node'.toUpperCase();
+          });
+          self.revealLinksBetweenNodeWidgets(nodeWidgets, false);
         },
         deselect: function() {
           this.selectedWidgets.forEach(function(widget) {
@@ -1211,6 +1234,8 @@
           var self = this;
           
           var delay = 0.0;
+          
+          var nodeWidgets = new Set(nodeWidgets);
           
           self.client.web.getLinks().forEach(function(link) {
             var result = self.makeConnectorsForLink(link, {active: activate}, nodeWidgets);

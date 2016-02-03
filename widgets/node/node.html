@@ -131,7 +131,6 @@
         listeners: {
           mousedown: 'mousedown',
           mouseup:   'mouseup',
-          dblclick:  'dblclick',
         },
         mousedown: function(event) {
           var self = this;
@@ -189,13 +188,6 @@
             this.fire('contextMenu', event);
           }
         },
-        dblclick: function(event) {
-          if (!this.isEditing) {
-            this.startEditing();
-            event.preventDefault();
-            return false;
-          }
-        },
         startEditing: function() {
           this.set('isEditing', true);
           this.$.input_box.style.width = this.clientWidth + 'px';
@@ -218,6 +210,7 @@
           this.$.input_box.classList.add('hidden');
           this.set('isEditing', false);
           this.updateDimensions();
+          this.fire('finishedEditing');
         },
         onBlur: function(event) {
           if (this.isEditing) {
