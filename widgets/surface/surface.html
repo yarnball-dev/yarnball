@@ -31,8 +31,8 @@
       <iron-icon icon="icons:fullscreen" item-icon></iron-icon>
     </paper-button>
     
-    <div id="searchPanel" class="closed">
-      <div class="panel-handle" on-tap="toggleSearchPanel">
+    <div id="searchPanel" class="hidden">
+      <div class="panel-handle" on-tap="searchPanelHandleClicked">
         <iron-icon icon="icons:search" item-icon></iron-icon>
       </div>
       <yb-all-nodes id="allNodesList"></yb-all-nodes>
@@ -243,13 +243,22 @@
             this.exitFullscreen();
           }
         },
-        toggleSearchPanel: function() {
-          if (document.activeElement !== this.$.allNodesList.searchTextbox) {
-            this.searchPanel.classList.remove('closed');
+        searchPanelHandleClicked: function() {
+          if (this.searchPanel.classList.contains('hidden')) {
+            this.searchPanel.classList.remove('hidden');
             this.$.allNodesList.searchTextbox.focus();
             this.$.allNodesList.searchTextbox.select();
           } else {
-            this.searchPanel.classList.add('closed');
+            this.searchPanel.classList.add('hidden');
+          }
+        },
+        toggleSearchPanel: function() {
+          if (document.activeElement !== this.$.allNodesList.searchTextbox) {
+            this.searchPanel.classList.remove('hidden');
+            this.$.allNodesList.searchTextbox.focus();
+            this.$.allNodesList.searchTextbox.select();
+          } else {
+            this.searchPanel.classList.add('hidden');
             this.focus();
           }
         },
@@ -466,14 +475,15 @@
           }
         },
         keyBindings: {
-          'backspace':  'handleKey_Backspace',
-          'del delete': 'handleKey_Del',
-          'ctrl+a':     'handleKey_CtrlA',
-          'ctrl+d':     'handleKey_CtrlD',
-          'pageup':     'handleKey_PageUp',
-          'pagedown':   'handleKey_PageDown',
-          'ctrl+enter': 'handleKey_CtrlEnter',
-          'ctrl+f':     'handleKey_CtrlF',
+          'backspace':          'handleKey_Backspace',
+          'del delete':         'handleKey_Del',
+          'ctrl+a':             'handleKey_CtrlA',
+          'ctrl+d':             'handleKey_CtrlD',
+          'pageup':             'handleKey_PageUp',
+          'pagedown':           'handleKey_PageDown',
+          'ctrl+enter':         'handleKey_CtrlEnter',
+          'ctrl+f':             'handleKey_CtrlF',
+          'up down left right': 'handleKey_ArrowKeys',
         },
         handleKey_Backspace: function(event) {
           if (document.activeElement === this) {
@@ -516,6 +526,16 @@
           event.preventDefault();
           this.toggleSearchPanel();
           return false;
+        },
+        handleKey_ArrowKeys: function(event) {
+          var keyToDirection = {
+            ArrowUp:    'up',
+            ArrowDown:  'down',
+            ArrowLeft:  'left',
+            ArrowRight: 'right',
+          }
+          var direction = keyToDirection[event.detail.keyboardEvent.code];
+          this.moveSelection(direction);
         },
         getElementViewRect: function(element) {
           var elementClientRect = element.getBoundingClientRect();
@@ -560,12 +580,38 @@
         getWidgetsInRect: function(rect) {
           var self = this;
           return Array.from(self.widgets).filter(function(widget) {
-            if (widget.widgetHandle && !widget.widgetHandle.classList.contains('hidden')) {
+            if (widget.widgetHandle && !self.isWidgetHidden(widget)) {
               var widgetRect = self.getElementViewRect(widget.widgetHandle);
               return !(widgetRect.left > rect.right  || widgetRect.right  < rect.left ||
                       widgetRect.top  > rect.bottom || widgetRect.bottom < rect.top);
             }
           });
+        },
+        getAdjacentWidget: function(widget, direction) {
+          var self = this;
+          var widgetPosition = self.getWidgetCenter(widget);
+          var closestWidget = null;
+          var closestWidgetDistance = null;
+          self.widgets.forEach(function(otherWidget) {
+            var otherWidgetPosition = self.getWidgetCenter(otherWidget);
+            if (otherWidget !== widget && !self.isWidgetHidden(otherWidget) && self.direction(widgetPosition, otherWidgetPosition) === direction) {
+              var distanceToWidget = self.distance(widgetPosition, otherWidgetPosition);
+              if (closestWidget === null || (distanceToWidget < closestWidgetDistance)) {
+                closestWidget = otherWidget;
+                closestWidgetDistance = distanceToWidget;
+              }
+            }
+          });
+          return closestWidget;
+        },
+        moveSelection: function(direction) {
+          if (this.selectedWidgets.size === 1) {
+            var selectedWidget = Array.from(this.selectedWidgets)[0];
+            var adjacentWidget = this.getAdjacentWidget(selectedWidget, direction);
+            if (adjacentWidget) {
+              this.selectWidgets([adjacentWidget]);
+            }
+          }
         },
         getWidgetsForNode: function(id) {
           var idMapKey = this.node_id.toMapKey(id);
@@ -628,18 +674,29 @@
           
           return nodeWidgetTriples;
         },
-        getNodeWidgetTripleDistance: function(nodeWidgetTriple) {
-          function distance(a, b) {
-            var dx = a.x - b.x;
-            var dy = a.y - b.y;
-            return Math.sqrt(dx*dx + dy*dy);
+        distance: function(a, b) {
+          var dx = a.x - b.x;
+          var dy = a.y - b.y;
+          return Math.sqrt(dx*dx + dy*dy);
+        },
+        direction: function(a, b) {
+          var delta = {
+            x: b.x - a.x,
+            y: b.y - a.y,
           }
-          
+          var downLeft  = (-delta.x + delta.y) > 0;
+          var downRight = ( delta.x + delta.y) > 0;
+          if ( downLeft &&  downRight) return 'down';
+          if (!downLeft && !downRight) return 'up';
+          if ( downLeft && !downRight) return 'left';
+          if (!downLeft &&  downRight) return 'right';
+        },
+        getNodeWidgetTripleDistance: function(nodeWidgetTriple) {
           var fromPos = this.getWidgetCenter(nodeWidgetTriple.from);
           var viaPos  = this.getWidgetCenter(nodeWidgetTriple.via);
           var toPos   = this.getWidgetCenter(nodeWidgetTriple.to);
           
-          return distance(fromPos, viaPos) + distance(viaPos, toPos);
+          return this.distance(fromPos, viaPos) + this.distance(viaPos, toPos);
         },
         makeConnectorsForLink: function(link, newConnectorOptions, nodeWidgets) {
           var self = this;
@@ -985,6 +1042,15 @@
         },
         isTopLevelWidget: function(widget) {
           return widget.parentNode === this.viewRoot;
+        },
+        isWidgetHidden: function(widget) {
+          if (widget.classList.contains('hidden')) {
+            return true;
+          }
+          if (widget.parentNode && widget.parentNode !== this) {
+            return this.isWidgetHidden(widget.parentNode);
+          }
+          return false;
         },
         setWidgetPosition: function(widget, position) {
           widget.style.left = position.x + 'px';
