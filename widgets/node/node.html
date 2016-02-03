@@ -70,16 +70,23 @@
           
             self.client = client;
             self.id_ = node_id.fromHex(self.nodeId);
-            if (client.hasNodeName(self.id_)) {
-              self.set('name', client.getNodeName(self.id_));
+            if (client.web.hasName(self.id_)) {
+              self.set('name', client.web.getName(self.id_));
             }
             
             self.widgetId = node_id.make();
             
-            client.web.onNodeNames(function(nodes) {
-              nodes.forEach(function(node) {
+            client.web.onNames(function(namesAdded, namesRemoved) {
+              namesAdded.forEach(function(node) {
                 if (node_id.equal(node.id, self.id_)) {
                   self.set('name', node.name);
+                  self.updateStyles();
+                  self.updateDimensions();
+                }
+              });
+              namesRemoved.forEach(function(node) {
+                if (node_id.equal(node, self.id_)) {
+                  self.set('name', '');
                   self.updateStyles();
                   self.updateDimensions();
                 }
@@ -199,12 +206,18 @@
         },
         finishEditing: function() {
           var newName = this.$.input_box.value;
-          if (this.client.getNodeName(this.id_) !== newName) {
-            this.client.setNodeName(this.id_, newName);
-            this.$.input_box.classList.add('hidden');
-            this.set('isEditing', false);
-            this.updateDimensions();
+          if (newName) {
+            if (this.client.web.getName(this.id_) !== newName) {
+              this.client.addNames([{id: this.id_, name: newName}]);
+            }
+          } else {
+            if (this.client.web.hasName(this.id_)) {
+              this.client.removeNames([this.id_]);
+            }
           }
+          this.$.input_box.classList.add('hidden');
+          this.set('isEditing', false);
+          this.updateDimensions();
         },
         onBlur: function(event) {
           if (this.isEditing) {

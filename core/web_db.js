@@ -11,19 +11,37 @@ define(['./node_id', 'level'], function(node_id, level) {
   WebDb.prototype.merge = function(web, callback) {
     var self = this;
     web.getNames(function(names) {
-      self.setNames(names, callback);
+      self.addNames(names, callback);
     });
     web.getLinks(function(links) {
       self.addLinks(links);
     });
   }
   
-  WebDb.prototype.setNames = function(names, callback) {
-    var ops = names.map(function(nodeName) {
+  
+  // Names
+  
+  WebDb.prototype.addNames = function(names, callback) {
+    var ops = names.map(function(node) {
       return {
         type: 'put',
-        key: 'name:' + node_id.toHex(nodeName.id),
-        value: nodeName.name,
+        key: 'name:' + node_id.toHex(node.id),
+        value: node.name,
+      }
+    });
+    this.db.batch(ops, function(err) {
+      if (err) return console.log(err);
+      if (callback) {
+        callback();
+      }
+    });
+  }
+  
+  WebDb.prototype.removeNames = function(nodes, callback) {
+    var ops = nodes.map(function(nodeId) {
+      return {
+        type: 'del',
+        key: 'name:' + node_id.toHex(nodeId),
       }
     });
     this.db.batch(ops, function(err) {
@@ -55,6 +73,9 @@ define(['./node_id', 'level'], function(node_id, level) {
         callback(names);
       });
   }
+  
+  
+  // Links
   
   WebDb.prototype.addLinks = function(links, callback) {
     var ops = links.map(function(link) {

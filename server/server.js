@@ -31,16 +31,26 @@ io.on('connection', function(socket) {
   });
   
   webDb.getNames(function(names) {
-    socket.emit('setNodeNames', names);
+    socket.emit('addNames', names);
   });
   webDb.getLinks(function(links) {
     socket.emit('addLinks', links);
   });
   
-  socket.on('setNodeName', function(node) {
-    console.log('Setting ' + node_id.toHex(node.id) + ' name to "' + node.name + '"');
-    socket.broadcast.emit('setNodeName', node);
-    webDb.setNames([{id: node.id, name: node.name}]);
+  socket.on('addNames', function(names) {
+    names.forEach(function(node) {
+      console.log('Setting ' + node_id.toHex(node.id) + ' name to "' + node.name + '"');
+    });
+    socket.broadcast.emit('addNames', names);
+    webDb.addNames(names);
+  });
+  
+  socket.on('removeNames', function(nodes) {
+    nodes.forEach(function(nodeId) {
+      console.log('Removing name for ' + node_id.toHex(nodeId));
+    });
+    socket.broadcast.emit('removeNames', nodes);
+    webDb.removeNames(nodes);
   });
   
   socket.on('addLinks', function(links) {

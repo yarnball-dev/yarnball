@@ -140,7 +140,7 @@
             self.node_id = node_id;
             
             self.onLinks = self.onLinks.bind(self);
-            client.onLinks(self.onLinks);
+            client.web.onLinks(self.onLinks);
         
             self.attachWidget(self.createNodeWidget(node_id.fromHex('52f9cf0e223d559931856acc98400f21')), {x: 100, y: 40});
             self.attachWidget(self.createNodeWidget(node_id.fromHex('1264ed87a8274e5188f9020954811805')), {x: 100, y: 100});
@@ -182,7 +182,7 @@
           }
         },
         detached: function() {
-          this.client.removeLinksListener(this.onLinks);
+          this.client.web.removeLinksListener(this.onLinks);
           
           if (self.requestFullscreen) {
             document.removeEventListener('fullscreenchange',       self.handleFullscreenEvent);

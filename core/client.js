@@ -21,12 +21,12 @@ define(['socket.io-client/socket.io', 'core/web'], function(socket_io, web_) {
   
   var web = web_();
   
-  socket.on('setNodeNames', function(nodes) {
-    web.setNodeNames(nodes);
+  socket.on('addNames', function(names) {
+    web.addNames(names);
   });
   
-  socket.on('setNodeName', function(node) {
-    web.setNodeName(node.id, node.name);
+  socket.on('removeNames', function(nodes) {
+    web.removeNames(nodes);
   });
   
   socket.on('addLinks', function(links) {
@@ -40,17 +40,13 @@ define(['socket.io-client/socket.io', 'core/web'], function(socket_io, web_) {
   return {
     socket: socket,
     web: web,
-    setNodeName: function(id, name) {
-      if (web.getNodeName(id) !== name) {
-        web.setNodeName(id, name);
-        socket.emit('setNodeName', {id: id, name: name});
-      }
+    addNames: function(names) {
+      web.addNames(names);
+      socket.emit('addNames', names);
     },
-    hasNodeName: function(id) {
-      return web.hasNodeName(id);
-    },
-    getNodeName: function(id) {
-      return web.getNodeName(id);
+    removeNames: function(nodes) {
+      web.removeNames(nodes);
+      socket.emit('removeNames', nodes);
     },
     addLinks: function(links) {
       web.addLinks(links);
@@ -59,12 +55,6 @@ define(['socket.io-client/socket.io', 'core/web'], function(socket_io, web_) {
     removeLinks: function(links) {
       web.removeLinks(links);
       socket.emit('removeLinks', Array.from(links));
-    },
-    onLinks: function(callback) {
-      web.onLinks(callback);
-    },
-    removeLinksListener: function(callback) {
-      web.removeLinksListener(callback);
     },
   }
 });

@@ -5,66 +5,63 @@ if (typeof define !== 'function') { var define = require('amdefine')(module); }
 define(['./node_id'], function(node_id) {
   
   function Web() {
-    this.nodeNames = new Map();
-    this.links     = new Set();
+    this.names = new Map();
+    this.links = new Set();
     
-    this._onNodeNames = new Set();
+    this._onNames = new Set();
     this._onLinks     = new Set();
   }
   
   Web.prototype.getNodes = function() {
-    return Array.from(this.nodeNames.keys(), function(entry) {
+    return Array.from(this.names.keys(), function(entry) {
       return node_id.fromMapKey(entry);
     });
   }
   
-  Web.prototype.getNodeNames = function() {
-    return Array.from(this.nodeNames.entries(), function(entry) {
+  
+  // Names
+  
+  Web.prototype.getNames = function() {
+    return Array.from(this.names.entries(), function(entry) {
       return {id: node_id.fromMapKey(entry[0]), name: entry[1]};
     });
   }
   
-  Web.prototype.setNodeNames = function(nodes) {
+  Web.prototype.addNames = function(names) {
     var self = this;
-    self.nodeNames.clear();
-    nodes.forEach(function(node) {
-      self.nodeNames.set(node_id.toMapKey(node.id), node.name);
+    names.forEach(function(node) {
+      self.names.set(node_id.toMapKey(node.id), node.name);
     });
-    this._notifyNodeNames();
+    this._notifyNames(names, []);
   }
   
-  Web.prototype.setNodeName = function(id, name) {
-    var nodeKey = node_id.toMapKey(id);
-    if (this.nodeNames.get(nodeKey) !== name) {
-      this.nodeNames.set(nodeKey, name);
-      this._notifyNodeNames([{id: id, name: name}]);
-    }
+  Web.prototype.removeNames = function(nodes) {
+    var self = this;
+    nodes.forEach(function(nodeId) {
+      self.names.delete(node_id.toMapKey(nodeId));
+    });
+    this._notifyNames([], nodes);
   }
   
-  Web.prototype.hasNodeName = function(id) {
-    return this.nodeNames.has(node_id.toMapKey(id));
+  Web.prototype.hasName = function(id) {
+    return this.names.has(node_id.toMapKey(id));
   }
   
-  Web.prototype.getNodeName = function(nodeId) {
+  Web.prototype.getName = function(nodeId) {
     var mapKey = node_id.toMapKey(nodeId);
-    if (!this.nodeNames.has(mapKey)) {
+    if (!this.names.has(mapKey)) {
       return "";
     } else {
-      return this.nodeNames.get(mapKey);
+      return this.names.get(mapKey);
     }
   }
   
-  Web.prototype.addNewNode = function(name) {
-    var id = node_id.make();
-    this.nodeNames.set(node_id.toMapKey(id), name);
-    var node = {id: id, name: name};
-    this._notifyNodeNames([node]);
-    return node;
+  Web.prototype.onNames = function(callback) {
+    this._onNames.add(callback);
   }
   
-  Web.prototype.onNodeNames = function(callback) {
-    this._onNodeNames.add(callback);
-  }
+  
+  // Links
   
   Web.prototype.addLinks = function(links) {
     var self = this;
@@ -137,13 +134,13 @@ define(['./node_id'], function(node_id) {
     this._onLinks.delete(callback);
   }
   
-  Web.prototype._notifyNodeNames = function(nodes) {
-    if (typeof nodes === 'undefined') {
-      nodes = this.getNodeNames();
-    }
-    var callbacks = new Set(this._onNodeNames);
+  
+  // Private
+  
+  Web.prototype._notifyNames = function(namesAdded, namesRemoved) {
+    var callbacks = new Set(this._onNames);
     callbacks.forEach(function(callback) {
-      callback(nodes);
+      callback(namesAdded, namesRemoved);
     });
   }
   

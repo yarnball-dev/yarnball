@@ -31,17 +31,20 @@
             self.client = client;
             self.node_id = node_id;
           
-            client.web.getNodeNames().forEach(function(nodeName) {
-              self.addNodeWidget(nodeName.id);
+            client.web.getNames().forEach(function(node) {
+              self.addNodeWidget(node.id);
             });
-            client.web.onNodeNames(function(names) {
-              names.forEach(function(nodeName) {
-                if (self.nodeWidgets.has(self.node_id.toMapKey(nodeName.id))) {
-                  var nodeWidget = self.nodeWidgets.get(self.node_id.toMapKey(nodeName.id));
-                  nodeWidget.set('name', nodeName.name);
+            client.web.onNames(function(namesAdded, namesRemoved) {
+              namesAdded.forEach(function(node) {
+                if (self.nodeWidgets.has(self.node_id.toMapKey(node.id))) {
+                  var nodeWidget = self.nodeWidgets.get(self.node_id.toMapKey(node.id));
+                  nodeWidget.set('name', node.name);
                 } else {
-                  self.addNodeWidget(nodeName.id, nodeName.name);
+                  self.addNodeWidget(node.id, node.name);
                 }
+              });
+              namesRemoved.forEach(function(node) {
+                self.removeNodeWidget(node);
               });
               self.applySearch();
             });
@@ -54,6 +57,13 @@
             nodeWidget.set('name', name);
             this.nodeWidgets.set(this.node_id.toMapKey(nodeId), nodeWidget);
             Polymer.dom(this.widgetsContainer).appendChild(nodeWidget);
+          }
+        },
+        removeNodeWidget: function(nodeId) {
+          if (this.nodeWidgets.has(this.node_id.toMapKey(nodeId))) {
+            var nodeWidget = this.nodeWidgets.get(this.node_id.toMapKey(nodeId));
+            this.nodeWidgets.delete(this.node_id.toMapKey(nodeId));
+            Polymer.dom(this.widgetsContainer).removeChild(nodeWidget);
           }
         },
         searchTextboxChanged: function(event) {
