@@ -10,11 +10,6 @@ define(function() {
     
     var surface = self.surface;
     
-    if (event.detail.shiftKey) {
-      var newWidgets = surface.duplicateWidgets(surface.getSelectedWidgets());
-      surface.selectWidgets(newWidgets);
-    }
-
     var draggingWidgets = surface.getSelectedWidgets();
     
     // Prevent dragging nested widgets
@@ -74,7 +69,7 @@ define(function() {
     dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
       dragdropArea.fire('widgetDragStart', {
         widgets: nodeWidgets,
-        mouseEvent: event.detail,
+        mouseEvent: event,
       });
       dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
     });
@@ -165,7 +160,7 @@ define(function() {
     
     // Begin drag
     
-    surface.captureMouse(event.detail, {
+    surface.captureMouse(event, {
       cursor: '-webkit-grabbing',
       mousemove: function(options) {
       
@@ -226,18 +221,22 @@ define(function() {
   
   return {
     install: function(surface) {
-      
       surface.addEventListener('widgetAttached', function(event) {
         var widget = event.detail;
         widget.addEventListener('dragStart', function(event) {
           if (!surface.hasOperation()) {
             event.preventDefault();
-            surface.beginOperation(DragOperation, event);
+            if (event.detail.shiftKey) {
+              var newWidgets = surface.duplicateWidgets(surface.getSelectedWidgets());
+              surface.selectWidgets(newWidgets);
+            }
+            surface.beginOperation(DragOperation, event.detail);
             return false;
           }
         });
       });
-    }
+      surface.DragOperation = DragOperation;
+    },
   }
   
 });

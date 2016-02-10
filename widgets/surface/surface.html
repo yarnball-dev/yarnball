@@ -437,38 +437,42 @@
         },
         backgroundMousedown: function(event) {
         
-          this.closeBackgroundMenu();
-          this.closeSelectionMenu();
+          var self = this;
+        
+          self.closeBackgroundMenu();
+          self.closeSelectionMenu();
           
-          this.focus();
+          self.focus();
           
-          var mouseEvent = this.translateMouseEvent(event);
+          var mouseEvent = self.translateMouseEvent(event);
           
           if (event.button === 0) {
             
             if (event.shiftKey) {
-              var nodeWidget = this.createNodeWidget();
-              this.attachWidget(nodeWidget, {
+              var nodeWidget = self.createNodeWidget();
+              self.attachWidget(nodeWidget, {
                 x: mouseEvent.positionView.x - 28,
                 y: mouseEvent.positionView.y - 28,
               });
+              self.selectWidgets([nodeWidget]);
+              self.beginOperation(self.DragOperation, event);
             } else {
               if (!event.ctrlKey) {
-                this.deselect();
+                self.deselect();
               }
             }
             
           } else if (event.button === 2) {
           
             if (!event.ctrlKey) {
-              this.deselect();
+              self.deselect();
             }
           
-            this.lastMenuPosition = mouseEvent.positionView;
+            self.lastMenuPosition = mouseEvent.positionView;
           
-            var surfaceRect = this.getBoundingClientRect();
+            var surfaceRect = self.getBoundingClientRect();
           
-            this.openBackgroundMenu({
+            self.openBackgroundMenu({
               x: event.pageX - surfaceRect.left,
               y: event.pageY - surfaceRect.top,
             });
