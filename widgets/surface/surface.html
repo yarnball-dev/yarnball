@@ -1046,6 +1046,15 @@
           
           self.selectedWidgets = widgets;
         },
+        deselectWidgets: function(widgets) {
+          widgets = new Set(widgets);
+          widgets.forEach(function(widget) {
+            widget.set('selected', false);
+          });
+          this.selectedWidgets = new Set(Array.from(this.selectedWidgets).filter(function(widget) {
+            return !widgets.has(widget);
+          }));
+        },
         selectAll: function() {
           var self = this;
           var nonHiddenWidgets = Array.from(this.widgets).filter(function(widget) {

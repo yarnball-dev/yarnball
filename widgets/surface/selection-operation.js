@@ -4,8 +4,12 @@ define(function() {
 
   }
   
-  SelectionOperation.prototype.begin = function(mouseEvent, widget) {
-    this.surface.selectWidgets([widget], mouseEvent.ctrlKey);
+  SelectionOperation.prototype.begin = function(widget, select, appendSelection) {
+    if (select) {
+      this.surface.selectWidgets([widget], appendSelection);
+    } else {
+      this.surface.deselectWidgets([widget]);
+    }
     this.surface.finishOperation(this);
   }
   
@@ -21,10 +25,8 @@ define(function() {
     install: function(surface) {
       
       function handleWidgetSelected(event) {
-        if (!surface.hasOperation()) {
-          if (!surface.isWidgetSelected(event.detail.widget)) {
-            surface.beginOperation(SelectionOperation, event.detail.mouseEvent, event.detail.widget);
-          }
+        if (!surface.hasOperation() && (!surface.isWidgetSelected(event.detail.widget) || event.detail.mouseEvent.ctrlKey)) {
+          surface.beginOperation(SelectionOperation, event.detail.widget, !surface.isWidgetSelected(event.detail.widget), event.detail.mouseEvent.ctrlKey);
         }
       }
       
