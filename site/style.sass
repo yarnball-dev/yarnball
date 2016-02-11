@@ -6,43 +6,49 @@ body
   padding: 0
   height: 100%
 
-.main-container
-  height: 100%
-  display: flex
-  flex-direction: column
+#main-surface
+  display: none
+  position: fixed
+  left:   0
+  top:    0
+  right:  0
+  bottom: 0
+  z-index: 100
   
-.nav
+section.title
   display: block
-  background: $nav-color url(logo.svg) no-repeat 50% 0
+  background: url(logo.svg) no-repeat 50% 0
+  background-size: 480px
   color: $nav-text-color
   text-align: center
-  padding-top: 110px
+  height: 410px
   padding-bottom: 0
   
   @media (max-width:480px)
-    background-size: 190px
-    padding-top: 50px
+    background-size: 300px
+    height: 256px
   
   .title
     position: absolute
     left: 50%
-    top: 35px
-    margin-left: 66px
-    font-size: 35px
+    top: 278px
+    margin-left: -104px
+    font-size: 65px
     font-family: 'Lora', serif
+    color: #808080
     
     @media (max-width:480px)
-      font-size: 24px
-      margin-left: 38px
-      top: 3px
+      font-size: 44px
+      margin-left: -62px
+      top: 170px
 
   .beta-label
     position: absolute
     left: 50%
-    top: 75px
-    margin-left: 86px
+    top: 346px
+    margin-left: 68px
     font-weight: bold
-    font-size: 14px
+    font-size: 22px
     background-color: #AF0800
     color: #fff
     border-radius: 5px
@@ -51,59 +57,122 @@ body
     padding-right: 4px
     
     @media (max-width:480px)
-      font-size: 11px
-      margin-left: 47px
-      top: 30px
+      font-size: 14px
+      margin-left: 53px
+      top: 217px
       
-.nav::after
+section.title::after
   content: ""
   clear: both
   display: block
-      
-.nav-buttons
-  background: $nav-color
-  opacity: 0.92
-  list-style-type: none
-  display: flex
-  flex-direction: row
-  justify-content: center
-  padding: 0
-  margin:  0
-  
-  li
-    display: inline-block
-    flex-basis: 180px
-    
-    a
-      display: block
-      padding-top:    5px
-      padding-bottom: 5px
-      color: $nav-text-color
-      font-family: 'Titillium Web', sans-serif;
-      font-size: 24px
-      text-decoration: none
-  
-      @media (max-width:480px)
-        font-size: 20px
-  
-  li:hover
-    background-color: #666779
-    cursor: pointer
-  
-  li.selected
-    background-color: $selected-color
 
-.main-pages
-  flex-grow: 1
+section.hero
+  background: $nav-color
   position: relative
+  margin-bottom: 25px
+  padding-top:    20px
+  padding-bottom: 20px
   
-  >section
+  .hero-triple
+    display: block
+    margin: 0 auto
+    max-width: 100%
+    
+  .hero-connector
     position: absolute
-    width:  100%
-    height: 100%
-    overflow-y: scroll
-    -webkit-overflow-scrolling: touch;
+    left: 50%
+    margin-left: -267px
+    margin-top: 80px
+    width:  535px
+    height: 175px
+    background: url(hero-connector.svg)
   
+  .hero-node
+    display: inline-block
+    position: absolute
+    left: 50%
+    transform: scale(1.35)
+    pointer-events: none
+    
+  .hero-node1
+    margin-left: -290px
+    margin-top:   190px
+    
+  .hero-node2
+    margin-left: -20px
+    margin-top:   80px
+    
+  .hero-node3
+    margin-left: 230px
+    margin-top:  150px
+  
+  .hero-text
+    font-family: 'Titillium Web', sans-serif
+    font-size: 62px
+    color: #fff
+    position: absolute
+    left: 50%
+    white-space: nowrap
+  
+  .hero-text1
+    margin-left: -160px
+    margin-top:   -20px
+    
+  .hero-text2
+    margin-left: -50px
+    margin-top:   60px
+    font-size: 36px
+    color: #ffcb6c
+  
+  .hero-button-container
+    position: absolute
+    right: 15px
+    top: 100px
+    
+    @media (max-width: 1200px)
+      position: static
+      margin-top: 10px
+  
+  .hero-button
+    display: block
+    width: 150px
+    padding: 10px
+    padding-left:  14px
+    padding-right: 14px
+    font-size: 25px
+    border-radius: 5px
+    background-color: #666779
+    color: #fff
+    border: none
+    cursor: pointer
+    margin-top:    10px
+    margin-bottom: 10px
+    
+    >iron-icon
+      width:   40px
+      height:  40px
+      margin: -10px
+    
+    @media (max-width: 1200px)
+      display: block
+      width: 100%
+      border-radius: 0
+  
+  .hero-button:hover
+    background-color: #6e6f83
+  
+  .hero-blurb
+    background-color: #363748
+    color: #8b8b8b
+    font-size: 22px
+    padding: 5px
+    display: block
+    margin: 0 auto
+    margin-left: auto
+    margin-right: auto
+    max-width: 700px
+    margin-top: 20px
+    
 p
   font-family: 'Open Sans', sans-serif;
   color: #333
@@ -116,10 +185,21 @@ p:before
   display: block
   overflow: hidden
 
-hr
-  border: 1px solid #ddd
-  margin-left:  10px
-  margin-right: 10px
+.intro-label
+  color: #777
+  background-color: #FFFADA
+  font-family: 'Open Sans', sans-serif
+  font-size: 25px
+  padding: 7px
+  display: inline-block
+  margin-left: 50%
+  transform: translateX(-440px)
+  margin-top:    8px
+  margin-bottom: 8px
+  
+  @media (max-width: 900px)
+    transform: none
+    margin-left: 10px
   
 .intro-section
   width: 800px
@@ -128,8 +208,8 @@ hr
   margin-top:    20px
   margin-bottom: 30px
   
-  padding-left:   10px
-  padding-right:  10px
+  padding-left:   20px
+  padding-right:  20px
   padding-top:    20px
   padding-bottom: 20px
   
@@ -145,13 +225,12 @@ hr
   
   >label
     color: #777
-    background-color: #FFFADA
+    background-color: transparent
     font-family: 'Open Sans', sans-serif
+    font-size: 25px
     padding: 7px
-    display: inline-block
-    margin-top:    8px
-    margin-bottom: 8px
-    margin-left: -10px
+    display: block
+    margin-top: -15px
   
 .intro-section::after
   content: ""
@@ -204,10 +283,6 @@ hr
   float: left
   padding: 10px
 
-.main-pages
-  .try-page
-    overflow-y: hidden
-    >yb-surface
-      position: absolute
-      width:  100%
-      height: 100%
+.structure-example
+  display: block
+  margin: 0 auto
