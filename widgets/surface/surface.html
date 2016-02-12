@@ -7,8 +7,10 @@
 <link rel="import" href="../../bower_components/paper-item/paper-icon-item.html">
 
 <link rel="import" href="../node/node.html">
+<link rel="import" href="../node/node-factory.html">
 <link rel="import" href="../connector/connector.html">
 <link rel="import" href="../set/set.html">
+<link rel="import" href="../set/set-factory.html">
 <link rel="import" href="../all-nodes/all-nodes.html">
 
 <link rel="import" href="surface-styles.html">
@@ -31,11 +33,21 @@
       <iron-icon icon="icons:fullscreen" item-icon></iron-icon>
     </paper-button>
     
-    <div id="searchPanel" class="hidden">
+    <div id="searchPanel" class="panel hidden">
       <div class="panel-handle" on-tap="searchPanelHandleClicked">
         <iron-icon icon="icons:search" item-icon></iron-icon>
       </div>
-      <yb-all-nodes id="allNodesList"></yb-all-nodes>
+      <yb-all-nodes on-search-query-changed="searchQueryChanged" id="allNodesList"></yb-all-nodes>
+    </div>
+    
+    <div id="createPanel" class="panel hidden">
+      <div class="panel-handle" on-tap="createPanelHandleClicked">
+        <iron-icon icon="icons:add" item-icon></iron-icon>
+      </div>
+      <div>
+        <yb-node-factory></yb-node-factory>
+        <yb-set-factory> </yb-set-factory>
+      </div>
     </div>
     
     <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
@@ -84,8 +96,6 @@
   
   <script>
     (function() {
-      'use strict';
-      
       Polymer({
         is: 'yb-surface',
         behaviors: [
@@ -131,6 +141,7 @@
           self.viewRoot = self.$.viewRoot;
           self.background = self.$.background;
           self.searchPanel = self.$.searchPanel;
+          self.createPanel = self.$.createPanel;
           self.boxSelection = self.$.boxSelection;
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
@@ -263,6 +274,12 @@
             this.focus();
           }
         },
+        createPanelHandleClicked: function() {
+          this.toggleCreatePanel();
+        },
+        toggleCreatePanel: function() {
+          this.createPanel.classList.toggle('hidden');
+        },
         hasOperation: function() {
           return this.currentOperation !== null;
         },
@@ -288,6 +305,7 @@
           widgetDetached: 'widgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
+          dragStart: 'handleDragStart',
         },
         translateMouseEvent: function(event) {
           var targetBoundingClientRect = event.target.getBoundingClientRect();
@@ -488,6 +506,9 @@
           'pagedown':           'handleKey_PageDown',
           'ctrl+enter':         'handleKey_CtrlEnter',
           'ctrl+f':             'handleKey_CtrlF',
+          'f1':                 'handleKey_F1',
+          'ctrl+g':             'handleKey_CtrlG',
+          'f2':                 'handleKey_F2',
           'up down left right': 'handleKey_ArrowKeys',
           'enter':              'handleKey_Enter',
         },
@@ -506,26 +527,32 @@
           }
         },
         handleKey_CtrlA: function(event) {
-          if (!this.hasOperation()) {
+          if (!this.hasOperation() && document.activeElement === this) {
             event.preventDefault();
             this.selectAll();
             return false;
           }
         },
         handleKey_CtrlD: function(event) {
-          event.preventDefault();
-          this.deselect();
-          return false;
+          if (!this.hasOperation() && document.activeElement === this) {
+            event.preventDefault();
+            this.deselect();
+            return false;
+          }
         },
         handleKey_PageUp: function(event) {
-          event.preventDefault();
-          this.zoom(0.2);
-          return false;
+          if (!this.hasOperation() && document.activeElement === this) {
+            event.preventDefault();
+            this.zoom(0.2);
+            return false;
+          }
         },
         handleKey_PageDown: function(event) {
-          event.preventDefault();
-          this.zoom(-0.2);
-          return false;
+          if (!this.hasOperation() && document.activeElement === this) {
+            event.preventDefault();
+            this.zoom(-0.2);
+            return false;
+          }
         },
         handleKey_CtrlEnter: function(event) {
           event.preventDefault();
@@ -537,8 +564,23 @@
           this.toggleSearchPanel();
           return false;
         },
+        handleKey_F1: function(event) {
+          event.preventDefault();
+          this.toggleSearchPanel();
+          return false;
+        },
+        handleKey_CtrlG: function(event) {
+          event.preventDefault();
+          this.toggleCreatePanel();
+          return false;
+        },
+        handleKey_F2: function(event) {
+          event.preventDefault();
+          this.toggleCreatePanel();
+          return false;
+        },
         handleKey_ArrowKeys: function(event) {
-          if (!this.hasOperation()) {
+          if (!this.hasOperation() && document.activeElement === this) {
             var keyToDirection = {
               ArrowUp:    'up',
               ArrowDown:  'down',
@@ -551,6 +593,14 @@
         },
         handleKey_Enter: function(event) {
           this.fire('enterKey', event);
+        },
+        searchQueryChanged: function(event) {
+          var self = this;
+          var query = event.detail;
+          var matchingNodeWidgets = Array.from(self.getWidgetsOfType('yb-node')).filter(function(nodeWidget) {
+            return query && nodeWidget.name.toLowerCase().includes(query.toLowerCase()) && !self.widgetHasParent(nodeWidget, self.searchPanel);
+          });
+          self.selectWidgets(matchingNodeWidgets);
         },
         getElementViewRect: function(element) {
           var elementClientRect = element.getBoundingClientRect();
@@ -1088,6 +1138,19 @@
           }
           return false;
         },
+        widgetHasParent: function(widget, parentNode) {
+          var currentParent = widget.parentNode;
+          while (currentParent) {
+            if (currentParent === parentNode) {
+              return true;
+            }
+            if (currentParent === this) {
+              break;
+            }
+            currentParent = currentParent.parentNode;
+          }
+          return false;
+        },
         setWidgetPosition: function(widget, position) {
           widget.style.left = position.x + 'px';
           widget.style.top  = position.y + 'px';
@@ -1494,6 +1557,26 @@
         },
         dragdropAreaDetached: function(event) {
           this.dragdropAreas.delete(event.detail);
+        },
+        handleDragStart: function(event) {
+          var self = this;
+          if (self.widgetHasParent(event.target, self.createPanel)) {
+            var factoryWidget = event.target;
+            function backgroundMouseenter(event) {
+              self.background.removeEventListener('mouseenter', backgroundMouseenter);
+              var newWidget = factoryWidget.create();
+              var mouseEventTranslated = self.translateMouseEvent(event);
+              self.attachWidget(newWidget, mouseEventTranslated.positionView);
+              self.selectWidgets([newWidget]);
+              self.beginOperation(self.DragOperation, event);
+            }
+            self.background.addEventListener('mouseenter', backgroundMouseenter);
+            function windowMouseup(event) {
+              self.background.removeEventListener('mouseenter', backgroundMouseenter);
+              window.removeEventListener('mouseup', windowMouseup);
+            }
+            window.addEventListener('mouseup', windowMouseup);
+          }
         },
         openBackgroundMenu: function(position) {
           this.$.backgroundDropdown.style.position = 'absolute';

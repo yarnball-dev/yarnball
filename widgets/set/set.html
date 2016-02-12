@@ -26,8 +26,6 @@
   
   <script>
     (function() {
-      'use strict';
-      
       Polymer({
         is: 'yb-set',
         properties: {
@@ -182,12 +180,22 @@
           this.dragdropAreas.delete(event.detail);
         },
         mousedown: function(event) {
-          if (event.target === this.widgetHandle && event.button === 0) {
-            this.fire('selected',  {
-              widget: this,
+          var self = this;
+          if (event.target === self.widgetHandle && event.button === 0) {
+            self.fire('selected',  {
+              widget: self,
               mouseEvent: event,
             });
-            this.fire('dragStart', event);
+            function windowMousemove(windowWvent) {
+              self.fire('dragStart', event);
+              window.removeEventListener('mousemove', windowMousemove);
+            }
+            window.addEventListener('mousemove', windowMousemove);
+            function windowMouseup(event) {
+              window.removeEventListener('mousemove', windowMousemove);
+              window.removeEventListener('mouseup', windowMouseup);
+            }
+            window.addEventListener('mouseup', windowMouseup);
           }
         },
         mouseup: function(event) {

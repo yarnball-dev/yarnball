@@ -68,6 +68,7 @@
         },
         searchTextboxChanged: function(event) {
           this.applySearch();
+          this.fire('search-query-changed', this.searchTextbox.value);
         },
         applySearch: function() {
           var self = this;
