@@ -38,7 +38,7 @@
           
           this.$.dropTarget.dropRequestHandler = function(widgets) {
             return Array.from(widgets).filter(function(widget) {
-              return widget.tagName === 'yb-node'.toUpperCase();
+              return widget.widgetType === 'yb-node';
             });
           }
         

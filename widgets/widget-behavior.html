@@ -1,0 +1,94 @@
+<script>
+  WidgetBehavior = {
+    properties: {
+      type: {
+        type: String,
+        readOnly: true,
+      },
+      highlighted: {
+        type: Boolean,
+        value: false,
+        notify: true,
+        observer: '_highlightedChanged',
+      },
+      selected: {
+        type: Boolean,
+        value: false,
+        notify: true,
+        observer: '_selectedChanged',
+      }
+    },
+    ready: function() {
+      var self = this;
+      self.widgetType = self.tagName.toLowerCase();
+      self.widgets = new Set();
+      self.getHandles().forEach(function(handle) {
+        handle.addEventListener('mousedown', function(event) {
+          self._widgetHandleMousedown(event);
+        });
+        handle.addEventListener('mouseup', function(event) {
+          self._widgetHandleMouseup(event);
+        });
+      });
+    },
+    attached: function() {
+      this._parent = this.parentNode;
+      var event = new CustomEvent('widgetAttached', { detail: this, bubbles: true });
+      this._parent.dispatchEvent(event);
+    },
+    detached: function() {
+      var event = new CustomEvent('widgetDetached', { detail: this, bubbles: true });
+      this._parent.dispatchEvent(event);
+    },
+    listeners: {
+      widgetAttached: '_widgetAttached',
+      widgetDetached: '_widgetDetached',
+    },
+    _widgetAttached: function(event) {
+      this.widgets.add(event.detail);
+    },
+    _widgetDetached: function(event) {
+      this.widgets.delete(event.detail);
+    },
+    hasHandles: function() {
+      return this.getElementsByClassName('widget-handle').length > 0;
+    },
+    getHandles: function() {
+      return Array.from(this.getElementsByClassName('widget-handle'));
+    },
+    _highlightedChanged: function(value) {
+      this.toggleClass('highlighted', value);
+    },
+    _selectedChanged: function(value) {
+      this.toggleClass('selected', value);
+    },
+    _widgetHandleMousedown: function(event) {
+      var self = this;
+      if (event.button === 0) {
+        self.fire('selected',  {
+          widget: self,
+          mouseEvent: event,
+        });
+        function windowMousemove(windowWvent) {
+          self.fire('dragStart', event);
+          window.removeEventListener('mousemove', windowMousemove);
+        }
+        window.addEventListener('mousemove', windowMousemove);
+        function windowMouseup(event) {
+          window.removeEventListener('mousemove', windowMousemove);
+          window.removeEventListener('mouseup', windowMouseup);
+        }
+        window.addEventListener('mouseup', windowMouseup);
+      }
+    },
+    _widgetHandleMouseup: function(event) {
+      if (event.button === 2) {
+        this.fire('selected',    {
+          widget: this,
+          mouseEvent: event,
+        });
+        this.fire('contextMenu', event);
+      }
+    }
+  }
+</script>

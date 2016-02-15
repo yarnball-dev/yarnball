@@ -1,10 +1,12 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../widget-behavior.html">
+
 <link rel="import" href="node-styles.html">
 
 <dom-module id="yb-node">
   <style include="node-styles"></style>
-  <template>
+  <template class="widget-handle">
     <template is="dom-if" if="{{!isEditing}}">
       <template is="dom-if" if="{{!name}}" restamp="true">
         <pre class="node-id">{{nodeId_withLinebreaks}}</pre>
@@ -20,6 +22,7 @@
     (function() {
       Polymer({
         is: 'yb-node',
+        behaviors: [WidgetBehavior],
         properties: {
           name: {
             type: String,
@@ -31,16 +34,6 @@
           'nodeId_withLinebreaks': {
             type: String,
             computed: 'getNodeId_withLinebreaks(nodeId)'
-          },
-          highlighted: {
-            type: Boolean,
-            value: false,
-            observer: 'handleHighlightedChanged',
-          },
-          selected: {
-            type: Boolean,
-            value: false,
-            observer: 'handleSelectedChanged',
           },
           isEditing: {
             type: Boolean,
@@ -97,11 +90,11 @@
         ready: function() {
           this.widgetHandle = this;
         },
-        attached: function() {
-          this.fire('widgetAttached', this);
+        hasHandles: function() {
+          return true;
         },
-        detached: function() {
-//           this.fire('widgetDetached', this);
+        getHandles: function() {
+          return [this];
         },
         connectors: function() {
           var connectors = new Set();
@@ -109,12 +102,6 @@
           this.connectorsVia.forEach(function(connector)  { connectors.add(connector); });
           this.connectorsTo.forEach(function(connector)   { connectors.add(connector); });
           return connectors;
-        },
-        handleHighlightedChanged: function() {
-          this.toggleClass('highlighted', this.highlighted);
-        },
-        handleSelectedChanged: function() {
-          this.toggleClass('selected', this.selected);
         },
         updateDimensions: function() {
           Polymer.dom.flush();
@@ -128,11 +115,7 @@
             this.fire('dimensionsChanged', this.dimensions);
           }
         },
-        listeners: {
-          mousedown: 'mousedown',
-          mouseup:   'mouseup',
-        },
-        mousedown: function(event) {
+        _widgetHandleMousedown: function(event) {
           var self = this;
         
           if (!self.isEditing) {
@@ -179,7 +162,7 @@
             window.addEventListener('mouseup',   handleMouseup);
           }
         },
-        mouseup: function(event) {
+        _widgetHandleMouseup: function(event) {
           if (event.button === 2) {
             this.fire('selected', {
               widget: this,

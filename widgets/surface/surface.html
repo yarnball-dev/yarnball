@@ -632,7 +632,7 @@
         },
         getWidgetsOfType: function(type) {
           return new Set(Array.from(this.widgets).filter(function(widget) {
-            return widget.tagName === type.toUpperCase();
+            return widget.widgetType === type;
           }));
         },
         getWidgetPosition: function(widget) {
@@ -642,9 +642,28 @@
             y: viewRect.top,
           }
         },
+        combineRects: function(rects) {
+          var combinedRect = null;
+          Array.from(rects).forEach(function(rect) {
+            if (!combinedRect) {
+              combinedRect = rect;
+            } else {
+              combinedRect.left   = min(combinedRect.left,   rect.left);
+              combinedRect.top    = min(combinedRect.top,    rect.top);
+              combinedRect.right  = max(combinedRect.right,  rect.right);
+              combinedRect.bottom = max(combinedRect.bottom, rect.bottom);
+              combinedRect.width  = max(combinedRect.width,  rect.width);
+              combinedRect.height = max(combinedRect.height, rect.height);
+            }
+          });
+          return combinedRect;
+        },
         getWidgetCenter: function(widget) {
-          if (widget.widgetHandle && widget.tagName !== 'yb-connector'.toUpperCase()) {
-            var nodeRect = this.getElementViewRect(widget.widgetHandle);
+          var self = this;
+          if (widget.hasHandles() && widget.widgetType !== 'yb-connector') {
+            var nodeRect = self.combineRects(widget.getHandles().map(function(handle) {
+              return self.getElementViewRect(handle);
+            }));
             return {
               x: nodeRect.left + (nodeRect.width  / 2),
               y: nodeRect.top  + (nodeRect.height / 2),
@@ -656,11 +675,11 @@
         getWidgetsInRect: function(rect) {
           var self = this;
           return Array.from(self.widgets).filter(function(widget) {
-            if (widget.widgetHandle && !self.isWidgetHidden(widget)) {
-              var widgetRect = self.getElementViewRect(widget.widgetHandle);
-              return !(widgetRect.left > rect.right  || widgetRect.right  < rect.left ||
-                      widgetRect.top  > rect.bottom || widgetRect.bottom < rect.top);
-            }
+            return !self.isWidgetHidden(widget) && widget.getHandles().some(function(handle) {
+                var widgetRect = self.getElementViewRect(handle);
+                return !(widgetRect.left > rect.right  || widgetRect.right  < rect.left ||
+                         widgetRect.top  > rect.bottom || widgetRect.bottom < rect.top);
+              });
           });
         },
         getAdjacentWidget: function(widget, direction) {
@@ -943,11 +962,9 @@
         },
         detachWidget: function(widget) {
           widget.classList.remove('yb-surface');
-          this.widgetDetached({detail: widget});
           return Polymer.dom(this.viewRoot).removeChild(widget);
         },
         removeWidget: function(widget) {
-          this.widgetDetached({detail: widget});
           Polymer.dom(this.viewRoot).removeChild(widget);
         },
         widgetAttached: function(event) {
@@ -959,15 +976,13 @@
           
             self.widgets.add(widget);
             
-            var widgetType = widget.tagName.toLowerCase();
-            
             if (!self.widgetsOfType.has()) {
-              self.widgetsOfType.set(widgetType, new Set([widget]))
+              self.widgetsOfType.set(widget.widgetType, new Set([widget]))
             } else {
-              self.widgetsOfType.get(widgetType).add(widget);
+              self.widgetsOfType.get(widget.widgetType).add(widget);
             }
             
-            if (widgetType === 'yb-node') {
+            if (widget.widgetType === 'yb-node') {
             
               var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId));
               
@@ -980,8 +995,8 @@
               self._setupNodeWidgetHighlighting(widget);
               self._setupNodeWidgetMenu(widget);
               
-            } else if (widgetType === 'yb-set') {
-            
+            } else if (widget.widgetType === 'yb-set') {
+              
               self._setupSetWidgetMenu(widget);
             }
           }
@@ -1002,9 +1017,7 @@
         
           var widget = event.detail;
           
-          var widgetType = widget.tagName.toLowerCase();
-          
-          if (widgetType === 'yb-node') {
+          if (widget.widgetType === 'yb-node') {
           
             if (self.widgetsTopLevel.has(widget)) {
             
@@ -1013,40 +1026,50 @@
               });
             }
             
-          } else if (widgetType === 'yb-connector') {
+          } else if (widget.widgetType === 'yb-connector') {
           
-            var linkKey = self.node_id.linkToKey({
-              from: self.node_id.fromHex(widget.fromWidget.nodeId),
-              via:  self.node_id.fromHex(widget.viaWidget.nodeId),
-              to:   self.node_id.fromHex(widget.toWidget.nodeId),
-            });
-            if (self.linksToConnectors.has(linkKey)) {
-              var connectors = self.linksToConnectors.get(linkKey);
-              connectors.delete(widget);
-              if (connectors.size === 0) {
-                self.linksToConnectors.delete(linkKey);
+            if (widget.fromWidget && widget.viaWidget && widget.toWidget) {
+          
+              var linkKey = self.node_id.linkToKey({
+                from: self.node_id.fromHex(widget.fromWidget.nodeId),
+                via:  self.node_id.fromHex(widget.viaWidget.nodeId),
+                to:   self.node_id.fromHex(widget.toWidget.nodeId),
+              });
+              if (self.linksToConnectors.has(linkKey)) {
+                var connectors = self.linksToConnectors.get(linkKey);
+                connectors.delete(widget);
+                if (connectors.size === 0) {
+                  self.linksToConnectors.delete(linkKey);
+                }
               }
-            }
-            
-            var nodeWidgetsKey = self.node_id.linkToKey({
-              from: widget.fromWidget.widgetId,
-              via:  widget.viaWidget.widgetId,
-              to:   widget.toWidget.widgetId,
-            });
-            self.nodeWidgetsToConnectors.delete(nodeWidgetsKey);
-            
-            widget.fromWidget.connectorsFrom.delete(widget);
-            widget.viaWidget.connectorsVia.delete(widget);
-            widget.toWidget.connectorsTo.delete(widget);
-            
-            if (widget.highlightAnimation) {
-              widget.highlightAnimation.cancel();
-              widget.highlightAnimation = null;
+              
+              var nodeWidgetsKey = self.node_id.linkToKey({
+                from: widget.fromWidget.widgetId,
+                via:  widget.viaWidget.widgetId,
+                to:   widget.toWidget.widgetId,
+              });
+              self.nodeWidgetsToConnectors.delete(nodeWidgetsKey);
+              
+              widget.fromWidget.connectorsFrom.delete(widget);
+              widget.viaWidget.connectorsVia.delete(widget);
+              widget.toWidget.connectorsTo.delete(widget);
+              
+              if (widget.highlightAnimation) {
+                widget.highlightAnimation.cancel();
+                widget.highlightAnimation = null;
+              }
             }
           }
           
-          self.widgets.delete(widget);
           self.widgetsTopLevel.delete(widget);
+          
+          self.widgets.delete(widget);
+          self.selectedWidgets.delete(widget);
+          
+          widget.widgets.forEach(function(childWidget) {
+            self.widgets.delete(childWidget);
+            self.selectedWidgets.delete(childWidget);
+          });
         },
         _setupNodeWidgetHighlighting: function(nodeWidget) {
           var self = this;
@@ -1123,7 +1146,7 @@
           });
           self.selectWidgets(nonHiddenWidgets);
           var nodeWidgets = nonHiddenWidgets.filter(function(widget) {
-            return widget.tagName === 'yb-node'.toUpperCase();
+            return widget.widgetType === 'yb-node';
           });
           self.revealLinksBetweenNodeWidgets(nodeWidgets, false);
         },
@@ -1162,7 +1185,7 @@
           widget.style.left = position.x + 'px';
           widget.style.top  = position.y + 'px';
           
-          if (widget.tagName === 'yb-node'.toUpperCase()) {
+          if (widget.widgetType === 'yb-node') {
             this.updateConnectorsForNodeWidget(widget);
           }
         },
@@ -1177,7 +1200,7 @@
         },
         getSelectedWidgetsOfType: function(type) {
           return new Set(Array.from(this.selectedWidgets).filter(function(widget) {
-            return widget.tagName === type.toUpperCase();
+            return widget.widgetType === type;
           }));
         },
         hideSelectedWidgets: function() {
@@ -1227,14 +1250,12 @@
           
           // Duplcate nodes and sets
           widgets.forEach(function(widget) {
-            var widgetType = widget.tagName.toLowerCase();
-            
             var newWidget = null;
             
-            if (widgetType === 'yb-node') {
+            if (widget.widgetType === 'yb-node') {
               newWidget = self.createNodeWidget(self.node_id.fromHex(widget.nodeId));
               oldToNewNodeWidgetMap.set(widget, newWidget);
-            } else if (widgetType === 'yb-set') {
+            } else if (widget.widgetType === 'yb-set') {
               newWidget = self.createSetWidget(widget.getFilter());
             }
             
@@ -1251,9 +1272,7 @@
           
           // Duplcate connectors
           widgets.forEach(function(widget) {
-            var widgetType = widget.tagName.toLowerCase();
-            
-            if (widgetType === 'yb-connector') {
+            if (widget.widgetType === 'yb-connector') {
               if (widgets.has(widget.fromWidget) &&
                   widgets.has(widget.viaWidget) &&
                   widgets.has(widget.toWidget)) {
@@ -1552,7 +1571,8 @@
         _setupSetWidgetMenu: function(setWidget) {
           var self = this;
           setWidget.addEventListener('contextMenu', function(event) {
-            if (event.detail.target === setWidget.widgetHandle) {
+            var handles = new Set(setWidget.getHandles());
+            if (handles.has(event.detail.target)) {
               if (!self.hasOperation()) {
                 self.openSelectionMenu(event.detail);
               }

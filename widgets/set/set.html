@@ -1,5 +1,7 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../widget-behavior.html">
+
 <link rel="import" href="set-styles.html">
 
 <link rel="import" href="../selector/selector.html">
@@ -10,7 +12,7 @@
   <style include="set-styles"></style>
 
   <template>
-    <div id="widgetHandle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
+    <div id="widgetHandle" class="widget-handle"></div>
     <div id="widgetBody" class="widget-body">
       <div class="header">
         <yb-selector id="fromSelector" node-id="{{from}}"></yb-selector>
@@ -28,6 +30,7 @@
     (function() {
       Polymer({
         is: 'yb-set',
+        behaviors: [WidgetBehavior],
         properties: {
           from: {
             type: String,
@@ -44,19 +47,11 @@
             notify: true,
             observer: 'refreshSet',
           },
-          selected: {
-            type: Boolean,
-            value: false,
-            observer: 'handleSelectedChanged',
-          },
         },
         created: function() {
           this.widgets = new Set();
           this.dragdropAreas = new Set();
           this.nodeWidgetsInSet = new Map();
-        },
-        attached: function() {
-          this.fire('widgetAttached', this);
         },
         listeners: {
           widgetAttached:  'widgetAttached',
@@ -82,7 +77,7 @@
           
           self.setContent.dropRequestHandler = function(widgets) {
             return Array.from(widgets).filter(function(widget) {
-              if (widget.tagName !== 'yb-node'.toUpperCase()) {
+              if (widget.widgetType !== 'yb-node') {
                 return false;
               }
               
@@ -179,37 +174,6 @@
         },
         dragdropAreaDetached: function(event) {
           this.dragdropAreas.delete(event.detail);
-        },
-        mousedown: function(event) {
-          var self = this;
-          if (event.target === self.widgetHandle && event.button === 0) {
-            self.fire('selected',  {
-              widget: self,
-              mouseEvent: event,
-            });
-            function windowMousemove(windowWvent) {
-              self.fire('dragStart', event);
-              window.removeEventListener('mousemove', windowMousemove);
-            }
-            window.addEventListener('mousemove', windowMousemove);
-            function windowMouseup(event) {
-              window.removeEventListener('mousemove', windowMousemove);
-              window.removeEventListener('mouseup', windowMouseup);
-            }
-            window.addEventListener('mouseup', windowMouseup);
-          }
-        },
-        mouseup: function(event) {
-          if (event.button === 2) {
-            this.fire('selected',    {
-              widget: this,
-              mouseEvent: event,
-            });
-            this.fire('contextMenu', event);
-          }
-        },
-        handleSelectedChanged: function() {
-          this.toggleClass('selected', this.selected);
         },
         isFilterValid: function() {
           return ((this.from ? 1:0) + (this.via ? 1:0) + (this.to ? 1:0)) === 2;

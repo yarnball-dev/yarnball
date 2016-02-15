@@ -1,5 +1,7 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../widget-behavior.html">
+
 <link rel="import" href="list-styles.html">
 
 <link rel="import" href="../selector/selector.html">
@@ -28,6 +30,7 @@
       
       Polymer({
         is: 'yb-list',
+        behaviors: [WidgetBehavior],
         properties: {
           first: {
             type: String,
@@ -39,19 +42,11 @@
             notify: true,
             observer: 'refreshList',
           },
-          selected: {
-            type: Boolean,
-            value: false,
-            observer: 'handleSelectedChanged',
-          },
         },
         created: function() {
           this.widgets = new Set();
           this.dragdropAreas = new Set();
           this.nodeWidgetMap = new Map();;
-        },
-        attached: function() {
-          this.fire('widgetAttached', this);
         },
         listeners: {
           widgetAttached:  'widgetAttached',
@@ -198,9 +193,6 @@
             });
             this.fire('contextMenu', event);
           }
-        },
-        handleSelectedChanged: function() {
-          this.toggleClass('selected', this.selected);
         },
         nodeList: function() {
           var self = this;

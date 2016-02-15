@@ -1,5 +1,7 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../widget-behavior.html">
+
 <link rel="import" href="connector-styles.html">
 
 <dom-module id="yb-connector">
@@ -14,15 +16,11 @@
       
       Polymer({
         is: 'yb-connector',
+        behaviors: [WidgetBehavior],
         properties: {
           fromPos: { type: Object, value: null },
           viaPos:  { type: Object, value: null },
           toPos:   { type: Object, value: null },
-          selected: {
-            type: Boolean,
-            value: false,
-            observer: 'handleSelectedChanged',
-          }
         },
         created: function() {
           var self = this;
@@ -51,9 +49,6 @@
               self.fire('contextMenu', event);
             }
           });
-        },
-        attached: function() {
-          this.fire('widgetAttached', this);
         },
         link: function() {
           if (this.fromWidget &&
@@ -97,9 +92,6 @@
           } else {
             return "";
           }
-        },
-        handleSelectedChanged: function() {
-          this.toggleClass('selected', this.selected);
         },
       });
     })();
