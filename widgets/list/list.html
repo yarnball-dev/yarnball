@@ -1,20 +1,25 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
-<link rel="import" href="../../bower_components/paper-button/paper-button.html">
-<link rel="import" href="../node/node.html">
+
+<link rel="import" href="list-styles.html">
+
+<link rel="import" href="../selector/selector.html">
+<link rel="import" href="../dragdrop-area/dragdrop-area.html">
 
 <dom-module id="yb-list">
+
+  <style include="list-styles"></style>
+
   <template>
-    <style>
-      :host {
-        display: block;
-      }
-    </style>
-    <div>
-      <template is="dom-repeat" items="{{nodes}}">
-        <yb-node node-id="{{item}}"></yb-node>
-      </template>
+    <div id="widgetHandle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
+    <div id="widgetBody" class="widget-body">
+      <div class="header">
+        <yb-selector id="firstNodeSelector" node-id="{{first}}"></yb-selector>
+        <span class="connector"></span>
+        <yb-selector id="nextNodeSelector"  node-id="{{next}}"> </yb-selector>
+      </div>
+      <yb-dragdrop-area id="listContent" on-nodes-dropped="nodesDropped" drop-on-hover>
+      </yb-dragdrop-area>
     </div>
-    <paper-button on-tap="button_handler">Add Node</paper-button>
   </template>
 
   <script>
@@ -24,36 +29,242 @@
       Polymer({
         is: 'yb-list',
         properties: {
-          nodes: {
-            type: Array
-          }
+          first: {
+            type: String,
+            notify: true,
+            observer: 'refreshList',
+          },
+          next: {
+            type: String,
+            notify: true,
+            observer: 'refreshList',
+          },
+          selected: {
+            type: Boolean,
+            value: false,
+            observer: 'handleSelectedChanged',
+          },
         },
         created: function() {
+          this.widgets = new Set();
+          this.dragdropAreas = new Set();
+          this.nodeWidgetMap = new Map();;
+        },
+        attached: function() {
+          this.fire('widgetAttached', this);
+        },
+        listeners: {
+          widgetAttached:  'widgetAttached',
+          widgetDetached:  'widgetDetached',
+          dragdropAreaAttached: 'dragdropAreaAttached',
+          dragdropAreaDetached: 'dragdropAreaDetached',
+        },
+        ready: function() {
+        
           var self = this;
-          require(['core/client', 'core/node_id'], function(client, node_id) {
           
-            self.client = client;
-            
-            var nodes = client.web.getNodes().map(function(id) {
-              return node_id.toHex(id);
+          self.widgetHandle = self.$.widgetHandle;
+          self.widgetBody   = self.$.widgetBody;
+          self.listContent  = self.$.listContent;
+          
+          require(['core/client', 'core/node_id', 'core/ordered_set'], function(client, node_id, ordered_set) {
+            self.client  = client;
+            self.node_id = node_id;
+            self.ordered_set = ordered_set;
+            self.refreshList();
+            self.onLinks = self.onLinks.bind(self);
+            client.web.onLinks(self.onLinks);
+          });
+          
+          self.listContent.dropRequestHandler = function(widgets) {
+            return Array.from(widgets).filter(function(widget) {
+              if (widget.tagName !== 'yb-node'.toUpperCase()) {
+                return false;
+              }
+              
+              if (self.nodeWidgetMap.has(self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId)))) {
+                return false;
+              }
+              
+              return true;
             });
-            self.set('nodes', nodes);
+          }
+          
+          self.listContent.addEventListener('widgetDragStart', function(event) {
+            event.detail.widgets.forEach(function(nodeWidget) {
+              nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
+            });
+          });
+          
+          self.listContent.addEventListener('widgetDrag', function(event) {
+          
+            var listContentRect = self.listContent.getBoundingClientRect();
+          
+            var widgetsDraggedOut = new Set(Array.from(event.detail.widgets).filter(function(nodeWidget) {
+              var distanceDragged = Math.abs(event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX);
+              return distanceDragged > (listContentRect.width / 2)
+            }));
             
-            client.web.onNodeNames(function(nodes) {
-              nodes.forEach(function(node) {
-                var hasNode = self.nodes.some(function(existingNode) { return existingNode === node_id.toHex(node.id); });
-                if (!hasNode) {
-                  self.push('nodes', node_id.toHex(node.id));
-                }
+            if (widgetsDraggedOut.size > 0) {
+            
+              var nodeIds = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
+                return self.node_id.fromHex(nodeWidget.nodeId);
               });
+              var detachedWidgets = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
+                nodeWidget.style.transform = null;
+                nodeWidget.classList.remove('yb-list');
+                self.nodeWidgetMap.delete(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)));
+                self.widgets.delete(nodeWidget);
+                return Polymer.dom(self.listContent).removeChild(nodeWidget);
+              });
+              self.listContent.fire('widgetsDraggedOut', {
+                dragdropArea: self.listContent,
+                oldWidgets: widgetsDraggedOut,
+                detachedWidgets: detachedWidgets,
+              });
+              self.removeNodes(nodeIds);
+            }
+            
+            event.detail.widgets.forEach(function(nodeWidget) {
+              if (!widgetsDraggedOut.has(nodeWidget)) {
+                nodeWidget.style.transform = 'translateX(' + (event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX) + 'px)';
+              }
+            });
+          });
+          
+          self.listContent.addEventListener('widgetsDraggedIn', function(event) {
+            if (self.first && self.next) {
+              var set = self.ordered_set(self.client.web, self.node_id.fromHex(self.first), self.node_id.fromHex(self.next));
+              var nodeIds = [];
+              event.detail.widgets.forEach(function(nodeWidget) {
+                self.attachNodeWidget(nodeWidget);
+                nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
+                nodeIds.push(self.node_id.fromHex(nodeWidget.nodeId));
+              });
+              nodeIds.forEach(function(node) {
+                set.append(node);
+              });
+            }
+          });
+          
+          self.listContent.addEventListener('widgetDragFinish', function(event) {
+            event.detail.forEach(function(nodeWidget) {
+              nodeWidget.style.transform = null;
             });
           });
         },
-        button_handler: function() {
-          var name = 'space cookie';
-          var node = this.client.web.addNewNode(name);
-          this.client.socket.emit('setNodeName', node);
-        }
+        detached: function() {
+          this.client.web.removeLinksListener(this.onLinks);
+        },
+        onLinks: function(linksAdded, linksRemoved) {
+          this.refreshList();
+        },
+        widgetAttached: function(event) {
+          this.widgets.add(event.detail);
+        },
+        widgetDetached: function(event) {
+          this.widgets.delete(event.detail);
+        },
+        dragdropAreaAttached: function(event) {
+          this.dragdropAreas.add(event.detail);
+        },
+        dragdropAreaDetached: function(event) {
+          this.dragdropAreas.delete(event.detail);
+        },
+        mousedown: function(event) {
+          var self = this;
+          if (event.target === self.widgetHandle && event.button === 0) {
+            self.fire('selected',  {
+              widget: self,
+              mouseEvent: event,
+            });
+            function windowMousemove(windowWvent) {
+              self.fire('dragStart', event);
+              window.removeEventListener('mousemove', windowMousemove);
+            }
+            window.addEventListener('mousemove', windowMousemove);
+            function windowMouseup(event) {
+              window.removeEventListener('mousemove', windowMousemove);
+              window.removeEventListener('mouseup', windowMouseup);
+            }
+            window.addEventListener('mouseup', windowMouseup);
+          }
+        },
+        mouseup: function(event) {
+          if (event.button === 2) {
+            this.fire('selected',    {
+              widget: this,
+              mouseEvent: event,
+            });
+            this.fire('contextMenu', event);
+          }
+        },
+        handleSelectedChanged: function() {
+          this.toggleClass('selected', this.selected);
+        },
+        nodeList: function() {
+          var self = this;
+          
+          if (self.first && self.next) {
+            var set = self.ordered_set(self.client.web, self.node_id.fromHex(self.first), self.node_id.fromHex(self.next));
+            return set.get();
+          } else {
+            return [];
+          }
+        },
+        removeNodes: function(nodes) {
+          if (this.first && this.next) {
+            var set = this.ordered_set(this.client.web, this.node_id.fromHex(this.first), this.node_id.fromHex(this.next));
+            nodes.forEach(function(node) {
+              set.delete(node);
+            });
+          }
+        },
+        refreshList: function() {
+          var self = this;
+          
+          self.listContent.set('enabled', self.first && self.next);
+          
+          var nodes = self.nodeList();
+          var nodesSet = new Set(nodes.map(function(node){
+            return self.node_id.toMapKey(node);
+          }));
+          
+          var nodeWidgetsToRemove = Array.from(new Set(self.nodeWidgetMap.values())).filter(function(nodeWidget) {
+            var nodeIdKey = self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId));
+            return !nodesSet.has(nodeIdKey);
+          });
+          
+          nodeWidgetsToRemove.forEach(function(nodeWidget) {
+            self.removeNodeWidget(nodeWidget);
+          });
+          
+          nodes.forEach(function(node, index) {
+            var nodeIdKey = self.node_id.toMapKey(node)
+            var nodeWidget = self.nodeWidgetMap.get(nodeIdKey);
+            if (!nodeWidget) {
+              nodeWidget = self.addNodeWidget(node);
+            }
+            nodeWidget.style.order = index;
+          });
+        },
+        addNodeWidget: function(nodeId) {
+          var nodeWidget = document.createElement('yb-node');
+          nodeWidget.nodeId = this.node_id.toHex(nodeId);
+          Polymer.dom(this.listContent).appendChild(nodeWidget);
+          this.nodeWidgetMap.set(this.node_id.toMapKey(nodeId), nodeWidget);
+          return nodeWidget;
+        },
+        attachNodeWidget: function(nodeWidget) {
+          nodeWidget.style.position = null;
+          Polymer.dom(this.listContent).appendChild(nodeWidget);
+          this.nodeWidgetMap.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
+        },
+        removeNodeWidget: function(nodeWidget) {
+          this.widgets.delete(nodeWidget);
+          this.nodeWidgetMap.delete(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
+          Polymer.dom(this.listContent).removeChild(nodeWidget);
+        },
       });
     })();
   </script>

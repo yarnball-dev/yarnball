@@ -135,6 +135,27 @@ define(['./node_id'], function(node_id) {
   }
   
   
+  // Query
+  
+  Web.prototype.query = function(from, via, to) {
+    var result = new Set();
+    if (((from ? 1:0) + (via ? 1:0) + (to ? 1:0)) === 2) {
+      this.links.forEach(function(linkKey) {
+        var link = node_id.linkFromKey(linkKey);
+        if ((!from || node_id.equal(link.from, from)) &&
+            (!via  || node_id.equal(link.via,  via))  &&
+            (!to   || node_id.equal(link.to,   to))) {
+          
+          if (!from) result.add(link.from);
+          if (!via)  result.add(link.via);
+          if (!to)   result.add(link.to);
+        }
+      });
+    }
+    return result;
+  }
+  
+  
   // Private
   
   Web.prototype._notifyNames = function(namesAdded, namesRemoved) {

@@ -70,6 +70,7 @@
           
           self.widgetHandle = self.$.widgetHandle;
           self.widgetBody   = self.$.widgetBody;
+          self.setContent   = self.$.setContent;
           
           require(['core/client', 'core/node_id'], function(client, node_id) {
             self.client  = client;
@@ -79,7 +80,7 @@
             client.web.onLinks(self.onLinks);
           });
           
-          self.$.setContent.dropRequestHandler = function(widgets) {
+          self.setContent.dropRequestHandler = function(widgets) {
             return Array.from(widgets).filter(function(widget) {
               if (widget.tagName !== 'yb-node'.toUpperCase()) {
                 return false;
@@ -91,15 +92,15 @@
             });
           }
           
-          self.$.setContent.addEventListener('widgetDragStart', function(event) {
+          self.setContent.addEventListener('widgetDragStart', function(event) {
             event.detail.widgets.forEach(function(nodeWidget) {
               nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
             });
           });
           
-          self.$.setContent.addEventListener('widgetDrag', function(event) {
+          self.setContent.addEventListener('widgetDrag', function(event) {
           
-            var setContentRect = self.$.setContent.getBoundingClientRect();
+            var setContentRect = self.setContent.getBoundingClientRect();
           
             var widgetsDraggedOut = new Set(Array.from(event.detail.widgets).filter(function(nodeWidget) {
               var distanceDragged = Math.abs(event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX);
@@ -116,10 +117,10 @@
                 nodeWidget.classList.remove('yb-set');
                 self.nodeWidgetsInSet.delete(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)));
                 self.widgets.delete(nodeWidget);
-                return Polymer.dom(self.$.setContent).removeChild(nodeWidget);
+                return Polymer.dom(self.setContent).removeChild(nodeWidget);
               });
-              self.$.setContent.fire('widgetsDraggedOut', {
-                dragdropArea: self.$.setContent,
+              self.setContent.fire('widgetsDraggedOut', {
+                dragdropArea: self.setContent,
                 oldWidgets: widgetsDraggedOut,
                 detachedWidgets: detachedWidgets,
               });
@@ -133,7 +134,7 @@
             });
           });
           
-          self.$.setContent.addEventListener('widgetsDraggedIn', function(event) {
+          self.setContent.addEventListener('widgetsDraggedIn', function(event) {
             var nodeIds = [];
             event.detail.widgets.forEach(function(nodeWidget) {
               self.attachNodeWidget(nodeWidget);
@@ -143,7 +144,7 @@
             self.addNodes(nodeIds);
           });
           
-          self.$.setContent.addEventListener('widgetDragFinish', function(event) {
+          self.setContent.addEventListener('widgetDragFinish', function(event) {
             event.detail.forEach(function(nodeWidget) {
               nodeWidget.style.transform = null;
 //               nodeWidget.animate(
@@ -240,7 +241,7 @@
         refreshSet: function() {
           var self = this;
           
-          self.$.setContent.set('enabled', self.isFilterValid());
+          self.setContent.set('enabled', self.isFilterValid());
           
           require(['core/client', 'core/node_id'], function(client, node_id) {
             self.node_id = node_id;
@@ -302,12 +303,12 @@
         addNodeWidget: function(nodeId) {
           var nodeWidget = document.createElement('yb-node');
           nodeWidget.nodeId = this.node_id.toHex(nodeId);
-          Polymer.dom(this.$.setContent).appendChild(nodeWidget);
+          Polymer.dom(this.setContent).appendChild(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(nodeId), nodeWidget);
         },
         attachNodeWidget: function(nodeWidget) {
           nodeWidget.style.position = null;
-          Polymer.dom(this.$.setContent).appendChild(nodeWidget);
+          Polymer.dom(this.setContent).appendChild(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
         },
         removeNodeWidget: function(nodeId) {
@@ -315,7 +316,7 @@
           if (nodeWidget) {
             this.widgets.delete(nodeWidget);
             this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
-            Polymer.dom(this.$.setContent).removeChild(nodeWidget);
+            Polymer.dom(this.setContent).removeChild(nodeWidget);
           }
         },
         nodesDropped: function(event) {

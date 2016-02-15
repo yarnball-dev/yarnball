@@ -8,10 +8,6 @@ define(function() {
     var self = this;
     var surface = self.surface;
     
-    if (!surface.isWidgetSelected(nodeWidget)) {
-      surface.selectWidgets([nodeWidget], true);
-    }
-    
     var widgetPos = surface.getWidgetPosition(nodeWidget);
     
     var cursorPos = {
@@ -24,6 +20,8 @@ define(function() {
       via:  null,
       to:   null,
     }
+    
+    draggingConnectorNodes.from.add(nodeWidget);
     
     var draggingConnectors = [];
     draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
