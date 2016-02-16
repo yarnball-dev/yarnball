@@ -6,16 +6,10 @@
 
 <dom-module id="yb-node">
   <style include="node-styles"></style>
-  <template class="widget-handle">
-    <template is="dom-if" if="{{!isEditing}}">
-      <template is="dom-if" if="{{!name}}" restamp="true">
-        <pre class="node-id">{{nodeId_withLinebreaks}}</pre>
-      </template>
-      <template is="dom-if" if="{{name}}">
-        <div id="node-name">{{name}}</div>
-      </template>
-    </template>
-    <input id="input_box" class="hidden" type="text" value="{{name}}" on-blur="onBlur" on-keypress="onKeypress">
+  <template>
+    <pre id="idElement">{{nodeId_withLinebreaks}}</pre>
+    <pre id="nameElement"></pre>
+    <input id="nameInput" type="text" on-blur="onBlur" on-keypress="onKeypress" on-input="onNameInput">
   </template>
 
   <script>
@@ -24,20 +18,12 @@
         is: 'yb-node',
         behaviors: [WidgetBehavior],
         properties: {
-          name: {
-            type: String,
-            value: '',
-          },
           'nodeId': {
             type: String,
           },
           'nodeId_withLinebreaks': {
             type: String,
             computed: 'getNodeId_withLinebreaks(nodeId)'
-          },
-          isEditing: {
-            type: Boolean,
-            value: false,
           },
         },
         getNodeId_withLinebreaks: function() {
@@ -47,24 +33,32 @@
                  this.nodeId.slice(8 + 8 + 8);
         },
         created: function() {
-        
-          var self = this;
-          
-          self.dimensions = {
+          this.dimensions = {
             width:  null,
             height: null,
           }
           
-          self.connectorsFrom = new Set();
-          self.connectorsVia  = new Set();
-          self.connectorsTo   = new Set();
+          this.name = null;
+          
+          this.isEditing = false;
+          
+          this.connectorsFrom = new Set();
+          this.connectorsVia  = new Set();
+          this.connectorsTo   = new Set();
+        },
+        ready: function() {
+          var self = this;
+          
+          self.widgetHandle = self;
+          self.nameElement  = self.$.nameElement;
+          self.nameInput    = self.$.nameInput;
           
           require(['core/client', 'core/node_id'], function(client, node_id) {
           
             self.client = client;
             self.id_ = node_id.fromHex(self.nodeId);
             if (client.web.hasName(self.id_)) {
-              self.set('name', client.web.getName(self.id_));
+              self.updateName(client.web.getName(self.id_));
             }
             
             self.widgetId = node_id.make();
@@ -72,23 +66,16 @@
             client.web.onNames(function(namesAdded, namesRemoved) {
               namesAdded.forEach(function(node) {
                 if (node_id.equal(node.id, self.id_)) {
-                  self.set('name', node.name);
-                  self.updateStyles();
-                  self.updateDimensions();
+                  self.updateName(node.name);
                 }
               });
               namesRemoved.forEach(function(node) {
                 if (node_id.equal(node, self.id_)) {
-                  self.set('name', '');
-                  self.updateStyles();
-                  self.updateDimensions();
+                  self.updateName('');
                 }
               });
             });
           });
-        },
-        ready: function() {
-          this.widgetHandle = this;
         },
         hasHandles: function() {
           return true;
@@ -108,11 +95,36 @@
           var rect = this.getBoundingClientRect();
           if (this.dimensions.width  !== rect.width ||
               this.dimensions.height !== rect.height) {
-            this.set('dimensions', {
-              width:  rect.width,
-              height: rect.height,
-            });
+            this.dimensions.width  = rect.width;
+            this.dimensions.height = rect.height;
             this.fire('dimensionsChanged', this.dimensions);
+          }
+        },
+        updateName: function(name) {
+          if (this.name !== name) {
+            this.name = name;
+            this.nameElement.textContent = name;
+            if (this.nameInput.value !== name) {
+              this.nameInput.value = name;
+            }
+            this.classList.toggle('has-name', Boolean(name));
+            this.updateNameInputPosition();
+            this.updateDimensions();
+          }
+        },
+        updateNameInputPosition: function() {
+          if (this.name) {
+            this.nameInput.style.left = this.nameElement.offsetLeft + 'px';
+            this.nameInput.style.top  = this.nameElement.offsetTop  + 'px';
+            this.nameInput.style.width  = this.nameElement.clientWidth  + 'px';
+            this.nameInput.style.height = this.nameElement.clientHeight + 'px';
+            this.nameInput.style['margin-top']  = '0px';
+          } else {
+            this.nameInput.style.left = '50%';
+            this.nameInput.style.top  = '50%';
+            this.nameInput.style.width  = '10px';
+            this.nameInput.style.height = '30px';
+            this.nameInput.style['margin-top']  = '-15px';
           }
         },
         _widgetHandleMousedown: function(event) {
@@ -172,15 +184,26 @@
           }
         },
         startEditing: function() {
-          this.set('isEditing', true);
-          this.$.input_box.style.width = this.clientWidth + 'px';
-          this.$.input_box.classList.remove('hidden');
-          this.$.input_box.select();
-          this.updateStyles();
-          this.updateDimensions();
+          if (!this.isEditing) {
+            this.isEditing = true;
+            this.classList.add('editing-name');
+            this.updateNameInputPosition();
+            this.nameInput.select();
+          }
         },
         finishEditing: function() {
-          var newName = this.$.input_box.value;
+          if (this.isEditing) {
+            this.isEditing = false;
+            this.classList.remove('editing-name');
+            this.fire('finishedEditing');
+          }
+        },
+        onBlur: function(event) {
+          this.finishEditing();
+        },
+        onNameInput: function(event) {
+          var newName = this.nameInput.value;
+          this.updateName(newName);
           if (newName) {
             if (this.client.web.getName(this.id_) !== newName) {
               this.client.addNames([{id: this.id_, name: newName}]);
@@ -190,21 +213,12 @@
               this.client.removeNames([this.id_]);
             }
           }
-          this.$.input_box.classList.add('hidden');
-          this.set('isEditing', false);
-          this.updateDimensions();
-          this.fire('finishedEditing');
-        },
-        onBlur: function(event) {
-          if (this.isEditing) {
-            this.finishEditing();
-          }
         },
         onKeypress: function(event) {
           if (event.which === 13) {
             this.finishEditing();
           }
-        }
+        },
       });
     })();
   </script>

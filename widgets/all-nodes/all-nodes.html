@@ -38,7 +38,7 @@
               namesAdded.forEach(function(node) {
                 if (self.nodeWidgets.has(self.node_id.toMapKey(node.id))) {
                   var nodeWidget = self.nodeWidgets.get(self.node_id.toMapKey(node.id));
-                  nodeWidget.set('name', node.name);
+                  nodeWidget.updateName(node.name);
                 } else {
                   self.addNodeWidget(node.id, node.name);
                 }
@@ -54,7 +54,7 @@
           if (!this.nodeWidgets.has(this.node_id.toMapKey(nodeId))) {
             var nodeWidget = document.createElement('yb-node');
             nodeWidget.nodeId = this.node_id.toHex(nodeId);
-            nodeWidget.set('name', name);
+            nodeWidget.updateName(name);
             this.nodeWidgets.set(this.node_id.toMapKey(nodeId), nodeWidget);
             Polymer.dom(this.widgetsContainer).appendChild(nodeWidget);
           }
