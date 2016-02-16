@@ -207,14 +207,6 @@ gulp.task('browser-sync', ['site', 'site-watch'], function() {
       target: 'localhost:3000',
       ws: true
     },
-    files: [
-      "dist/site/*.html",
-      "dist/site/widgets/**/*.html",
-      "dist/site/*.js",
-      "dist/site/*.css",
-      "dist/site/*.svg",
-      "dist/site/*.png",
-    ],
     snippetOptions: {
       rule: {
         match: '<span id="browser-sync-binding"></span>',
