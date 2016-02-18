@@ -1,6 +1,10 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../widget-behavior.html">
+
 <link rel="import" href="node-factory-styles.html">
+
+<link rel="import" href="../node/node.html">
 
 <dom-module id="yb-node-factory">
 
@@ -15,6 +19,7 @@
     (function() {
       Polymer({
         is: 'yb-node-factory',
+        behaviors: [WidgetBehavior],
         ready: function() {
           var self = this;
           self.widgetHandle = self;

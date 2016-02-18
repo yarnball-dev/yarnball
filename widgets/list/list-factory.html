@@ -1,6 +1,10 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../widget-behavior.html">
+
 <link rel="import" href="list-factory-styles.html">
+
+<link rel="import" href="../list/list.html">
 
 <dom-module id="yb-list-factory">
 
@@ -15,6 +19,7 @@
     (function() {
       Polymer({
         is: 'yb-list-factory',
+        behaviors: [WidgetBehavior],
         ready: function() {
           this.widgetHandle = this;
         },

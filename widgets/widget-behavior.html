@@ -11,17 +11,13 @@
         notify: true,
         observer: '_highlightedChanged',
       },
-      selected: {
-        type: Boolean,
-        value: false,
-        notify: true,
-        observer: '_selectedChanged',
-      }
+    },
+    created: function() {
+      this.widgetType = this.tagName.toLowerCase();
+      this.widgets = new Set();
     },
     ready: function() {
       var self = this;
-      self.widgetType = self.tagName.toLowerCase();
-      self.widgets = new Set();
       self.getHandles().forEach(function(handle) {
         handle.addEventListener('mousedown', function(event) {
           self._widgetHandleMousedown(event);
@@ -59,8 +55,8 @@
     _highlightedChanged: function(value) {
       this.toggleClass('highlighted', value);
     },
-    _selectedChanged: function(value) {
-      this.toggleClass('selected', value);
+    setSelected: function(selected) {
+      this.toggleClass('selected', selected);
     },
     _widgetHandleMousedown: function(event) {
       var self = this;
