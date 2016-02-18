@@ -64,6 +64,9 @@ define(function() {
       event.detail.detachedWidgets.forEach(function(nodeWidget) {
         surface.attachWidget(nodeWidget, nodeWidget.dragStartPosition);
       });
+      surface.selectWidgets(event.detail.detachedWidgets, true);
+      
+      updateDropTargets();
     }
     
     dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
@@ -85,26 +88,33 @@ define(function() {
         });
         
         if (dragdropArea.dropRequestHandler) {
-          widgetsToDrop = dragdropArea.dropRequestHandler(widgetsToDrop);
+          widgetsToDrop = Array.from(dragdropArea.dropRequestHandler(widgetsToDrop));
         }
         
-        var detachedWidgets = Array.from(widgetsToDrop).map(function(nodeWidget) {
-          return surface.detachWidget(nodeWidget);
-        });
-        
-        dragdropArea.fire('widgetsDraggedIn', {
-          dragdropArea: dragdropArea,
-          widgets: detachedWidgets,
-          mouseEvent: event,
-        });
-        
-        if (!dragdropAreasToDraggingNodes.has(dragdropArea)) {
-          dragdropAreasToDraggingNodes.set(dragdropArea, new Set(detachedWidgets));
-          dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
-        } else {
-          detachedWidgets.forEach(function(nodeWidget) {
-            dragdropAreasToDraggingNodes.get(dragdropArea).add(nodeWidget);
+        if (widgetsToDrop.length > 0) {
+          
+          dragdropArea.fire('widgetsDraggedIn', {
+            dragdropArea: dragdropArea,
+            widgets: Array.from(widgetsToDrop),
+            mouseEvent: event,
           });
+          
+          var droppedWidgets = widgetsToDrop.filter(function(widget) {
+            return !surface.isTopLevelWidget(widget);
+          });
+          
+          surface.selectWidgets(droppedWidgets, true);
+          
+          if (!dragdropAreasToDraggingNodes.has(dragdropArea)) {
+            dragdropAreasToDraggingNodes.set(dragdropArea, new Set(droppedWidgets));
+            dragdropArea.addEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
+          } else {
+            droppedWidgets.forEach(function(nodeWidget) {
+              dragdropAreasToDraggingNodes.get(dragdropArea).add(nodeWidget);
+            });
+          }
+          
+          updateDropTargets();
         }
       }
     }
@@ -128,24 +138,20 @@ define(function() {
       });
     }
     
-    var dropTargets = Array.from(surface.getDragdropAreas()).filter(function(dragdropArea) {
-      if (!dragdropArea.dropRequestHandler) {
-        return true;
-      }
-      var allowedWidgets = dragdropArea.dropRequestHandler(draggingWidgets);
-      return Array.from(allowedWidgets).length !== 0;
-    });
+    var dropTargets = Array.from(surface.getDragdropAreas());
+    
+    function updateDropTargets() {
+      dropTargets.forEach(function(dragdropArea) {
+        var dropReady = !dragdropArea.dropRequestHandler || Array.from(dragdropArea.dropRequestHandler(draggingWidgets)).length > 0;
+        dragdropArea.classList.toggle('drop-ready', dropReady);
+      });
+    }
     
     // Prevent dropping onto a dragdrop area that is being dragged
     dropTargets = dropTargets.filter(function(dragdropArea) {
-      var parentNode = dragdropArea.parentNode;
-      while (parentNode && parentNode !== surface.viewRoot) {
-        if (draggingWidgets.has(parentNode)) {
-          return false;
-        }
-        parentNode = parentNode.parentNode;
-      }
-      return true;
+      return !surface.getWidgetParents(dragdropArea).some(function(parent) {
+        draggingWidgets.has(parent);
+      });
     });
     
     dropTargets.forEach(function(dragdropArea) {
@@ -153,10 +159,10 @@ define(function() {
         dragdropArea.addEventListener('mouseover', dragdropAreaMouseover);
         dragdropArea.addEventListener('mouseout',  dragdropAreaMouseout);
         dragdropArea.addEventListener('mouseup',   dragdropAreaMouseup);
-        dragdropArea.classList.add('drop-ready');
       }
     });
     
+    updateDropTargets();
     
     // Begin drag
     

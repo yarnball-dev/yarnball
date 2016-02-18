@@ -93,6 +93,29 @@ define(['./node_id'], function(node_id) {
     }
   }
   
+  Web.prototype.setLinks = function(add, remove) {
+    var self = this;
+    var addedLinks   = [];
+    var removedLinks = [];
+    add.forEach(function(link) {
+      var linkKey = node_id.linkToKey(link);
+      if (!self.links.has(linkKey)) {
+        self.links.add(linkKey);
+        addedLinks.push(link);
+      }
+    });
+    remove.forEach(function(link) {
+      var linkKey = node_id.linkToKey(link);
+      if (self.links.has(linkKey)) {
+        self.links.delete(linkKey);
+        removedLinks.push(link);
+      }
+    });
+    if (addedLinks.length > 0 || removedLinks.length > 0) {
+      self._notifyLinks(addedLinks, removedLinks);
+    }
+  }
+  
   Web.prototype.hasLink = function(from, via, to) {
     return this.links.has(node_id.toHex(from) +
                           node_id.toHex(via) +

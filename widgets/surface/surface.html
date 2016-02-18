@@ -518,6 +518,8 @@
           'f2':                 'handleKey_F2',
           'up down left right': 'handleKey_ArrowKeys',
           'enter':              'handleKey_Enter',
+          'space':              'handleKey_Space',
+          'ctrl+space':         'handleKey_CtrlSpace',
         },
         handleKey_Backspace: function(event) {
           if (!this.hasOperation() && document.activeElement === this) {
@@ -601,11 +603,21 @@
         handleKey_Enter: function(event) {
           this.fire('enterKey', event);
         },
+        handleKey_Space: function(event) {
+          if (!this.hasOperation() && !event.detail.keyboardEvent.ctrlKey) {
+            this.revealLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'), true);
+          }
+        },
+        handleKey_CtrlSpace: function(event) {
+          if (!this.hasOperation()) {
+            this.hideConnectorsBetweenSelected();
+          }
+        },
         searchQueryChanged: function(event) {
           var self = this;
           var query = event.detail;
           var matchingNodeWidgets = Array.from(self.getWidgetsOfType('yb-node')).filter(function(nodeWidget) {
-            return query && nodeWidget.name.toLowerCase().includes(query.toLowerCase()) && !self.widgetHasParent(nodeWidget, self.searchPanel);
+            return query && nodeWidget.name && nodeWidget.name.toLowerCase().includes(query.toLowerCase()) && !self.widgetHasParent(nodeWidget, self.searchPanel);
           });
           self.selectWidgets(matchingNodeWidgets);
         },
@@ -856,6 +868,16 @@
                    nodeWidgets.has(connector.toWidget);
           });
         },
+        hideConnectorsBetweenSelected: function() {
+          var self = this;
+          var connectors = self.getSelectedWidgetsOfType('yb-connector');
+          self.getConnectorsBetweenNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
+            connectors.add(connector);
+          });
+          connectors.forEach(function(connector) {
+            self.hideConnector(connector);
+          });
+        },
         getConnectorsTouchingNodeWidgets: function(nodeWidgets) {
           var connectors = new Set();
           nodeWidgets.forEach(function(nodeWidget) {
@@ -962,10 +984,10 @@
         },
         detachWidget: function(widget) {
           widget.classList.remove('yb-surface');
-          return Polymer.dom(this.viewRoot).removeChild(widget);
+          return this.viewRoot.removeChild(widget);
         },
         removeWidget: function(widget) {
-          Polymer.dom(this.viewRoot).removeChild(widget);
+          return this.viewRoot.removeChild(widget);
         },
         widgetAttached: function(event) {
           var self = this;
@@ -976,7 +998,7 @@
           
             self.widgets.add(widget);
             
-            if (!self.widgetsOfType.has()) {
+            if (!self.widgetsOfType.has(widget.widgetType)) {
               self.widgetsOfType.set(widget.widgetType, new Set([widget]))
             } else {
               self.widgetsOfType.get(widget.widgetType).add(widget);
@@ -1064,11 +1086,18 @@
           self.widgetsTopLevel.delete(widget);
           
           self.widgets.delete(widget);
-          self.selectedWidgets.delete(widget);
+          
+          if (self.selectedWidgets.has(widget)) {
+            self.selectedWidgets.delete(widget);
+            widget.set('selected', false);
+          }
           
           widget.widgets.forEach(function(childWidget) {
             self.widgets.delete(childWidget);
-            self.selectedWidgets.delete(childWidget);
+            if (self.selectedWidgets.has(childWidget)) {
+              self.selectedWidgets.delete(childWidget);
+              childWidget.set('selected', false);
+            }
           });
         },
         _setupNodeWidgetHighlighting: function(nodeWidget) {
@@ -1096,9 +1125,6 @@
         },
         bringConnectorToFront: function(connector) {
           Polymer.dom(this.viewRoot).appendChild(connector);
-        },
-        bringSetWidgetToFront: function(setWidget) {
-          Polymer.dom(this.viewRoot).appendChild(setWidget);
         },
         isWidgetSelected: function(widget) {
           return this.selectedWidgets.has(widget);
@@ -1167,6 +1193,18 @@
             return this.isWidgetHidden(widget.parentNode);
           }
           return false;
+        },
+        getWidgetParents: function(widget) {
+          var parents = [];
+          var currentParent = widget.parentNode;
+          while (currentParent) {
+            if (currentParent === this) {
+              break;
+            }
+            parents.push(currentParent);
+            currentParent = currentParent.parentNode;
+          }
+          return parents;
         },
         widgetHasParent: function(widget, parentNode) {
           var currentParent = widget.parentNode;
@@ -1557,17 +1595,6 @@
           
           return setWidget;
         },
-        removeSetWidget: function(setWidget) {
-          var self = this;
-          if (self.selectedSetWidgets.has(setWidget)) {
-            self.selectedSetWidgets.delete(setWidget);
-          }
-          self.setWidgets.delete(setWidget);
-          setWidget.dragdropAreas.forEach(function(dragdropArea) {
-            self.dragdropAreas.delete(dragdropArea);
-          });
-          Polymer.dom(self.viewRoot).removeChild(setWidget);
-        },
         _setupSetWidgetMenu: function(setWidget) {
           var self = this;
           setWidget.addEventListener('contextMenu', function(event) {
@@ -1657,13 +1684,7 @@
         menuItem_HideLinks: function() {
           var self = this;
           this.closeSelectionMenu();
-          var connectors = self.getSelectedWidgetsOfType('yb-connector');
-          self.getConnectorsBetweenNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
-            connectors.add(connector);
-          });
-          connectors.forEach(function(connector) {
-            self.hideConnector(connector);
-          });
+          this.hideConnectorsBetweenSelected();
         },
       });
     })();

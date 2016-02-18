@@ -15,11 +15,9 @@
     <div id="widgetHandle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
     <div id="widgetBody" class="widget-body">
       <div class="header">
-        <yb-selector id="firstNodeSelector" node-id="{{first}}"></yb-selector>
-        <span class="connector"></span>
         <yb-selector id="nextNodeSelector"  node-id="{{next}}"> </yb-selector>
       </div>
-      <yb-dragdrop-area id="listContent" on-nodes-dropped="nodesDropped" drop-on-hover>
+      <yb-dragdrop-area id="listContent" drop-on-hover>
       </yb-dragdrop-area>
     </div>
   </template>
@@ -32,25 +30,17 @@
         is: 'yb-list',
         behaviors: [WidgetBehavior],
         properties: {
-          first: {
-            type: String,
-            notify: true,
-            observer: 'refreshList',
-          },
           next: {
             type: String,
             notify: true,
-            observer: 'refreshList',
+            observer: 'nextChanged',
           },
         },
         created: function() {
-          this.widgets = new Set();
           this.dragdropAreas = new Set();
           this.nodeWidgetMap = new Map();;
         },
         listeners: {
-          widgetAttached:  'widgetAttached',
-          widgetDetached:  'widgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
         },
@@ -66,6 +56,7 @@
             self.client  = client;
             self.node_id = node_id;
             self.ordered_set = ordered_set;
+            self.orderedSet = self.next ? ordered_set(client.web, node_id.fromHex(self.next)) : null;
             self.refreshList();
             self.onLinks = self.onLinks.bind(self);
             client.web.onLinks(self.onLinks);
@@ -73,10 +64,13 @@
           
           self.listContent.dropRequestHandler = function(widgets) {
             return Array.from(widgets).filter(function(widget) {
-              if (widget.tagName !== 'yb-node'.toUpperCase()) {
+            
+              // Must be a node widget
+              if (widget.widgetType !== 'yb-node') {
                 return false;
               }
               
+              // Must not already be in the list
               if (self.nodeWidgetMap.has(self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId)))) {
                 return false;
               }
@@ -85,6 +79,7 @@
             });
           }
           
+          // Record widget drag start position
           self.listContent.addEventListener('widgetDragStart', function(event) {
             event.detail.widgets.forEach(function(nodeWidget) {
               nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
@@ -93,24 +88,26 @@
           
           self.listContent.addEventListener('widgetDrag', function(event) {
           
+            event.detail.widgets.forEach(function(nodeWidget) {
+              nodeWidget.style.transform = 'translateX(' + (event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX) + 'px)';
+            });
+          
             var listContentRect = self.listContent.getBoundingClientRect();
           
-            var widgetsDraggedOut = new Set(Array.from(event.detail.widgets).filter(function(nodeWidget) {
+            var widgetsDraggedOut = Array.from(event.detail.widgets).filter(function(nodeWidget) {
               var distanceDragged = Math.abs(event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX);
-              return distanceDragged > (listContentRect.width / 2)
-            }));
+              return distanceDragged > (listContentRect.width / 2);
+            });
             
-            if (widgetsDraggedOut.size > 0) {
+            if (widgetsDraggedOut.length > 0) {
             
-              var nodeIds = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
+              var nodeIds = widgetsDraggedOut.map(function(nodeWidget) {
                 return self.node_id.fromHex(nodeWidget.nodeId);
               });
-              var detachedWidgets = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
+              var detachedWidgets = widgetsDraggedOut.map(function(nodeWidget) {
                 nodeWidget.style.transform = null;
                 nodeWidget.classList.remove('yb-list');
-                self.nodeWidgetMap.delete(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)));
-                self.widgets.delete(nodeWidget);
-                return Polymer.dom(self.listContent).removeChild(nodeWidget);
+                return self.detachNodeWidget(nodeWidget);
               });
               self.listContent.fire('widgetsDraggedOut', {
                 dragdropArea: self.listContent,
@@ -119,26 +116,25 @@
               });
               self.removeNodes(nodeIds);
             }
-            
-            event.detail.widgets.forEach(function(nodeWidget) {
-              if (!widgetsDraggedOut.has(nodeWidget)) {
-                nodeWidget.style.transform = 'translateX(' + (event.detail.options.currentPosPage.x - nodeWidget.dragdropStartCursorPageX) + 'px)';
-              }
-            });
           });
           
           self.listContent.addEventListener('widgetsDraggedIn', function(event) {
-            if (self.first && self.next) {
-              var set = self.ordered_set(self.client.web, self.node_id.fromHex(self.first), self.node_id.fromHex(self.next));
+            if (self.orderedSet) {
               var nodeIds = [];
               event.detail.widgets.forEach(function(nodeWidget) {
-                self.attachNodeWidget(nodeWidget);
-                nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
-                nodeIds.push(self.node_id.fromHex(nodeWidget.nodeId));
+                if (!self.nodeWidgetMap.has(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)))) {
+                  self.attachNodeWidget(nodeWidget);
+                  nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
+                  nodeIds.push(self.node_id.fromHex(nodeWidget.nodeId));
+                }
               });
-              nodeIds.forEach(function(node) {
-                set.append(node);
-              });
+              var needsRefresh = !self.orderedSet._base && nodeIds.length === 1;
+              
+              self.orderedSet.append(nodeIds);
+              
+              if (needsRefresh) {
+                self.refreshList();
+              }
             }
           });
           
@@ -151,14 +147,17 @@
         detached: function() {
           this.client.web.removeLinksListener(this.onLinks);
         },
-        onLinks: function(linksAdded, linksRemoved) {
+        nextChanged: function(next) {
+          if (next) {
+            this.orderedSet = this.ordered_set(this.client.web, this.node_id.fromHex(next));
+          } else {
+            this.orderedSet = null;
+          }
+          this.listContent.set('enabled', Boolean(next));
           this.refreshList();
         },
-        widgetAttached: function(event) {
-          this.widgets.add(event.detail);
-        },
-        widgetDetached: function(event) {
-          this.widgets.delete(event.detail);
+        onLinks: function(linksAdded, linksRemoved) {
+          this.refreshList();
         },
         dragdropAreaAttached: function(event) {
           this.dragdropAreas.add(event.detail);
@@ -194,43 +193,28 @@
             this.fire('contextMenu', event);
           }
         },
-        nodeList: function() {
-          var self = this;
-          
-          if (self.first && self.next) {
-            var set = self.ordered_set(self.client.web, self.node_id.fromHex(self.first), self.node_id.fromHex(self.next));
-            return set.get();
-          } else {
-            return [];
-          }
-        },
         removeNodes: function(nodes) {
-          if (this.first && this.next) {
-            var set = this.ordered_set(this.client.web, this.node_id.fromHex(this.first), this.node_id.fromHex(this.next));
-            nodes.forEach(function(node) {
-              set.delete(node);
-            });
+          if (this.orderedSet) {
+            this.orderedSet.delete(nodes);
           }
         },
         refreshList: function() {
           var self = this;
           
-          self.listContent.set('enabled', self.first && self.next);
-          
-          var nodes = self.nodeList();
+          var nodes = self.orderedSet ? self.orderedSet.get() : [];
+            
           var nodesSet = new Set(nodes.map(function(node){
             return self.node_id.toMapKey(node);
           }));
           
-          var nodeWidgetsToRemove = Array.from(new Set(self.nodeWidgetMap.values())).filter(function(nodeWidget) {
-            var nodeIdKey = self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId));
-            return !nodesSet.has(nodeIdKey);
+          // Remove node widgets not in the set
+          Array.from(self.nodeWidgetMap.entries()).forEach(function(entry) {
+            if (!nodesSet.has(entry[0])) {
+              self.detachNodeWidget(entry[1]);
+            }
           });
           
-          nodeWidgetsToRemove.forEach(function(nodeWidget) {
-            self.removeNodeWidget(nodeWidget);
-          });
-          
+          // Re-order node widgets and add any new ones
           nodes.forEach(function(node, index) {
             var nodeIdKey = self.node_id.toMapKey(node)
             var nodeWidget = self.nodeWidgetMap.get(nodeIdKey);
@@ -249,13 +233,14 @@
         },
         attachNodeWidget: function(nodeWidget) {
           nodeWidget.style.position = null;
-          Polymer.dom(this.listContent).appendChild(nodeWidget);
+          nodeWidget.style.left = 0;
+          nodeWidget.style.top  = 0;
           this.nodeWidgetMap.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
+          Polymer.dom(this.listContent).appendChild(nodeWidget);
         },
-        removeNodeWidget: function(nodeWidget) {
-          this.widgets.delete(nodeWidget);
-          this.nodeWidgetMap.delete(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
-          Polymer.dom(this.listContent).removeChild(nodeWidget);
+        detachNodeWidget: function(nodeWidget) {
+          this.nodeWidgetMap.delete(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)));
+          return this.listContent.removeChild(nodeWidget);
         },
       });
     })();

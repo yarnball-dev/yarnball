@@ -30,12 +30,7 @@ define(function() {
         }
       }
       
-      surface.addEventListener('widgetAttached', function(event) {
-        event.detail.addEventListener('selected', handleWidgetSelected);
-      });
-      surface.addEventListener('widgetDetached', function(event) {
-        event.detail.removeEventListener('selected', handleWidgetSelected);
-      });
+      surface.addEventListener('selected', handleWidgetSelected);
     }
   }
   
