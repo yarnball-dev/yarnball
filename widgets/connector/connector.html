@@ -93,6 +93,26 @@
             return "";
           }
         },
+        highlight: function(options) {
+          var color    = ('color'    in options) ? options.color    : '#fff';
+          var reverse  = ('reverse'  in options) ? options.reverse  : false;
+          var duration = ('duration' in options) ? options.duration : 300;
+          var delay    = ('delay'    in options) ? options.delay    : 0;
+          var pathLength = this.path.getTotalLength();
+          var animation = this.path.animate(
+            [
+              {stroke: color, opacity: 1.0, 'stroke-dasharray':  pathLength, 'stroke-dashoffset': reverse ? 0           : pathLength},
+              {stroke: color, opacity: 0.5, 'stroke-dasharray':  pathLength, 'stroke-dashoffset': reverse ? 0           : 0         },
+              {stroke: color, opacity: 0.0, 'stroke-dasharray':  pathLength, 'stroke-dashoffset': reverse ? -pathLength : 0         },
+            ],
+            {
+              duration: duration,
+              fill: 'both',
+              delay: delay,
+            }
+          );
+          return animation.finished;
+        },
       });
     })();
   </script>

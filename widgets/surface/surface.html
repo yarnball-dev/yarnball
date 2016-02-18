@@ -145,10 +145,10 @@
         
           var self = this;
           
-          self.viewRoot = self.$.viewRoot;
-          self.background = self.$.background;
-          self.searchPanel = self.$.searchPanel;
-          self.createPanel = self.$.createPanel;
+          self.viewRoot     = self.$.viewRoot;
+          self.background   = self.$.background;
+          self.searchPanel  = self.$.searchPanel;
+          self.createPanel  = self.$.createPanel;
           self.boxSelection = self.$.boxSelection;
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
@@ -605,19 +605,19 @@
         },
         handleKey_Space: function(event) {
           if (!this.hasOperation() && !event.detail.keyboardEvent.ctrlKey) {
-            this.revealLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'), true);
+            this.createConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'));
           }
         },
         handleKey_CtrlSpace: function(event) {
           if (!this.hasOperation()) {
-            this.hideConnectorsBetweenSelected();
+            this.removeConnectorsBetweenSelected();
           }
         },
         searchQueryChanged: function(event) {
           var self = this;
           var query = event.detail;
           var matchingNodeWidgets = Array.from(self.getWidgetsOfType('yb-node')).filter(function(nodeWidget) {
-            return query && nodeWidget.name && nodeWidget.name.toLowerCase().includes(query.toLowerCase()) && !self.widgetHasParent(nodeWidget, self.searchPanel);
+            return query && nodeWidget.name && nodeWidget.name.toLowerCase().includes(query.toLowerCase()) && !self.searchPanel.contains(nodeWidget);
           });
           self.selectWidgets(matchingNodeWidgets);
         },
@@ -745,7 +745,7 @@
             return null;
           }
         },
-        getTopLevelNodeWidgetTriplesForLink: function(link, nodeWidgets) {
+        getNodeWidgetTriplesForLink: function(link, nodeWidgets) {
           var self = this;
           
           var nodeWidgetsFrom = self.getTopLevelWidgetsForNode(link.from);
@@ -781,6 +781,31 @@
           
           return nodeWidgetTriples;
         },
+        getBestNodeWidgetTriplesForLink: function(link, newConnectorOptions, nodeWidgets) {
+          var self = this;
+          
+          var nodeWidgetTriples = self.getNodeWidgetTriplesForLink(link, nodeWidgets);
+          
+          // Sort by length
+          nodeWidgetTriples.sort(function(a, b) {
+            return self.getNodeWidgetTripleDistance(a) - self.getNodeWidgetTripleDistance(b);
+          });
+          
+          // Return non-overlapping triples
+          var nodeWidgetsUsed = new Set();
+          return nodeWidgetTriples.filter(function(nodeWidgetTriple) {
+          
+            var alreadyUsedWidgets = !nodeWidgetsUsed.has(nodeWidgetTriple.from) &&
+                                     !nodeWidgetsUsed.has(nodeWidgetTriple.via)  &&
+                                     !nodeWidgetsUsed.has(nodeWidgetTriple.to);
+            
+            nodeWidgetsUsed.add(nodeWidgetTriple.from);
+            nodeWidgetsUsed.add(nodeWidgetTriple.via);
+            nodeWidgetsUsed.add(nodeWidgetTriple.to);
+            
+            return alreadyUsedWidgets;
+          });
+        },
         distance: function(a, b) {
           var dx = a.x - b.x;
           var dy = a.y - b.y;
@@ -805,53 +830,23 @@
           
           return this.distance(fromPos, viaPos) + this.distance(viaPos, toPos);
         },
-        makeConnectorsForLink: function(link, newConnectorOptions, nodeWidgets) {
+        createConnectorsForLink: function(link, nodeWidgets, newConnectorOptions) {
           var self = this;
+          var triples = self.getBestNodeWidgetTriplesForLink(link, nodeWidgets);
           
-          var returnValues = {
-            connectors: [],
-            newConnectors: [],
-            existingConnectors: [],
+          if (!newConnectorOptions || newConnectorOptions.active) {
+            // Only create active connectors between widgets that don't already have one
+            triples = triples.filter(function(triple) {
+              var connectors = self.getConnectorsForWidgetTriple(triple);
+              return !connectors.some(function(connector) {
+                return connector.active;
+              });
+            });
           }
-        
-          var nodeWidgetTriples = self.getTopLevelNodeWidgetTriplesForLink(link, nodeWidgets);
-          if (!nodeWidgetTriples.length) {
-            return returnValues;
-          }
           
-          nodeWidgetTriples.sort(function(a, b) {
-            return self.getNodeWidgetTripleDistance(a) - self.getNodeWidgetTripleDistance(b);
+          return triples.map(function(triple) {
+            return self.createConnector(triple, newConnectorOptions);
           });
-          
-          var nodeWidgetsUsed = new Set();
-          
-          nodeWidgetTriples.forEach(function(nodeWidgetTriple) {
-          
-            var connector = self.getConnectorForNodeWidgetTriple(nodeWidgetTriple);
-            
-            if (connector) {
-              returnValues.existingConnectors.push(connector);
-            }
-            
-            if (!connector &&
-                !nodeWidgetsUsed.has(nodeWidgetTriple.from) &&
-                !nodeWidgetsUsed.has(nodeWidgetTriple.via)  &&
-                !nodeWidgetsUsed.has(nodeWidgetTriple.to)) {
-              
-              connector = self.createConnector(nodeWidgetTriple, newConnectorOptions);
-              returnValues.newConnectors.push(connector);
-            }
-            
-            if (connector) {
-              returnValues.connectors.push(connector);
-            }
-            
-            nodeWidgetsUsed.add(nodeWidgetTriple.from);
-            nodeWidgetsUsed.add(nodeWidgetTriple.via);
-            nodeWidgetsUsed.add(nodeWidgetTriple.to);
-          });
-          
-          return returnValues;
         },
         getConnectorsForLink: function(link) {
           var linkKey = this.node_id.linkToKey(link);
@@ -868,98 +863,55 @@
                    nodeWidgets.has(connector.toWidget);
           });
         },
-        hideConnectorsBetweenSelected: function() {
+        removeConnectorsBetweenSelected: function() {
           var self = this;
           var connectors = self.getSelectedWidgetsOfType('yb-connector');
           self.getConnectorsBetweenNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
-            connectors.add(connector);
-          });
-          connectors.forEach(function(connector) {
-            self.hideConnector(connector);
-          });
-        },
-        getConnectorsTouchingNodeWidgets: function(nodeWidgets) {
-          var connectors = new Set();
-          nodeWidgets.forEach(function(nodeWidget) {
-            nodeWidget.connectors().forEach(function(connector) {
+            if (connector.active) {
               connectors.add(connector);
-            });
+            }
           });
-          return connectors;
+          self.removeWidgets(connectors);
         },
-        getConnectorForNodeWidgetTriple: function(nodeWidgetsTriple) {
+        getConnectorsForWidgetTriple: function(nodeWidgetsTriple) {
           var nodeWidgetsLinkKey = this.node_id.linkToKey({
             from: nodeWidgetsTriple.from.widgetId,
             via:  nodeWidgetsTriple.via.widgetId,
             to:   nodeWidgetsTriple.to.widgetId,
           });
-          return this.nodeWidgetsToConnectors.get(nodeWidgetsLinkKey);
+          if (this.nodeWidgetsToConnectors.has(nodeWidgetsLinkKey)) {
+            return Array.from(this.nodeWidgetsToConnectors.get(nodeWidgetsLinkKey));
+          } else {
+            return [];
+          }
         },
         getDragdropAreas: function() {
           return new Set(this.dragdropAreas);
         },
         onLinks: function(linksAdded, linksRemoved) {
-          var self = this;
-          
-          var addedConnectorAnimations = self.highlightLinks(linksAdded, {color: '#2FB51E'});
-          addedConnectorAnimations.forEach(function(animation, connector) {
-            if (!self.activeConnectors.has(connector)) {
-              animation.then(
-                function() {
-                  self.removeWidget(connector);
-                },
-                function() { }
-              );
-            }
-          });
-          
-          var removeConnectorAnimations = self.highlightLinks(linksRemoved, {color: '#E05749', fadeOut: true, reverse: true});
-          removeConnectorAnimations.forEach(function(animation, connector) {
-            animation.then(
-              function() {
-                self.removeWidget(connector);
-              },
-              function() { }
-            );
-          });
+          this.highlightLinks(linksAdded,   {color: '#2FB51E'});
+          this.highlightLinks(linksRemoved, {color: '#E05749', reverse: true});
         },
         highlightLinks: function(links, options) {
           var self = this;
-          var connectorAnimations = new Map();
+          
           links.forEach(function(link) {
-            var result = self.makeConnectorsForLink(link, {active: false});
-            result.connectors.forEach(function(connector) {
-              var animation = self.highlightConnector(connector, options);
-              connectorAnimations.set(connector, animation);
+            var triples = self.getBestNodeWidgetTriplesForLink(link);
+            triples.forEach(function(triple) {
+              self.highlightWidgetTriple(triple, options);
             });
           });
-          return connectorAnimations;
         },
-        highlightConnector: function(connector, options) {
+        highlightWidgetTriple: function(triple, options) {
           var self = this;
-          var animationDuration = 300;
-          if (connector.highlightAnimation) {
-            connector.highlightAnimation.cancel();
-            connector.highlightAnimation = null;
-          }
-          var color   = ('color'   in options) ? options.color   : '#fff';
-          var fadeOut = ('fadeOut' in options) ? options.fadeOut : !self.activeConnectors.has(connector);
-          var reverse = ('reverse' in options) ? options.reverse : false;
-          var delay   = ('delay'   in options) ? options.delay : 0;
-          var pathLength = connector.path.getTotalLength();
-          connector.highlightAnimation = connector.path.animate(
-            [
-              {stroke: color, opacity: 1.0,                 'stroke-dasharray':  pathLength, 'stroke-dashoffset': reverse ? 0               : pathLength},
-              {stroke: color, opacity: fadeOut ? 0.5 : 1.0, 'stroke-dasharray':  pathLength, 'stroke-dashoffset': reverse ? 0               : 0         },
-              {stroke: color, opacity: fadeOut ? 0.0 : 1.0, 'stroke-dasharray':  pathLength, 'stroke-dashoffset': reverse ? -pathLength     : 0         },
-            ],
-            {
-              duration: animationDuration,
-              fill: fadeOut ? 'both' : 'backwards',
-              delay: delay,
-            }
-          );
-          return connector.highlightAnimation.finished;
+          
+          var connector = self.createConnector(triple, {active: false});
+          
+          var animationFinished = connector.highlight(options);
+          
+          animationFinished.then(function() {
+            self.removeWidget(connector);
+          });
         },
         createNodeWidget: function(id) {
         
@@ -988,6 +940,24 @@
         },
         removeWidget: function(widget) {
           return this.viewRoot.removeChild(widget);
+        },
+        removeWidgets: function(widgets) {
+          var self = this;
+          
+          widgets = Array.from(widgets);
+          
+          for (var i=0; i<widgets.length; i++) {
+            if (widgets[i].parentNode !== self.viewRoot) {
+              throw "Cannot remove widget, the widget is not a child of the surface view root.";
+            }
+          }
+          
+          widgets.forEach(function(widget) {
+            // Check that the removal of a previous widget hasn't implicitly removed this widget
+            if (widget.parentNode === self.viewRoot) {
+              self.removeWidget(widget);
+            }
+          });
         },
         widgetAttached: function(event) {
           var self = this;
@@ -1041,15 +1011,10 @@
           
           if (widget.widgetType === 'yb-node') {
           
-            if (self.widgetsTopLevel.has(widget)) {
-            
-              Array.from(widget.connectors()).forEach(function(connector) {
-                self.removeWidget(connector);
-              });
-            }
+            self.removeWidgets(widget.connectors());
             
           } else if (widget.widgetType === 'yb-connector') {
-          
+            
             if (widget.fromWidget && widget.viaWidget && widget.toWidget) {
           
               var linkKey = self.node_id.linkToKey({
@@ -1070,16 +1035,17 @@
                 via:  widget.viaWidget.widgetId,
                 to:   widget.toWidget.widgetId,
               });
-              self.nodeWidgetsToConnectors.delete(nodeWidgetsKey);
+              if (self.nodeWidgetsToConnectors.has(nodeWidgetsKey)) {
+                var connectors = self.nodeWidgetsToConnectors.get(nodeWidgetsKey);
+                connectors.delete(widget);
+                if (connectors.size === 0) {
+                  self.nodeWidgetsToConnectors.delete(nodeWidgetsKey);
+                }
+              }
               
               widget.fromWidget.connectorsFrom.delete(widget);
               widget.viaWidget.connectorsVia.delete(widget);
               widget.toWidget.connectorsTo.delete(widget);
-              
-              if (widget.highlightAnimation) {
-                widget.highlightAnimation.cancel();
-                widget.highlightAnimation = null;
-              }
             }
           }
           
@@ -1089,14 +1055,14 @@
           
           if (self.selectedWidgets.has(widget)) {
             self.selectedWidgets.delete(widget);
-            widget.set('selected', false);
+            widget.setSelected(false);
           }
           
           widget.widgets.forEach(function(childWidget) {
             self.widgets.delete(childWidget);
             if (self.selectedWidgets.has(childWidget)) {
               self.selectedWidgets.delete(childWidget);
-              childWidget.set('selected', false);
+              childWidget.setSelected(false);
             }
           });
         },
@@ -1121,11 +1087,6 @@
             nodeWidget.addEventListener('detached', stopHighlighting);
           });
         },
-        bringNodeWidgetToFront: function(nodeWidget) {
-        },
-        bringConnectorToFront: function(connector) {
-          Polymer.dom(this.viewRoot).appendChild(connector);
-        },
         isWidgetSelected: function(widget) {
           return this.selectedWidgets.has(widget);
         },
@@ -1143,14 +1104,14 @@
           // Deselect previously selected widgets
           self.selectedWidgets.forEach(function(widget) {
             if (!widgets.has(widget)) {
-              widget.set('selected', false);
+              widget.setSelected(false);
             }
           });
           
           // Select new widgets
           widgets.forEach(function(widget) {
             if (!self.selectedWidgets.has(widget)) {
-              widget.set('selected', true);
+              widget.setSelected(true);
             }
           });
           
@@ -1159,7 +1120,7 @@
         deselectWidgets: function(widgets) {
           widgets = new Set(widgets);
           widgets.forEach(function(widget) {
-            widget.set('selected', false);
+            widget.setSelected(false);
           });
           this.selectedWidgets = new Set(Array.from(this.selectedWidgets).filter(function(widget) {
             return !widgets.has(widget);
@@ -1174,11 +1135,11 @@
           var nodeWidgets = nonHiddenWidgets.filter(function(widget) {
             return widget.widgetType === 'yb-node';
           });
-          self.revealLinksBetweenNodeWidgets(nodeWidgets, false);
+          self.highlightLinksBetweenNodeWidgets(nodeWidgets);
         },
         deselect: function() {
           this.selectedWidgets.forEach(function(widget) {
-            widget.set('selected', false);
+            widget.setSelected(false);
           });
           this.selectedWidgets.clear();
         },
@@ -1206,19 +1167,6 @@
           }
           return parents;
         },
-        widgetHasParent: function(widget, parentNode) {
-          var currentParent = widget.parentNode;
-          while (currentParent) {
-            if (currentParent === parentNode) {
-              return true;
-            }
-            if (currentParent === this) {
-              break;
-            }
-            currentParent = currentParent.parentNode;
-          }
-          return false;
-        },
         setWidgetPosition: function(widget, position) {
           widget.style.left = position.x + 'px';
           widget.style.top  = position.y + 'px';
@@ -1243,18 +1191,12 @@
         },
         hideSelectedWidgets: function() {
           var self = this;
-          self.getSelectedWidgetsTopLevel().forEach(function(widget) {
-            self.removeWidget(widget);
-          });
+          self.removeWidgets(self.getSelectedWidgetsTopLevel());
         },
         deleteSelected: function() {
           var self = this;
         
           var widgetsToRemove = new Set(self.getSelectedWidgetsTopLevel());
-          
-          self.getConnectorsTouchingNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
-            widgetsToRemove.add(connector);
-          });
           
           var linkKeysToRemove = new Set(Array.from(self.getSelectedWidgetsOfType('yb-connector')).map(function(connector) {
             return self.node_id.linkToKey(connector.link());
@@ -1263,21 +1205,9 @@
             return self.node_id.linkFromKey(linkKey);
           });
           
-          widgetsToRemove.forEach(function(widget) {
-            self.removeWidget(widget);
-          });
+          self.removeWidgets(widgetsToRemove);
 
           self.client.removeLinks(linksToRemove);
-        },
-        hideConnector: function(connector) {
-          var self = this;
-          self.activateConnector(connector, false);
-          self.highlightConnector(connector, {color: '#E05749', fadeOut: true, reverse: true}).then(
-            function() {
-              self.removeWidget(connector);
-            },
-            function() { }
-          );
         },
         duplicateWidgets: function(widgets, offset) {
           var self = this;
@@ -1327,49 +1257,7 @@
           
           return newWidgets;
         },
-        revealNodeWidgetTriples: function(nodeWidgets) {
-          var self = this;
-          
-          var nodeIdsToWidgets = new Map();
-          nodeWidgets.forEach(function(nodeWidget) {
-            var nodeIdKey = self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId));
-            if (nodeIdsToWidgets.has(nodeIdKey)) {
-              nodeIdsToWidgets.get(nodeIdKey).add(nodeWidget);
-            } else {
-              nodeIdsToWidgets.set(nodeIdKey, new Set([nodeWidget]));
-            }
-          });
-          
-          var nodeWidgetTriples = [];
-          
-          self.client.web.getLinks().forEach(function(link) {
-            if (nodeIdsToWidgets.has(self.node_id.toMapKey(link.from)) &&
-                nodeIdsToWidgets.has(self.node_id.toMapKey(link.via)) &&
-                nodeIdsToWidgets.has(self.node_id.toMapKey(link.to))) {
-              
-              var nodeWidgetsFrom = nodeIdsToWidgets.get(self.node_id.toMapKey(link.from));
-              var nodeWidgetsVia  = nodeIdsToWidgets.get(self.node_id.toMapKey(link.via));
-              var nodeWidgetsTo   = nodeIdsToWidgets.get(self.node_id.toMapKey(link.to));
-              
-              nodeWidgetsFrom.forEach(function(nodeWidgetFrom) {
-                nodeWidgetsVia.forEach(function(nodeWidgetVia) {
-                  nodeWidgetsTo.forEach(function(nodeWidgetTo) {
-                    
-                    nodeWidgetTriples.push({
-                      from: nodeWidgetFrom,
-                      via:  nodeWidgetVia,
-                      to:   nodeWidgetTo,
-                    });
-                  });
-                });
-              });
-              
-            }
-          });
-          
-          return nodeWidgetTriples;
-        },
-        revealLinksBetweenNodeWidgets: function(nodeWidgets, activate) {
+        highlightLinksBetweenNodeWidgets: function(nodeWidgets) {
         
           var self = this;
           
@@ -1378,39 +1266,22 @@
           var nodeWidgets = new Set(nodeWidgets);
           
           self.client.web.getLinks().forEach(function(link) {
-            var result = self.makeConnectorsForLink(link, {active: activate}, nodeWidgets);
+          
+            var triples = self.getBestNodeWidgetTriplesForLink(link, {active: false}, nodeWidgets);
             
-            if (result.connectors.length) {
-            
-              result.newConnectors.forEach(function(connector) {
-                var animation = self.highlightConnector(connector, {color: '#2FB51E', fadeOut: !activate, delay: delay});
-                if (!activate) {
-                  animation.then(
-                    function() {
-                      self.removeWidget(connector);
-                    },
-                    function() { }
-                  );
-                }
-              });
-              
-              result.existingConnectors.forEach(function(connector) {
-                if (!connector.active) {
-                  self.activateConnector(connector);
-                  var animation = self.highlightConnector(connector, {color: '#2FB51E', fadeOut: !activate, delay: delay});
-                  if (!activate) {
-                    animation.then(
-                      function() {
-                        self.removeWidget(connector);
-                      },
-                      function() { }
-                    );
-                  }
-                }
+            if (triples.length > 0) {
+              triples.forEach(function(triple) {
+                self.highlightWidgetTriple(triple, {color: '#2FB51E', delay: delay});
               });
               
               delay += 150;
             }
+          });
+        },
+        createConnectorsBetweenNodeWidgets: function(nodeWidgets) {
+          var self = this;
+          self.client.web.getLinks().forEach(function(link) {
+            self.createConnectorsForLink(link, nodeWidgets);
           });
         },
         _setupNodeWidgetMenu: function(nodeWidget) {
@@ -1462,7 +1333,11 @@
             via:  nodeWidgets.via.widgetId,
             to:   nodeWidgets.to.widgetId,
           });
-          self.nodeWidgetsToConnectors.set(nodeWidgetsLinkKey, connector);
+          if (self.nodeWidgetsToConnectors.has(nodeWidgetsLinkKey)) {
+            self.nodeWidgetsToConnectors.get(nodeWidgetsLinkKey).add(connector);
+          } else {
+            self.nodeWidgetsToConnectors.set(nodeWidgetsLinkKey, new Set([connector]));
+          }
           
           if (!self.connectorsFrom.has(nodeWidgets.from)) {
             self.connectorsFrom.set(nodeWidgets.from, [connector]);
@@ -1499,50 +1374,19 @@
             y: toCenter.y + self.viewMargin,
           });
           
-          self._setupConnectorHighlight(connector);
-          self._setupConnectorMenu(connector);
+          if (connector.active) {
+            self._setupConnectorMenu(connector);
+          }
           
           self.attachWidget(connector);
           
           return connector;
-        },
-        _setupConnectorHighlight: function(connector) {
-          var self = this;
-          connector.addEventListener('mouseover', function(event) {
-            self.bringConnectorToFront(connector);
-          });
         },
         _setupConnectorMenu: function(connector) {
           var self = this;
           connector.addEventListener('contextMenu', function(event) {
             self.openSelectionMenu(event.detail);
           });
-        },
-        activateConnector: function(connector, activate) {
-          
-          if (typeof activate === 'undefined') {
-            activate = true;
-          }
-        
-          if (activate && !connector.active) {
-            connector.active = true;
-            this.activeConnectors.add(connector);
-            connector.classList.remove('inactive');
-            if (connector.highlightAnimation) {
-              console.log('cancelling connector highlight animation due to activation');
-              connector.highlightAnimation.cancel();
-              connector.highlightAnimation = null;
-            }
-          } else if (!activate && connector.active) {
-            connector.active = false;
-            this.activeConnectors.delete(connector);
-            connector.classList.add('inactive');
-            if (connector.highlightAnimation) {
-              console.log('cancelling connector highlight animation due to deactivation');
-              connector.highlightAnimation.cancel();
-              connector.highlightAnimation = null;
-            }
-          }
         },
         updateConnectorsForNodeWidget: function(nodeWidget) {
           var self = this;
@@ -1614,7 +1458,7 @@
         },
         handleDragStart: function(event) {
           var self = this;
-          if (self.widgetHasParent(event.target, self.createPanel)) {
+          if (self.createPanel.contains(event.target)) {
             var factoryWidget = event.target;
             function backgroundMouseenter(event) {
               self.background.removeEventListener('mouseenter', backgroundMouseenter);
@@ -1679,12 +1523,12 @@
         },
         menuItem_RevealLinks: function() {
           this.closeSelectionMenu();
-          this.revealLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'), true);
+          this.createConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'), true);
         },
         menuItem_HideLinks: function() {
           var self = this;
           this.closeSelectionMenu();
-          this.hideConnectorsBetweenSelected();
+          this.removeConnectorsBetweenSelected();
         },
       });
     })();

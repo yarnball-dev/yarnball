@@ -47,7 +47,7 @@ define(function() {
       },
       mouseup: function(event) {
         self.surface.boxSelection.classList.add('hidden');
-        self.surface.revealLinksBetweenNodeWidgets(self.surface.getSelectedWidgetsOfType('yb-node'), false);
+        self.surface.highlightLinksBetweenNodeWidgets(self.surface.getSelectedWidgetsOfType('yb-node'));
         self.surface.finishOperation(self);
       }
     });

@@ -109,10 +109,11 @@ define(function() {
               via:  draggingConnectorNodes.via,
               to:   draggingConnectorNodes.to,
             }
-            var connector = surface.getConnectorForNodeWidgetTriple(nodeWidgetTriple);
-            if (connector) {
-              surface.activateConnector(connector);
-            } else {
+            var connectors = surface.getConnectorsForWidgetTriple(nodeWidgetTriple);
+            var hasActiveConnector = connectors.some(function(connector) {
+              return connector.active;
+            });
+            if (!hasActiveConnector) {
               surface.createConnector({
                 from: fromNodeWidget,
                 via:  draggingConnectorNodes.via,
