@@ -136,9 +136,12 @@
           
           self.currentOperation = null;
           
-          require(['core/client', 'core/node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id', 'widgets/zindex-manager'], function(client, node_id, zindex_manager) {
             self.client  = client;
             self.node_id = node_id;
+            self.zIndexManager = zindex_manager();
+            self.connectorsLayer = self.zIndexManager.addLayer();
+            self.nodesLayer      = self.zIndexManager.addLayer();
           });
         },
         ready: function() {
@@ -994,6 +997,11 @@
           }
           
           if (widget.parentNode === self.viewRoot) {
+            if (widget.widgetType === 'yb-connector') {
+              self.connectorsLayer.append(widget);
+            } else {
+              self.nodesLayer.append(widget);
+            }
             if (!self.widgetsTopLevel.has(widget)) {
               self.widgetsTopLevel.add(widget);
               widget.addEventListener('dimensionsChanged', function(event) {
@@ -1049,7 +1057,14 @@
             }
           }
           
-          self.widgetsTopLevel.delete(widget);
+          if (self.widgetsTopLevel.has(widget)) {
+            if (widget.widgetType === 'yb-connector') {
+              self.connectorsLayer.remove(widget);
+            } else {
+              self.nodesLayer.remove(widget);
+            }
+            self.widgetsTopLevel.delete(widget);
+          }
           
           self.widgets.delete(widget);
           
@@ -1154,6 +1169,19 @@
             return this.isWidgetHidden(widget.parentNode);
           }
           return false;
+        },
+        bringWidgetsToFront: function(widgets) {
+          widgets = Array.from(widgets);
+          
+          var connectors = widgets.filter(function(widget) {
+            return widget.widgetType === 'yb-connector';
+          });
+          this.connectorsLayer.bringToFront(connectors);
+          
+          var otherWidgets = widgets.filter(function(widget) {
+            return widget.widgetType !== 'yb-connector';
+          });
+          this.nodesLayer.bringToFront(otherWidgets);
         },
         getWidgetParents: function(widget) {
           var parents = [];
@@ -1376,6 +1404,7 @@
           
           if (connector.active) {
             self._setupConnectorMenu(connector);
+            self._setupConnectorHighlight(connector);
           }
           
           self.attachWidget(connector);
@@ -1386,6 +1415,12 @@
           var self = this;
           connector.addEventListener('contextMenu', function(event) {
             self.openSelectionMenu(event.detail);
+          });
+        },
+        _setupConnectorHighlight: function(connector) {
+          var self = this;
+          connector.addEventListener('mouseover', function(event) {
+            self.connectorsLayer.bringToFront([connector]);
           });
         },
         updateConnectorsForNodeWidget: function(nodeWidget) {

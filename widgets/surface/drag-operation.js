@@ -236,6 +236,7 @@ define(function() {
               var newWidgets = surface.duplicateWidgets(surface.getSelectedWidgets());
               surface.selectWidgets(newWidgets);
             }
+            surface.bringWidgetsToFront(surface.getSelectedWidgetsTopLevel());
             surface.beginOperation(DragOperation, event.detail);
             return false;
           }
