@@ -15,11 +15,11 @@
     <div id="widgetHandle" class="widget-handle"></div>
     <div id="widgetBody" class="widget-body">
       <div class="header">
-        <yb-selector id="fromSelector" node-id="{{from}}"></yb-selector>
+        <yb-selector id="fromSelector" placeholder="from" node-id="{{from}}"></yb-selector>
         <span class="connector"></span>
-        <yb-selector id="viaSelector"  node-id="{{via}}"> </yb-selector>
+        <yb-selector id="viaSelector"  placeholder="via"  node-id="{{via}}"> </yb-selector>
         <span class="connector"></span>
-        <yb-selector id="toSelector"   node-id="{{to}}">  </yb-selector>
+        <yb-selector id="toSelector"   placeholder="to"   node-id="{{to}}">  </yb-selector>
       </div>
       <yb-dragdrop-area id="setContent" on-nodes-dropped="nodesDropped" drop-on-hover>
       </yb-dragdrop-area>

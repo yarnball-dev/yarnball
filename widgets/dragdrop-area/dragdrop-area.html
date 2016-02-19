@@ -2,6 +2,34 @@
 
 <link rel="import" href="dragdrop-area-styles.html">
 
+<script>
+  DragdropAreaBehavior = {
+    properties: {
+      dragdropEnabled: {
+        type: Boolean,
+        value: true,
+        notify: true,
+        observer: 'enabledChanged',
+      },
+      dropOnHover: {
+        type: Boolean,
+        value: false,
+        reflectToAttribute: true,
+      },
+    },
+    ready: function() {
+      this.enabledChanged(this.dragdropEnabled);
+      this.classList.add('dragdrop-area');
+    },
+    attached: function() {
+      this.fire('dragdropAreaAttached', this);
+    },
+    enabledChanged: function(enabled) {
+      this.classList.toggle('enabled', enabled);
+    },
+  }
+</script>
+
 <dom-module id="yb-dragdrop-area">
 
   <style include="dragdrop-area-styles"></style>
@@ -16,28 +44,7 @@
       
       Polymer({
         is: 'yb-dragdrop-area',
-        properties: {
-          enabled: {
-            type: Boolean,
-            value: true,
-            notify: true,
-            observer: 'enabledChanged',
-          },
-          dropOnHover: {
-            type: Boolean,
-            value: false,
-            reflectToAttribute: true,
-          },
-        },
-        ready: function() {
-          this.classList.toggle('enabled', this.enabled);
-        },
-        attached: function() {
-          this.fire('dragdropAreaAttached', this);
-        },
-        enabledChanged: function(enabled) {
-          this.classList.toggle('enabled', enabled);
-        },
+        behaviors: [DragdropAreaBehavior],
       });
     })();
   </script>

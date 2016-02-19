@@ -2,19 +2,23 @@
 <link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
 
 <link rel="import" href="../dragdrop-area/dragdrop-area.html">
+<link rel="import" href="../dragdrop-area/dragdrop-area-styles.html">
 
 <link rel="import" href="selector-styles.html">
 
 <dom-module id="yb-selector">
 
   <style include="selector-styles"></style>
+  <style include="dragdrop-area-styles"></style>
 
   <template>
-    <yb-dragdrop-area id="dropTarget" on-nodes-dropped="nodesDropped">
-      <button id="clearButton">
-        <iron-icon icon="icons:clear"></iron-icon>
-      </button>
-    </yb-dragdrop-area>
+    <div id="placeholder">
+      <iron-icon icon="icons:select-all"></iron-icon>
+      {{placeholder}}
+    </div>
+    <button id="clearButton">
+      <iron-icon icon="icons:clear"></iron-icon>
+    </button>
   </template>
   
   <script>
@@ -23,11 +27,17 @@
       
       Polymer({
         is: 'yb-selector',
+        behaviors: [DragdropAreaBehavior],
         properties: {
-          'nodeId': {
+          nodeId: {
             type: String,
             observer: 'nodeIdChanged',
             notify: true,
+          },
+          placeholder: {
+            type: String,
+            notify: true,
+            value: '',
           },
         },
         ready: function() {
@@ -35,15 +45,8 @@
         
           self.classList.toggle('is-empty', self.nodeId ? false : true);
           
-          self.dropTarget  = self.$.dropTarget;
           self.clearButton = self.$.clearButton;
           
-          self.dropTarget.dropRequestHandler = function(widgets) {
-            return Array.from(widgets).filter(function(widget) {
-              return widget.widgetType === 'yb-node';
-            });
-          }
-        
           if (self.nodeId) {
             var nodeWidget = document.createElement('yb-node');
             nodeWidget.nodeId = self.nodeId;
@@ -54,6 +57,15 @@
           
           self.clearButton.addEventListener('click', function(event) {
             self.set('nodeId', null);
+          });
+        },
+        listeners: {
+          'nodes-dropped': 'nodesDropped',
+        },
+        dropRequestHandler: function(widgets) {
+          var self = this;
+          return Array.from(widgets).filter(function(widget) {
+            return widget.widgetType === 'yb-node' && widget !== self.nodeWidget;
           });
         },
         nodesDropped: function(event) {
@@ -80,7 +92,7 @@
             }
           } else {
             if (this.nodeWidget) {
-              this.dropTarget.removeChild(this.nodeWidget);
+              this.removeChild(this.nodeWidget);
               this.nodeWidget = null;
             }
           }
@@ -89,9 +101,9 @@
         },
         _setNodeWidget: function(nodeWidget) {
           if (this.nodeWidget) {
-            this.dropTarget.removeChild(this.nodeWidget);
+            this.removeChild(this.nodeWidget);
           }
-          this.dropTarget.insertBefore(nodeWidget, this.dropTarget.firstChild);
+          this.insertBefore(nodeWidget, this.firstChild);
           this.nodeWidget = nodeWidget;
         }
       });
