@@ -46,6 +46,9 @@ $view-margin: -10000px
     border: 1px solid #ddd
     background-color: #fff
     
+    transition: left 0.2s ease-in-out, right 0.2s ease-in-out, box-shadow 0.2s ease-in-out
+    box-shadow: 1px 1px 25px rgba(0, 0, 0, 0.2)
+    
     .panel-handle
       border: 1px solid #ddd
       background-color: #fff
@@ -61,12 +64,13 @@ $view-margin: -10000px
     .panel-handle:hover
       background-color: $highlight-color
   
+  .panel.hidden
+    box-shadow: none
+  
   #searchPanel
     left: 0
     bottom: 5px
     width: 250px
-    
-    transition: left 0.2s
     
     .panel-handle
       right: -52px
@@ -74,14 +78,12 @@ $view-margin: -10000px
       border-top-right-radius:    4px
       border-bottom-right-radius: 4px
   #searchPanel.hidden
-    left: -250px
+    left: -251px
     
   #createPanel
     right: 0
     bottom: 5px
     width: 250px
-    
-    transition: right 0.2s
     
     .panel-handle
       left: -52px
@@ -89,7 +91,7 @@ $view-margin: -10000px
       border-top-left-radius:    4px
       border-bottom-left-radius: 4px
   #createPanel.hidden
-    right: -250px
+    right: -251px
   
   #boxSelection
     display: block
