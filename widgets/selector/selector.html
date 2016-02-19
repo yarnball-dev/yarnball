@@ -1,5 +1,4 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
-<link rel="import" href="../../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
 
 <link rel="import" href="../dragdrop-area/dragdrop-area.html">
@@ -12,11 +11,9 @@
 
   <template>
     <yb-dragdrop-area id="dropTarget" on-nodes-dropped="nodesDropped">
-      <template is="dom-if" if="{{nodeId}}">
-        <paper-button id="clearButton" on-tap="clear">
-          <iron-icon icon="icons:clear"></iron-icon>
-        </paper-button>
-      </template>
+      <button id="clearButton">
+        <iron-icon icon="icons:clear"></iron-icon>
+      </button>
     </yb-dragdrop-area>
   </template>
   
@@ -34,26 +31,39 @@
           },
         },
         ready: function() {
-          this.classList.toggle('is-empty', this.nodeId ? false : true);
+          var self = this;
+        
+          self.classList.toggle('is-empty', self.nodeId ? false : true);
           
-          this.$.dropTarget.dropRequestHandler = function(widgets) {
+          self.dropTarget  = self.$.dropTarget;
+          self.clearButton = self.$.clearButton;
+          
+          self.dropTarget.dropRequestHandler = function(widgets) {
             return Array.from(widgets).filter(function(widget) {
               return widget.widgetType === 'yb-node';
             });
           }
         
-          if (this.nodeId) {
-            this.nodeWidget = document.createElement('yb-node');
-            this.nodeWidget.nodeId = this.nodeId;
-            Polymer.dom(this.$.dropTarget).insertBefore(this.nodeWidget, Polymer.dom(this.$.dropTarget).firstChild);
+          if (self.nodeId) {
+            var nodeWidget = document.createElement('yb-node');
+            nodeWidget.nodeId = self.nodeId;
+            self._setNodeWidget(nodeWidget);
           } else {
-            this.nodeWidget = null;
+            self.nodeWidget = null;
           }
+          
+          self.clearButton.addEventListener('click', function(event) {
+            self.set('nodeId', null);
+          });
         },
         nodesDropped: function(event) {
           var nodeWidgets = Array.from(event.detail);
           if (nodeWidgets.length === 1) {
             var nodeWidget = nodeWidgets[0];
+            nodeWidget.style.position = null;
+            nodeWidget.style.left = 0;
+            nodeWidget.style.top  = 0;
+            this._setNodeWidget(nodeWidget);
             this.set('nodeId', nodeWidget.nodeId);
           }
         },
@@ -61,20 +71,28 @@
         
           this.classList.toggle('is-empty', this.nodeId ? false : true);
           
-          if (this.nodeWidget) {
-            this.fire('nodeWidgetDetached', this.nodeWidget);
-            Polymer.dom(this.$.dropTarget).removeChild(this.nodeWidget);
-          }
           if (this.nodeId) {
-            this.nodeWidget = document.createElement('yb-node');
-            this.nodeWidget.nodeId = this.nodeId;
-            Polymer.dom(this.$.dropTarget).insertBefore(this.nodeWidget, Polymer.dom(this.$.dropTarget).firstChild);
+          
+            if (!this.nodeWidget || this.nodeWidget.nodeId !== this.nodeId) {
+              var nodeWidget = document.createElement('yb-node');
+              nodeWidget.nodeId = this.nodeId;
+              this._setNodeWidget(nodeWidget);
+            }
+          } else {
+            if (this.nodeWidget) {
+              this.dropTarget.removeChild(this.nodeWidget);
+              this.nodeWidget = null;
+            }
           }
           
           this.fire('nodeIdChanged', this.nodeId);
         },
-        clear: function() {
-          this.set('nodeId', null);
+        _setNodeWidget: function(nodeWidget) {
+          if (this.nodeWidget) {
+            this.dropTarget.removeChild(this.nodeWidget);
+          }
+          this.dropTarget.insertBefore(nodeWidget, this.dropTarget.firstChild);
+          this.nodeWidget = nodeWidget;
         }
       });
     })();

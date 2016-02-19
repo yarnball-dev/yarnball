@@ -53,10 +53,10 @@
       return Array.from(this.getElementsByClassName('widget-handle'));
     },
     _highlightedChanged: function(value) {
-      this.toggleClass('highlighted', value);
+      this.classList.toggle('highlighted', value);
     },
     setSelected: function(selected) {
-      this.toggleClass('selected', selected);
+      this.classList.toggle('selected', selected);
     },
     _widgetHandleMousedown: function(event) {
       var self = this;
