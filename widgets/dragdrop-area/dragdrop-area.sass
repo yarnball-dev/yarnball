@@ -1,7 +1,11 @@
 @import ../yarnball
 
+:host
+  box-shadow: none
+  transition: box-shadow 0.4s
+
 :host.enabled.drop-ready
-  outline: 2px solid #aaa
+  box-shadow: 0px 0px 20px #60BDFF
     
 :host.enabled.drop-hover
   outline: 2px solid orange

@@ -79,17 +79,17 @@ define(function() {
       var dragdropArea = event.currentTarget;
       dragdropArea.classList.add('drop-hover');
       
-      if (dragdropArea.dropOnHover) {
+      var widgetsToDrop = Array.from(self.draggingWidgets).filter(function(widget) {
+        return self.surface.isTopLevelWidget(widget);
+      });
       
-        var widgetsToDrop = Array.from(self.draggingWidgets).filter(function(widget) {
-          return self.surface.isTopLevelWidget(widget);
-        });
+      if (dragdropArea.dropRequestHandler) {
+        widgetsToDrop = Array.from(dragdropArea.dropRequestHandler(widgetsToDrop));
+      }
+      
+      if (widgetsToDrop.length > 0) {
         
-        if (dragdropArea.dropRequestHandler) {
-          widgetsToDrop = Array.from(dragdropArea.dropRequestHandler(widgetsToDrop));
-        }
-        
-        if (widgetsToDrop.length > 0) {
+        if (dragdropArea.dropOnHover) {
           
           dragdropArea.fire('widgetsDraggedIn', {
             dragdropArea: dragdropArea,
@@ -113,14 +113,27 @@ define(function() {
           }
           
           updateDropTargets();
+          
+        } else {
+          widgetsToDrop.forEach(function(widget) {
+            widget.classList.add('self-drop-ready');
+          });
         }
       }
     }
     function dragdropAreaMouseout(event) {
       var dragdropArea = event.currentTarget;
       dragdropArea.classList.remove('drop-hover');
+      
+      self.draggingWidgets.forEach(function(widget) {
+        widget.classList.remove('self-drop-ready');
+      });
     }
     function dragdropAreaMouseup(event) {
+      self.draggingWidgets.forEach(function(widget) {
+        widget.classList.remove('self-drop-ready');
+      });
+      
       var dragdropArea = event.currentTarget;
       dragdropArea.classList.remove('drop-hover');
       var widgetsToDrop = self.draggingWidgets;
@@ -171,7 +184,7 @@ define(function() {
         // Move top-level node widgets
         self.draggingWidgets.forEach(function(draggingWidget) {
         
-          if (self.surface.isTopLevelWidget(draggingWidget) && !(draggingWidget.tagName === 'yb-connector'.toUpperCase())) {
+          if (self.surface.isTopLevelWidget(draggingWidget) && (draggingWidget.widgetType !== 'yb-connector')) {
         
             self.surface.setWidgetPosition(draggingWidget, {
               x: draggingWidget.dragStartPosition.x + options.dragDeltaView.x,

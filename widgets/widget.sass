@@ -31,8 +31,12 @@
 :host.dragging
   pointer-events: none
   z-index: 3
+  transition: opacity 0.5s
 
 :host.dragging.widget-handle,
 :host.dragging>.widget-handle,
 :host.dragging>.widget-body,
     box-shadow: 1px 1px 20px rgba(0, 0, 0, 0.2)
+
+:host.self-drop-ready
+  opacity: 0.6

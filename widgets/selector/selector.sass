@@ -5,17 +5,17 @@
   display: flex
   flex-direction: row
   align-items: stretch
-  
   position: relative
   
   cursor: pointer
+  
+  border-radius: 4px
   
   #placeholder
     display: none
     
   yb-node
     margin: 0
-    z-index: 2
   
   #clearButton
     display: flex
@@ -39,7 +39,8 @@
   #clearButton:hover
     background-color: #FFB1B1
 
-:host.is-empty
+:host.is-empty,
+:host.drop-hover
   #placeholder
     flex-grow: 1
     display: flex
@@ -51,10 +52,21 @@
     margin: 7px
   #clearButton
     display: none
-  
-:host.drag-ready
-  outline: 2px solid #aaa
-    
-:host.drag-hover
-  outline: 2px solid orange
-  background-color: $highlight-color
+
+:host.drop-hover
+  #placeholder
+    color: #333
+
+:host.drop-hover:not(.is-empty)
+  #placeholder
+    position: absolute
+    left:   0
+    top:    0
+    right:  0
+    bottom: 0
+  yb-node
+    display: block
+    opacity: 0
+  #clearButton
+    display: flex
+    opacity: 0

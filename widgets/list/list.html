@@ -63,6 +63,9 @@
           });
           
           self.listContent.dropRequestHandler = function(widgets) {
+            if (!self.next) {
+              return [];
+            }
             return Array.from(widgets).filter(function(widget) {
             
               // Must be a node widget

@@ -78,6 +78,9 @@
           });
           
           self.setContent.dropRequestHandler = function(widgets) {
+            if (!self.isFilterValid()) {
+              return [];
+            }
             return Array.from(widgets).filter(function(widget) {
               if (widget.widgetType !== 'yb-node') {
                 return false;
@@ -274,6 +277,9 @@
         },
         attachNodeWidget: function(nodeWidget) {
           nodeWidget.style.position = null;
+          nodeWidget.style.left = null;
+          nodeWidget.style.top  = null;
+          nodeWidget.style['z-index'] = null;
           Polymer.dom(this.setContent).appendChild(nodeWidget);
           this.nodeWidgetsInSet.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
         },
