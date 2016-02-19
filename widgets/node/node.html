@@ -1,10 +1,12 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
-<link rel="import" href="../widget-behavior.html">
+<link rel="import" href="../widget.html">
+<link rel="import" href="../widget-styles.html">
 
 <link rel="import" href="node-styles.html">
 
 <dom-module id="yb-node">
+  <style include="widget-styles"></style>
   <style include="node-styles"></style>
   <template>
     <pre id="idElement">{{nodeId_withLinebreaks}}</pre>
@@ -52,6 +54,8 @@
           self.widgetHandle = self;
           self.nameElement  = self.$.nameElement;
           self.nameInput    = self.$.nameInput;
+          
+          self.classList.add('widget-handle');
           
           require(['core/client', 'core/node_id'], function(client, node_id) {
           

@@ -663,12 +663,12 @@
             if (!combinedRect) {
               combinedRect = rect;
             } else {
-              combinedRect.left   = min(combinedRect.left,   rect.left);
-              combinedRect.top    = min(combinedRect.top,    rect.top);
-              combinedRect.right  = max(combinedRect.right,  rect.right);
-              combinedRect.bottom = max(combinedRect.bottom, rect.bottom);
-              combinedRect.width  = max(combinedRect.width,  rect.width);
-              combinedRect.height = max(combinedRect.height, rect.height);
+              combinedRect.left   = Math.min(combinedRect.left,   rect.left);
+              combinedRect.top    = Math.min(combinedRect.top,    rect.top);
+              combinedRect.right  = Math.max(combinedRect.right,  rect.right);
+              combinedRect.bottom = Math.max(combinedRect.bottom, rect.bottom);
+              combinedRect.width  = Math.max(combinedRect.width,  rect.width);
+              combinedRect.height = Math.max(combinedRect.height, rect.height);
             }
           });
           return combinedRect;

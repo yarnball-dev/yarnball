@@ -1,6 +1,7 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
-<link rel="import" href="../widget-behavior.html">
+<link rel="import" href="../widget.html">
+<link rel="import" href="../widget-styles.html">
 
 <link rel="import" href="list-styles.html">
 
@@ -9,10 +10,11 @@
 
 <dom-module id="yb-list">
 
+  <style include="widget-styles"></style>
   <style include="list-styles"></style>
 
   <template>
-    <div id="widgetHandle" class="widget-handle" on-mousedown="mousedown" on-mouseup="mouseup"></div>
+    <div class="widget-handle"></div>
     <div id="widgetBody" class="widget-body">
       <div class="header">
         <yb-selector id="nextNodeSelector" placeholder="next" node-id="{{next}}"> </yb-selector>
@@ -48,8 +50,6 @@
         
           var self = this;
           
-          self.widgetHandle = self.$.widgetHandle;
-          self.widgetBody   = self.$.widgetBody;
           self.listContent  = self.$.listContent;
           
           require(['core/client', 'core/node_id', 'core/ordered_set'], function(client, node_id, ordered_set) {
@@ -164,34 +164,6 @@
         },
         dragdropAreaDetached: function(event) {
           this.dragdropAreas.delete(event.detail);
-        },
-        mousedown: function(event) {
-          var self = this;
-          if (event.target === self.widgetHandle && event.button === 0) {
-            self.fire('selected',  {
-              widget: self,
-              mouseEvent: event,
-            });
-            function windowMousemove(windowWvent) {
-              self.fire('dragStart', event);
-              window.removeEventListener('mousemove', windowMousemove);
-            }
-            window.addEventListener('mousemove', windowMousemove);
-            function windowMouseup(event) {
-              window.removeEventListener('mousemove', windowMousemove);
-              window.removeEventListener('mouseup', windowMouseup);
-            }
-            window.addEventListener('mouseup', windowMouseup);
-          }
-        },
-        mouseup: function(event) {
-          if (event.button === 2) {
-            this.fire('selected',    {
-              widget: this,
-              mouseEvent: event,
-            });
-            this.fire('contextMenu', event);
-          }
         },
         removeNodes: function(nodes) {
           if (this.orderedSet) {

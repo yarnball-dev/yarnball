@@ -47,10 +47,13 @@
       this.widgets.delete(event.detail);
     },
     hasHandles: function() {
-      return this.getElementsByClassName('widget-handle').length > 0;
+      return this.getHandles().length > 0;
     },
     getHandles: function() {
-      return Array.from(this.getElementsByClassName('widget-handle'));
+      var self = this;
+      return Array.from(self.getElementsByClassName('widget-handle')).filter(function(element) {
+        return element.parentNode === self;
+      });
     },
     _highlightedChanged: function(value) {
       this.classList.toggle('highlighted', value);

@@ -5,26 +5,16 @@
   display: flex
   pointer-events: none
   
-  .widget-handle
-    pointer-events: all
+  >.widget-handle
     display: inline-block
-    background-color: #fff
-    border: 1px solid #ddd
-    border-radius: 4px
     width:  50px
     height: 50px
     margin-right: 5px
     vertical-align: top
-    cursor: pointer
-  .widget-handle:hover
-    background-color: $highlight-color
   
   .widget-body
-    pointer-events: all
     display: inline-block
-    border: 1px solid #ddd
     padding: 0
-    background-color: #fff
   
   .header
     min-height: 30px
@@ -58,7 +48,3 @@
   
   #setContent.drag-ready
     min-height: 20px
-
-:host.selected
-  .widget-handle
-    background-color: $selected-color
