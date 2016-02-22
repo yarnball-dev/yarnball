@@ -131,62 +131,6 @@
             this.nameInput.style['margin-top']  = '-15px';
           }
         },
-        _widgetHandleMousedown: function(event) {
-          var self = this;
-        
-          if (!self.isEditing) {
-            
-            if (event.button === 0) {
-              self.fire('selected', {
-                widget: self,
-                mouseEvent: event,
-              });
-            }
-            
-            var cursorStartPos = {
-              x: event.pageX,
-              y: event.pageY,
-            }
-            function distance(a, b) {
-              var dx = a.x - b.x;
-              var dy = a.y - b.y;
-              return Math.sqrt(dx*dx + dy*dy);
-            }
-            function handleMousemove(windowEvent) {
-              var cursorPos = {
-                x: windowEvent.pageX,
-                y: windowEvent.pageY,
-              }
-              if (distance(cursorStartPos, cursorPos) > 5) {
-                if (event.button === 0) {
-                  self.fire('dragStart', event);
-                } else if (event.button === 2) {
-                  self.fire('rightButtonDragStart', {
-                    widget: self,
-                    mouseEvent: windowEvent,
-                  });
-                }
-                window.removeEventListener('mousemove', handleMousemove);
-                window.removeEventListener('mouseup',   handleMouseup);
-              }
-            }
-            function handleMouseup(windowEvent) {
-              window.removeEventListener('mousemove', handleMousemove);
-              window.removeEventListener('mouseup',   handleMouseup);
-            }
-            window.addEventListener('mousemove', handleMousemove);
-            window.addEventListener('mouseup',   handleMouseup);
-          }
-        },
-        _widgetHandleMouseup: function(event) {
-          if (event.button === 2) {
-            this.fire('selected', {
-              widget: this,
-              mouseEvent: event,
-            });
-            this.fire('contextMenu', event);
-          }
-        },
         startEditing: function() {
           if (!this.isEditing) {
             this.isEditing = true;

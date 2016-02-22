@@ -63,13 +63,20 @@
     },
     _widgetHandleMousedown: function(event) {
       var self = this;
-      if (event.button === 0) {
+      if (event.button === 0 || event.button === 2) {
         self.fire('selected',  {
           widget: self,
           mouseEvent: event,
         });
         function windowMousemove(windowWvent) {
-          self.fire('dragStart', event);
+          if (event.button === 0) {
+            self.fire('dragStart', event);
+          } else if (event.button === 2) {
+            self.fire('rightButtonDragStart', {
+              widget: self,
+              mouseEvent: event,
+            });
+          }
           window.removeEventListener('mousemove', windowMousemove);
         }
         window.addEventListener('mousemove', windowMousemove);

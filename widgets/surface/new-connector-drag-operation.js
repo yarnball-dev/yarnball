@@ -164,14 +164,14 @@ define(function() {
       
       surface.addEventListener('widgetAttached', function(event) {
         var widget = event.detail;
-        if (widget.tagName === 'yb-node'.toUpperCase()) {
+        if (widget.widgetType === 'yb-node') {
           widget.addEventListener('rightButtonDragStart', handleDragStart);
         }
       });
       
       surface.addEventListener('widgetDetached', function(event) {
         var widget = event.detail;
-        if (widget.tagName === 'yb-node'.toUpperCase()) {
+        if (widget.widgetType === 'yb-node') {
           widget.removeEventListener('rightButtonDragStart', handleDragStart);
         }
       });
