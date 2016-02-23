@@ -15,7 +15,9 @@
   transition: box-shadow 0.12s ease-in-out
 
 :host.widget-handle:hover,
-:host>.widget-handle:hover
+:host>.widget-handle:hover,
+:host.highlighted.widget-handle,
+:host.highlighted>.widget-handle
     background-color: $highlight-color
 
 :host

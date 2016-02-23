@@ -26,6 +26,8 @@ define(function() {
     var draggingConnectors = [];
     draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
       var draggingConnector = document.createElement('yb-connector');
+      draggingConnector.set('showHandles', false);
+      draggingConnector.fromWidget = fromNodeWidget;
       draggingConnector.classList.add('inactive', 'dragging');
       var nodeCenter = surface.getWidgetCenter(fromNodeWidget);
       draggingConnector.set('fromPos', {
@@ -43,6 +45,7 @@ define(function() {
         if (!draggingConnectorNodes.from.has(otherNodeWidget)) {
           draggingConnectorNodes.via = otherNodeWidget;
           draggingConnectors.forEach(function(draggingConnector) {
+            draggingConnector.viaWidget = otherNodeWidget;
             draggingConnector.set('viaPos', {
               x: otherNodeCenter.x + surface.viewMargin,
               y: otherNodeCenter.y + surface.viewMargin,
@@ -53,6 +56,7 @@ define(function() {
         if (otherNodeWidget !== draggingConnectorNodes.via) {
           draggingConnectorNodes.to = otherNodeWidget;
           draggingConnectors.forEach(function(draggingConnector) {
+            draggingConnector.toWidget = otherNodeWidget;
             draggingConnector.set('toPos', {
               x: otherNodeCenter.x + surface.viewMargin,
               y: otherNodeCenter.y + surface.viewMargin,

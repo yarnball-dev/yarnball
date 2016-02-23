@@ -12,15 +12,99 @@
     .connector-path
       fill: none
       stroke: $connector-color
-      stroke-width: 20px
+      stroke-width: 40px
       stroke-linecap: butt
       pointer-events: stroke
-      cursor: pointer
     
     .connector-path:hover
-      stroke: #78A4DA
+      stroke: #86ABD8
+    
+    #highlightPath
+      display: none
+    
+    #pathFromVia,
+    #pathViaTo
+      stroke: #FFE9B8
 
-:host.selected
+:host.show-handles
+    .widget-handle
+      cursor: pointer
+    .widget-handle.arrow
+      pointer-events: fill
+      stroke: none
+    
+    #handleFrom
+      stroke: #4EADE6
+    #handleVia
+      stroke: #3F90C1
+    #handleTo
+      stroke: #226E9C
+
+    #arrowFrom
+      fill: #4EADE6
+    #arrowVia
+      fill: #3F90C1
+
+:host.highlight-only
+  svg
+    #highlightPath
+      display: block
+      pointer-events: none
+    #pathFromVia,
+    #pathViaTo
+      display: none
+
+:host.show-handles.hover
+  svg
+    #handleFrom
+      stroke: #66BAEC
+    #handleVia
+      stroke: #56A1CE
+    #handleTo
+      stroke: #2C79A9
+
+    #arrowFrom
+      fill: #66BAEC
+    #arrowVia
+      fill: #56A1CE
+
+:host.show-handles.hover-from,
+:host.show-handles.hover-from.selected
+  svg
+    #handleFrom
+      stroke: #FFE9B8
+    #arrowFrom
+      fill: #FFE9B8
+
+:host.show-handles.hover-via,
+:host.show-handles.hover-via.selected
+  svg
+    #handleVia
+      stroke: #FFE9B8
+    #arrowVia
+      fill: #FFE9B8
+
+:host.show-handles.hover-to,
+:host.show-handles.hover-to.selected
+  svg
+    #handleTo
+      stroke: #FFE9B8
+    #arrowTo
+      fill: #FFE9B8
+
+:host.show-handles.selected
   svg
     .connector-path
       stroke: $selected-color
+    
+    #handleFrom
+      stroke: #FFCB6C
+    #handleVia
+      stroke: #FFB938
+    #handleTo
+      stroke: #FFA500
+    
+    #arrowFrom
+      fill: #FFCB6C
+    #arrowVia
+      fill: #FFB938

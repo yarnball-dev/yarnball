@@ -140,8 +140,9 @@
             self.client  = client;
             self.node_id = node_id;
             self.zIndexManager = zindex_manager();
-            self.connectorsLayer = self.zIndexManager.addLayer();
-            self.nodesLayer      = self.zIndexManager.addLayer();
+            self.connectorsLayer          = self.zIndexManager.addLayer();
+            self.connectorHighlightsLayer = self.zIndexManager.addLayer();
+            self.nodesLayer               = self.zIndexManager.addLayer();
           });
         },
         ready: function() {
@@ -783,7 +784,7 @@
           
           return nodeWidgetTriples;
         },
-        getBestNodeWidgetTriplesForLink: function(link, newConnectorOptions, nodeWidgets) {
+        getBestNodeWidgetTriplesForLink: function(link, nodeWidgets) {
           var self = this;
           
           var nodeWidgetTriples = self.getNodeWidgetTriplesForLink(link, nodeWidgets);
@@ -891,8 +892,19 @@
           return new Set(this.dragdropAreas);
         },
         onLinks: function(linksAdded, linksRemoved) {
-          this.highlightLinks(linksAdded,   {color: '#2FB51E'});
-          this.highlightLinks(linksRemoved, {color: '#E05749', reverse: true});
+          var self = this;
+          
+          self.highlightLinks(linksAdded,   {color: '#2FB51E'});
+          self.highlightLinks(linksRemoved, {color: '#E05749', reverse: true});
+          
+          linksRemoved.forEach(function(link) {
+            var connectors = self.getConnectorsForLink(link);
+            connectors.forEach(function(connector) {
+              if (connector.active) {
+                self.removeWidget(connector);
+              }
+            });
+          });
         },
         highlightLinks: function(links, options) {
           var self = this;
@@ -997,7 +1009,11 @@
           
           if (widget.parentNode === self.viewRoot) {
             if (widget.widgetType === 'yb-connector') {
-              self.connectorsLayer.append(widget);
+              if (widget.active) {
+                self.connectorsLayer.append(widget);
+              } else {
+                self.connectorHighlightsLayer.append(widget);
+              }
             } else {
               self.nodesLayer.append(widget);
             }
@@ -1058,7 +1074,11 @@
           
           if (self.widgetsTopLevel.has(widget)) {
             if (widget.widgetType === 'yb-connector') {
-              self.connectorsLayer.remove(widget);
+              if (widget.active) {
+                self.connectorsLayer.remove(widget);
+              } else {
+                self.connectorHighlightsLayer.remove(widget);
+              }
             } else {
               self.nodesLayer.remove(widget);
             }
@@ -1294,7 +1314,7 @@
           
           self.client.web.getLinks().forEach(function(link) {
           
-            var triples = self.getBestNodeWidgetTriplesForLink(link, {active: false}, nodeWidgets);
+            var triples = self.getBestNodeWidgetTriplesForLink(link, nodeWidgets);
             
             if (triples.length > 0) {
               triples.forEach(function(triple) {
@@ -1329,6 +1349,9 @@
           options = options || {};
           
           connector.active = ('active' in options) ? options.active : true;
+          
+          connector.set('showHandles',    connector.active);
+          connector.set('highlightOnly', !connector.active);
           
           if (connector.active) {
             self.activeConnectors.add(connector);
