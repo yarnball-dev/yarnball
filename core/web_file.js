@@ -18,12 +18,14 @@ define(['./node_id', 'fs', 'readline'], function(node_id, fs, readline) {
       terminal: false
     })
     .on('line', function(line) {
-      var hexString = line.slice(0, 32);
-      var name = line.slice(33);
-      names.push({
-        id: node_id.fromHex(hexString),
-        name: name,
-      });
+      if (line.length > 32) {
+        var hexString = line.slice(0, 32);
+        var name = line.slice(33);
+        names.push({
+          id: node_id.fromHex(hexString),
+          name: name,
+        });
+      }
     })
     .on('close', function() {
       callback(names);
@@ -39,14 +41,16 @@ define(['./node_id', 'fs', 'readline'], function(node_id, fs, readline) {
       terminal: false
     })
     .on('line', function(line) {
-      var fromString = line.slice(0, 32);
-      var viaString  = line.slice(32 + 1, 32 + 1 + 32);
-      var toString   = line.slice(32 + 1 + 32 + 1, 32 + 1 + 32 + 1 + 32);
-      links.push({
-        from: node_id.fromHex(fromString),
-        via:  node_id.fromHex(viaString),
-        to:   node_id.fromHex(toString),
-      });
+      if (line.length >= 32 + 1 + 32 + 1 + 32) {
+        var fromString = line.slice(0, 32);
+        var viaString  = line.slice(32 + 1, 32 + 1 + 32);
+        var toString   = line.slice(32 + 1 + 32 + 1, 32 + 1 + 32 + 1 + 32);
+        links.push({
+          from: node_id.fromHex(fromString),
+          via:  node_id.fromHex(viaString),
+          to:   node_id.fromHex(toString),
+        });
+      }
     })
     .on('close', function() {
       callback(links);
