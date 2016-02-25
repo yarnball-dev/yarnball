@@ -178,12 +178,21 @@
     <script>
     
       document.addEventListener('WebComponentsReady', function() {
-        var beginButton = document.querySelector('#begin-button');
-        beginButton.addEventListener('click', function() {
+      
+        function showSurface() {
           document.querySelector('#site-container').style.display = 'none';
           var mainSurface = document.querySelector('#main-surface');
           mainSurface.style.display = 'block';
           mainSurface.focus();
+        }
+        
+        if (window.location.hash === '#surface') {
+          showSurface();
+        }
+      
+        var beginButton = document.querySelector('#begin-button');
+        beginButton.addEventListener('click', function() {
+          showSurface();
         });
         
         var introButton = document.querySelector('#intro-button');
