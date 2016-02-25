@@ -69,18 +69,27 @@ define(function() {
     for (var i=0; i<16; i++) {
       var hex = hexString.slice(i*2, (i*2) + 2);
       var int = parseInt(hex, 16);
+      if (isNaN(int)) {
+        throw "Can't convert hex string '" + hexString + "' to node id, characters '" + hex + "' could not be converted to an integer.";
+      }
       array[i] = int;
     }
     return array.buffer;
   }
   
   function linkToKey(link) {
+    if (!link.from || !link.via || !link.to) {
+      throw 'Cannot make key for link, from, via or to not specified.';
+    }
     return toHex(link.from) +
            toHex(link.via) +
            toHex(link.to);
   }
   
   function linkFromKey(linkKey) {
+    if (linkKey.length !== 32 + 32 + 32) {
+      throw 'Cannot get link from key, key length is incorrect.';
+    }
     return {
       from: fromHex(linkKey.slice(0, 32)),
       via:  fromHex(linkKey.slice(32, 32 + 32)),
