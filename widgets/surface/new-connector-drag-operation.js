@@ -131,7 +131,7 @@ define(function() {
             });
           });
           
-          surface.client.addLinks(newLinks);
+          surface.client.setLinks(newLinks, []);
         }
         
         draggingConnectors.forEach(function(draggingConnector) {

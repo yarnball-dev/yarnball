@@ -14,7 +14,7 @@ define(['./node_id', 'level'], function(node_id, level) {
       self.addNames(names, callback);
     });
     web.getLinks(function(links) {
-      self.addLinks(links);
+      self.setLinks(links, []);
     });
   }
   
@@ -77,29 +77,19 @@ define(['./node_id', 'level'], function(node_id, level) {
   
   // Links
   
-  WebDb.prototype.addLinks = function(links, callback) {
-    var ops = links.map(function(link) {
+  WebDb.prototype.setLinks = function(add, remove, callback) {
+    var ops = add.map(function(link) {
       return {
         type: 'put',
         key: 'link:' + node_id.linkToKey(link),
         value: '1',
       }
-    });
-    this.db.batch(ops, function(err) {
-      if (err) return console.log(err);
-      if (callback) {
-        callback();
-      }
-    });
-  }
-  
-  WebDb.prototype.removeLinks = function(links, callback) {
-    var ops = links.map(function(link) {
+    }).concat(remove.map(function(link) {
       return {
         type: 'del',
         key: 'link:' + node_id.linkToKey(link),
       }
-    });
+    }));
     this.db.batch(ops, function(err) {
       if (err) return console.log(err);
       if (callback) {

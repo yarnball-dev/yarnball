@@ -1,4 +1,4 @@
-define(function() {
+define(['core/client', 'core/node_id', 'core/map', 'core/number'], function(client, node_id, Map_, Number) {
   
   function DragOperation() {
     
@@ -221,6 +221,17 @@ define(function() {
         dragdropAreasToDraggingNodes.forEach(function(nodeWidgets, dragdropArea) {
           dragdropArea.fire('widgetDragFinish', nodeWidgets);
           dragdropArea.removeEventListener('widgetsDraggedOut', handleDragdropAreaDraggedOut);
+        });
+        
+        var Position = node_id.fromHex('23852101c8b5798fe8c72e9a668575ef');
+        var XAxis    = node_id.fromHex('7dba86e48248ff4c115012ff46fe41fe');
+        var YAxis    = node_id.fromHex('233b57fa8d66698978054e9bd8b116f4');
+        
+        self.draggingWidgets.forEach(function(widget) {
+          if (self.surface.isTopLevelWidget(widget) && widget.widgetType !== 'yb-connector') {
+            var position = self.surface.getWidgetPosition(widget);
+            self.surface.surfaceWeb.setWidgetPosition(widget.widgetId, position);
+          }
         });
         
         self.surface.finishOperation(self);

@@ -2,14 +2,18 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id'], function(node_id) {
+define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
   
   function Web() {
     this.names = new Map();
     this.links = new Set();
     
+    this.fromVia = NodeMultimap();
+    this.viaTo   = NodeMultimap();
+    this.fromTo  = NodeMultimap();
+    
     this._onNames = new Set();
-    this._onLinks     = new Set();
+    this._onLinks = new Set();
   }
   
   Web.prototype.getNodes = function() {
@@ -63,36 +67,6 @@ define(['./node_id'], function(node_id) {
   
   // Links
   
-  Web.prototype.addLinks = function(links) {
-    var self = this;
-    var newLinks = [];
-    links.forEach(function(link) {
-      var linkKey = node_id.linkToKey(link);
-      if (!self.links.has(linkKey)) {
-        self.links.add(linkKey);
-        newLinks.push(link);
-      }
-    });
-    if (newLinks.length > 0) {
-      self._notifyLinks(newLinks, []);
-    }
-  }
-  
-  Web.prototype.removeLinks = function(links) {
-    var self = this;
-    var removedLinks = [];
-    links.forEach(function(link) {
-      var linkKey = node_id.linkToKey(link);
-      if (self.links.has(linkKey)) {
-        self.links.delete(linkKey);
-        removedLinks.push(link);
-      }
-    });
-    if (removedLinks.length > 0) {
-      self._notifyLinks([], removedLinks);
-    }
-  }
-  
   Web.prototype.setLinks = function(add, remove) {
     var self = this;
     var addedLinks   = [];
@@ -101,6 +75,9 @@ define(['./node_id'], function(node_id) {
       var linkKey = node_id.linkToKey(link);
       if (!self.links.has(linkKey)) {
         self.links.add(linkKey);
+        self.fromVia.add([link.from, link.via], link.to);
+        self.viaTo.add(  [link.via,  link.to],  link.from);
+        self.fromTo.add( [link.from, link.to],  link.via);
         addedLinks.push(link);
       }
     });
@@ -108,6 +85,9 @@ define(['./node_id'], function(node_id) {
       var linkKey = node_id.linkToKey(link);
       if (self.links.has(linkKey)) {
         self.links.delete(linkKey);
+        self.fromVia.delete([link.from, link.via], link.to);
+        self.viaTo.delete(  [link.via,  link.to],  link.from);
+        self.fromTo.delete( [link.from, link.to],  link.via);
         removedLinks.push(link);
       }
     });
@@ -128,27 +108,6 @@ define(['./node_id'], function(node_id) {
     });
   }
   
-  Web.prototype.resetLinks = function(links) {
-    var self = this;
-    var linkKeys = new Set(links.map(function(link) {
-      return node_id.linkToKey(link);
-    }));
-    var linksAdded   = [];
-    var linksRemoved = [];
-    linkKeys.forEach(function(linkKey) {
-      if (!self.links.has(linkKey)) {
-        linksAdded.push(node_id.linkFromKey(linkKey));
-      }
-    });
-    self.links.forEach(function(linkKey) {
-      if (!linkKeys.has(linkKey)) {
-        linksRemoved.push(node_id.linkFromKey(linkKey));
-      }
-    });
-    self.links = linkKeys;
-    self._notifyLinks(linksAdded, linksRemoved);
-  }
-  
   Web.prototype.onLinks = function(callback) {
     this._onLinks.add(callback);
   }
@@ -161,21 +120,25 @@ define(['./node_id'], function(node_id) {
   // Query
   
   Web.prototype.query = function(from, via, to) {
-    var result = new Set();
-    if (((from ? 1:0) + (via ? 1:0) + (to ? 1:0)) === 2) {
-      this.links.forEach(function(linkKey) {
-        var link = node_id.linkFromKey(linkKey);
-        if ((!from || node_id.equal(link.from, from)) &&
-            (!via  || node_id.equal(link.via,  via))  &&
-            (!to   || node_id.equal(link.to,   to))) {
-          
-          if (!from) result.add(link.from);
-          if (!via)  result.add(link.via);
-          if (!to)   result.add(link.to);
-        }
-      });
+    if (from && via && !to) {
+      return this.fromVia.get([from, via]);
     }
-    return result;
+    if (via && to && !from) {
+      return this.viaTo.get([via, to]);
+    }
+    if (from && to && !via) {
+      return this.fromTo.get([from, to]);
+    }
+    throw 'Invalid query for web.';
+  }
+  
+  Web.prototype.queryOne = function(from, via, to) {
+    var result = this.query(from, via, to);
+    if (result && result.length === 1) {
+      return result[0];
+    } else {
+      return null;
+    }
   }
   
   

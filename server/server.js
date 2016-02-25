@@ -34,7 +34,7 @@ io.on('connection', function(socket) {
     socket.emit('addNames', names);
   });
   webDb.getLinks(function(links) {
-    socket.emit('addLinks', links);
+    socket.emit('seedLinks', links);
   });
   
   socket.on('addNames', function(names) {
@@ -53,22 +53,9 @@ io.on('connection', function(socket) {
     webDb.removeNames(nodes);
   });
   
-  socket.on('addLinks', function(links) {
-    console.log('adding links:');
-    links.forEach(function(link) {
-      console.log(node_id.toHex(link.from) + ' - ' + node_id.toHex(link.via) + ' - ' + node_id.toHex(link.to));
-    });
-    webDb.addLinks(links);
-    socket.broadcast.emit('addLinks', links);
-  });
-  
-  socket.on('removeLinks', function(links) {
-    console.log('removing links:');
-    links.forEach(function(link) {
-      console.log(node_id.toHex(link.from) + ' - ' + node_id.toHex(link.via) + ' - ' + node_id.toHex(link.to));
-    });
-    webDb.removeLinks(links);
-    socket.broadcast.emit('removeLinks', links);
+  socket.on('setLinks', function(add, remove) {
+    webDb.setLinks(add, remove);
+    socket.broadcast.emit('setLinks', add, remove);
   });
 });
 

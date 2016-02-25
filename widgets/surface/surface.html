@@ -118,6 +118,7 @@
           self.isFullscreen  = false;
           
           self.widgets       = new Set();
+          self.widgetsById   = new Map();
           self.widgetsOfType = new Map();
           self.widgetsTopLevel = new Set();
           
@@ -157,29 +158,38 @@
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
         
-          require(['core/client', 'core/node_id'], function(client, node_id) {
+          require(['core/client', 'core/node_id', 'widgets/surface/surface-web'], function(client, node_id, SurfaceWeb) {
             self.client  = client;
             self.node_id = node_id;
             
             self.onLinks = self.onLinks.bind(self);
             client.web.onLinks(self.onLinks);
         
-            self.attachWidget(self.createNodeWidget(node_id.fromHex('52f9cf0e223d559931856acc98400f21')), {x: 100, y: 40});
-            self.attachWidget(self.createNodeWidget(node_id.fromHex('1264ed87a8274e5188f9020954811805')), {x: 100, y: 100});
-            self.attachWidget(self.createNodeWidget(node_id.fromHex('5c4d67cf88fd9c5dbc841dee378b6b4b')), {x: 100, y: 160});
-            self.attachWidget(self.createNodeWidget(node_id.fromHex('7e1b27583610201f8b48941d3637b13f')), {x: 185, y: 160});
+            if (client.isSeeded()) {
+              initializeSurface();
+            } else {
+              client.onSeed(function() {
+                initializeSurface();
+              });
+            }
+            
+            function initializeSurface() {
+              var DefaultSurface = node_id.fromHex('2b3d67e4119e97849aa394beec11ec83');
+              self.surfaceWeb = SurfaceWeb(client, DefaultSurface);
+              self.surfaceWeb.initializeSurface(self);
+            }
           });
           
           // Install operations
           require(
             [
-              '/widgets/surface/pan-operation.js',
-              '/widgets/surface/zoom-operation.js',
-              '/widgets/surface/selection-operation.js',
-              '/widgets/surface/box-selection-operation.js',
-              '/widgets/surface/drag-operation.js',
-              '/widgets/surface/new-connector-drag-operation.js',
-              '/widgets/surface/rename-operation.js',
+              'widgets/surface/pan-operation',
+              'widgets/surface/zoom-operation',
+              'widgets/surface/selection-operation',
+              'widgets/surface/box-selection-operation',
+              'widgets/surface/drag-operation',
+              'widgets/surface/new-connector-drag-operation',
+              'widgets/surface/rename-operation',
             ],
             function() {
               var operations = Array.from(arguments);
@@ -645,6 +655,9 @@
             return self.widgetsTopLevel.has(widget);
           }));
         },
+        getWidgetById: function(widgetId) {
+          return this.widgetsById.get(this.node_id.toMapKey(widgetId));
+        },
         getWidgetsOfType: function(type) {
           return new Set(Array.from(this.widgets).filter(function(widget) {
             return widget.widgetType === type;
@@ -927,13 +940,16 @@
             self.removeWidget(connector);
           });
         },
-        createNodeWidget: function(id) {
-        
+        createNodeWidget: function(id, widgetId) {
+          
           var nodeWidget = document.createElement('yb-node');
           if (!id) {
             id = this.node_id.make();
           }
           nodeWidget.set('nodeId', this.node_id.toHex(id));
+          if (widgetId) {
+            nodeWidget.widgetId = widgetId;
+          }
           
           return nodeWidget;
         },
@@ -978,36 +994,49 @@
           
           var widget = event.detail;
           
-          if (!self.widgets.has(widget)) {
+          if (self.widgets.has(widget)) {
+            throw 'Widget attached to surface is already registered as attached.';
+          }
           
-            self.widgets.add(widget);
+          self.widgets.add(widget);
+          
+          if (self.node_id) {
+            self.widgetsById.set(self.node_id.toMapKey(widget.widgetId), widget);
             
-            if (!self.widgetsOfType.has(widget.widgetType)) {
-              self.widgetsOfType.set(widget.widgetType, new Set([widget]))
-            } else {
-              self.widgetsOfType.get(widget.widgetType).add(widget);
-            }
-            
-            if (widget.widgetType === 'yb-node') {
-            
-              var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId));
-              
-              if (!self.nodesToWidgets.has(idMapKey)) {
-                self.nodesToWidgets.set(idMapKey, new Set([widget]));
-              } else {
-                self.nodesToWidgets.get(idMapKey).add(widget);
-              }
-            
-              self._setupNodeWidgetHighlighting(widget);
-              self._setupNodeWidgetMenu(widget);
-              
-            } else if (widget.widgetType === 'yb-set') {
-              
-              self._setupSetWidgetMenu(widget);
+            if (!widget.widgetId) {
+              widget.widgetId = self.node_id.make();
             }
           }
           
-          if (widget.parentNode === self.viewRoot) {
+          if (!self.widgetsOfType.has(widget.widgetType)) {
+            self.widgetsOfType.set(widget.widgetType, new Set([widget]))
+          } else {
+            self.widgetsOfType.get(widget.widgetType).add(widget);
+          }
+          
+          if (widget.widgetType === 'yb-node') {
+          
+            var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId));
+            
+            if (!self.nodesToWidgets.has(idMapKey)) {
+              self.nodesToWidgets.set(idMapKey, new Set([widget]));
+            } else {
+              self.nodesToWidgets.get(idMapKey).add(widget);
+            }
+          
+            self._setupNodeWidgetHighlighting(widget);
+            self._setupNodeWidgetMenu(widget);
+            
+          } else if (widget.widgetType === 'yb-set') {
+            
+            self._setupSetWidgetMenu(widget);
+          }
+          
+          if (self.isTopLevelWidget(widget)) {
+          
+            self.widgetsTopLevel.add(widget);
+          
+            // Assign to layer
             if (widget.widgetType === 'yb-connector') {
               if (widget.active) {
                 self.connectorsLayer.append(widget);
@@ -1017,14 +1046,19 @@
             } else {
               self.nodesLayer.append(widget);
             }
-            if (!self.widgetsTopLevel.has(widget)) {
-              self.widgetsTopLevel.add(widget);
-              widget.addEventListener('dimensionsChanged', function(event) {
-                self.updateConnectorsForNodeWidget(widget);
-              });
+            
+            widget.addEventListener('dimensionsChanged', function(event) {
+              self.updateConnectorsForNodeWidget(widget);
+            });
+            
+            if (self.surfaceWeb) {
+              if (widget.widgetType !== 'yb-connector' || widget.active) {
+                self.surfaceWeb.addWidget(widget);
+                if (widget.widgetType !== 'yb-connector') {
+                  self.surfaceWeb.setWidgetPosition(widget.widgetId, self.getWidgetCenter(widget));
+                }
+              }
             }
-          } else {
-            self.widgetsTopLevel.delete(widget);
           }
         },
         widgetDetached: function(event) {
@@ -1073,6 +1107,8 @@
           }
           
           if (self.widgetsTopLevel.has(widget)) {
+          
+            // Remove from layer
             if (widget.widgetType === 'yb-connector') {
               if (widget.active) {
                 self.connectorsLayer.remove(widget);
@@ -1082,10 +1118,19 @@
             } else {
               self.nodesLayer.remove(widget);
             }
+
             self.widgetsTopLevel.delete(widget);
+            
+            if (self.surfaceWeb) {
+              if (widget.widgetType != 'yb-connector' || widget.active) {
+                self.surfaceWeb.removeWidget(widget);
+              }
+            }
           }
           
           self.widgets.delete(widget);
+          
+          self.widgetsById.delete(self.node_id.toMapKey(widget.widgetId));
           
           if (self.selectedWidgets.has(widget)) {
             self.selectedWidgets.delete(widget);
@@ -1105,7 +1150,11 @@
           nodeWidget.addEventListener('mouseover', function(event) {
             var nodeCopies = [];
             self.getWidgetsOfType('yb-node').forEach(function(otherNodeWidget) {
-              if (otherNodeWidget !== nodeWidget && otherNodeWidget.nodeId === nodeWidget.nodeId) {
+              if (otherNodeWidget !== nodeWidget && (
+                  otherNodeWidget.nodeId === nodeWidget.nodeId ||
+                  self.node_id.equal(self.node_id.fromHex(otherNodeWidget.nodeId), nodeWidget.widgetId) ||
+                  self.node_id.equal(otherNodeWidget.widgetId, self.node_id.fromHex(nodeWidget.nodeId))
+                  )) {
                 nodeCopies.push(otherNodeWidget);
                 otherNodeWidget.set('highlighted', true);
               }
@@ -1254,7 +1303,7 @@
           
           self.removeWidgets(widgetsToRemove);
 
-          self.client.removeLinks(linksToRemove);
+          self.client.setLinks([], linksToRemove);
         },
         duplicateWidgets: function(widgets, offset) {
           var self = this;
@@ -1349,6 +1398,10 @@
           options = options || {};
           
           connector.active = ('active' in options) ? options.active : true;
+          
+          if (options.widgetId) {
+            connector.widgetId = options.widgetId;
+          }
           
           connector.set('showHandles',    connector.active);
           connector.set('highlightOnly', !connector.active);

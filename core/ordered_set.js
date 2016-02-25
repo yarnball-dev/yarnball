@@ -36,21 +36,11 @@ define(['./node_id'], function(node_id) {
   }
   
   OrderedSet.prototype.next = function(node) {
-    var result = this._web.query(node, this._next, null);
-    if (result && result.size === 1) {
-      return Array.from(result)[0]
-    } else {
-      return null;
-    }
+    return this._web.queryOne(node, this._next, null);
   }
   
   OrderedSet.prototype.previous = function(node) {
-    var result = this._web.query(null, this._next, node);
-    if (result && result.size === 1) {
-      return Array.from(result)[0]
-    } else {
-      return null;
-    }
+    return this._web.queryOne(null, this._next, node);
   }
   
   OrderedSet.prototype.last = function() {
@@ -107,7 +97,7 @@ define(['./node_id'], function(node_id) {
         previousNode = node;
       });
       if (newLinks.length > 0) {
-        self._web.addLinks(newLinks);
+        self._web.setLinks(newLinks, []);
       }
     }
   }

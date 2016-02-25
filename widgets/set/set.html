@@ -253,7 +253,7 @@
                 to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
               }
             });
-            self.client.addLinks(links);
+            self.client.setLinks(links, []);
           }
         },
         removeNodes: function(nodeIds) {
@@ -266,7 +266,7 @@
                 to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
               }
             });
-            self.client.removeLinks(links);
+            self.client.setLinks([], links);
           }
         },
         addNodeWidget: function(nodeId) {
@@ -319,7 +319,7 @@
                 }
               }
             });
-            client.addLinks(links);
+            client.setLinks(links, []);
           });
         },
       });
