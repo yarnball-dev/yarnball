@@ -52,16 +52,6 @@
           
           self.listContent  = self.$.listContent;
           
-          require(['core/client', 'core/node_id', 'core/ordered_set'], function(client, node_id, ordered_set) {
-            self.client  = client;
-            self.node_id = node_id;
-            self.ordered_set = ordered_set;
-            self.orderedSet = self.next ? ordered_set(client.web, node_id.fromHex(self.next)) : null;
-            self.refreshList();
-            self.onLinks = self.onLinks.bind(self);
-            client.web.onLinks(self.onLinks);
-          });
-          
           self.listContent.dropRequestHandler = function(widgets) {
             if (!self.next) {
               return [];
@@ -147,12 +137,22 @@
             });
           });
         },
+        onWebInit: function(web) {
+          require(['core/node_id', 'core/ordered_set'], function(node_id, ordered_set) {
+            self.node_id = node_id;
+            self.ordered_set = ordered_set;
+            self.orderedSet = self.next ? ordered_set(web, node_id.fromHex(self.next)) : null;
+            self.refreshList();
+            self.onLinks = self.onLinks.bind(self);
+            web.onLinks(self.onLinks);
+          });
+        },
         detached: function() {
-          this.client.web.removeLinksListener(this.onLinks);
+          this.web.removeLinksListener(this.onLinks);
         },
         nextChanged: function(next) {
           if (next) {
-            this.orderedSet = this.ordered_set(this.client.web, this.node_id.fromHex(next));
+            this.orderedSet = this.ordered_set(this.web, this.node_id.fromHex(next));
           } else {
             this.orderedSet = null;
           }

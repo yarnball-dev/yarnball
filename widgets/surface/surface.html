@@ -105,6 +105,11 @@
     (function() {
       Polymer({
         is: 'yb-surface',
+        properties: {
+          node: {
+            type: String,
+          },
+        },
         behaviors: [
           Polymer.IronA11yKeysBehavior,
         ],
@@ -137,8 +142,7 @@
           
           self.currentOperation = null;
           
-          require(['core/client', 'core/node_id', 'widgets/zindex-manager'], function(client, node_id, zindex_manager) {
-            self.client  = client;
+          require(['core/node_id', 'widgets/zindex-manager'], function(node_id, zindex_manager) {
             self.node_id = node_id;
             self.zIndexManager = zindex_manager();
             self.connectorsLayer          = self.zIndexManager.addLayer();
@@ -158,28 +162,6 @@
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
         
-          require(['core/client', 'core/node_id', 'widgets/surface/surface-web'], function(client, node_id, SurfaceWeb) {
-            self.client  = client;
-            self.node_id = node_id;
-            
-            self.onLinks = self.onLinks.bind(self);
-            client.web.onLinks(self.onLinks);
-        
-            if (client.isSeeded()) {
-              initializeSurface();
-            } else {
-              client.onSeed(function() {
-                initializeSurface();
-              });
-            }
-            
-            function initializeSurface() {
-              var DefaultSurface = node_id.fromHex('2b3d67e4119e97849aa394beec11ec83');
-              self.surfaceWeb = SurfaceWeb(client, DefaultSurface);
-              self.surfaceWeb.initializeSurface(self);
-            }
-          });
-          
           // Install operations
           require(
             [
@@ -214,8 +196,48 @@
             document.addEventListener('MSFullscreenChange',     self.handleMSFullscreenEvent);
           }
         },
+        getParentWebElement: function() {
+          var parent = this.parentNode;
+          while (parent) {
+            if (parent.isYbWeb) {
+              return parent;
+            }
+            parent = parent.parentNode;
+          }
+          return null;
+        },
+        attached: function() {
+          var self = this;
+          
+          var parentWebElement = self.getParentWebElement();
+          if (!parentWebElement) {
+            throw 'Surface has no parent web element.';
+          }
+          
+          parentWebElement.onInit(function(web) {
+          
+            require(['core/node_id', 'widgets/surface/surface-web'], function(node_id, SurfaceWeb) {
+            
+              self.web = web;
+              
+              if (self.node) {
+                if (typeof self.node === 'string') {
+                  self.node = node_id.fromHex(self.node);
+                }
+              } else {
+                self.node = node_id.make();
+              }
+              
+              self.onLinks = self.onLinks.bind(self);
+              web.onLinks(self.onLinks);
+          
+              self.surfaceWeb = SurfaceWeb(web, self.node);
+              self.surfaceWeb.initializeSurface(self);
+            });
+          });
+        },
         detached: function() {
-          this.client.web.removeLinksListener(this.onLinks);
+          this.web.removeLinksListener(this.onLinks);
           
           if (self.requestFullscreen) {
             document.removeEventListener('fullscreenchange',       self.handleFullscreenEvent);
@@ -1303,7 +1325,7 @@
           
           self.removeWidgets(widgetsToRemove);
 
-          self.client.setLinks([], linksToRemove);
+          self.web.setLinks([], linksToRemove);
         },
         duplicateWidgets: function(widgets, offset) {
           var self = this;
@@ -1361,7 +1383,7 @@
           
           var nodeWidgets = new Set(nodeWidgets);
           
-          self.client.web.getLinks().forEach(function(link) {
+          self.web.getLinks().forEach(function(link) {
           
             var triples = self.getBestNodeWidgetTriplesForLink(link, nodeWidgets);
             
@@ -1376,7 +1398,7 @@
         },
         createConnectorsBetweenNodeWidgets: function(nodeWidgets) {
           var self = this;
-          self.client.web.getLinks().forEach(function(link) {
+          self.web.getLinks().forEach(function(link) {
             self.createConnectorsForLink(link, nodeWidgets);
           });
         },

@@ -49,23 +49,21 @@
           this.connectorsTo   = new Set();
         },
         ready: function() {
+          this.nameElement = this.$.nameElement;
+          this.nameInput   = this.$.nameInput;
+          
+          this.classList.add('widget-handle');
+        },
+        onWebInit: function(web) {
           var self = this;
+          require(['core/node_id'], function(node_id) {
           
-          self.widgetHandle = self;
-          self.nameElement  = self.$.nameElement;
-          self.nameInput    = self.$.nameInput;
-          
-          self.classList.add('widget-handle');
-          
-          require(['core/client', 'core/node_id'], function(client, node_id) {
-          
-            self.client = client;
             self.id_ = node_id.fromHex(self.nodeId);
-            if (client.web.hasName(self.id_)) {
-              self.updateName(client.web.getName(self.id_));
+            if (web.hasName(self.id_)) {
+              self.updateName(web.getName(self.id_));
             }
             
-            client.web.onNames(function(namesAdded, namesRemoved) {
+            web.onNames(function(namesAdded, namesRemoved) {
               namesAdded.forEach(function(node) {
                 if (node_id.equal(node.id, self.id_)) {
                   self.updateName(node.name);
@@ -151,12 +149,12 @@
           var newName = this.nameInput.value;
           this.updateName(newName);
           if (newName) {
-            if (this.client.web.getName(this.id_) !== newName) {
-              this.client.addNames([{id: this.id_, name: newName}]);
+            if (this.web.getName(this.id_) !== newName) {
+              this.web.addNames([{id: this.id_, name: newName}]);
             }
           } else {
-            if (this.client.web.hasName(this.id_)) {
-              this.client.removeNames([this.id_]);
+            if (this.web.hasName(this.id_)) {
+              this.web.removeNames([this.id_]);
             }
           }
         },

@@ -1,0 +1,49 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<dom-module id="yb-web-remote">
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-web-remote',
+        created: function() {
+          this.isYbWeb = true;
+          this._socketio;
+          this._onInit = new Set();
+        },
+        ready: function() {
+          var self = this;
+          require(['socket.io-client/socket.io', 'core/web-remote'], function(SocketIO, WebRemote) {
+          
+            self._socketio = SocketIO();
+            self.ybWeb = WebRemote.Client(self._socketio);
+            
+            if (self.ybWeb.isSeeded()) {
+              self._notifyInit(self.ybWeb);
+            } else {
+              self.ybWeb.onSeed(function() {
+                self._notifyInit(self.ybWeb);
+              });
+            }
+          });
+        },
+        onInit: function(callback) {
+          if (this.ybWeb && this.ybWeb.isSeeded()) {
+            callback(this.ybWeb);
+          } else {
+            this._onInit.add(callback);
+          }
+        },
+        _notifyInit: function(web) {
+          this._onInit.forEach(function(callback) {
+            callback(web);
+          });
+          this._onInit.clear();
+        },
+      });
+    })();
+  </script>
+  
+</dom-module>

@@ -69,14 +69,6 @@
           self.widgetBody   = self.$.widgetBody;
           self.setContent   = self.$.setContent;
           
-          require(['core/client', 'core/node_id'], function(client, node_id) {
-            self.client  = client;
-            self.node_id = node_id;
-            self.refreshSet();
-            self.onLinks = self.onLinks.bind(self);
-            client.web.onLinks(self.onLinks);
-          });
-          
           self.setContent.dropRequestHandler = function(widgets) {
             if (!self.isFilterValid()) {
               return [];
@@ -162,8 +154,17 @@
             });
           });
         },
+        onWebInit: function(web) {
+          var self = this;
+          require(['core/node_id'], function(node_id) {
+            self.node_id = node_id;
+            self.refreshSet();
+            self.onLinks = self.onLinks.bind(self);
+            web.onLinks(self.onLinks);
+          });
+        },
         detached: function() {
-          this.client.web.removeLinksListener(this.onLinks);
+          this.web.removeLinksListener(this.onLinks);
         },
         onLinks: function(linksAdded, linksRemoved) {
           this.updateSet(linksAdded, linksRemoved);
@@ -212,9 +213,9 @@
           
           self.setContent.set('enabled', self.isFilterValid());
           
-          require(['core/client', 'core/node_id'], function(client, node_id) {
-            self.node_id = node_id;
-            var nodeIdKeys = new Set(self.filterLinks(client.web.getLinks()).map(function(nodeId) {
+          if (self.web) {
+          
+            var nodeIdKeys = new Set(self.filterLinks(self.web.getLinks()).map(function(nodeId) {
               return self.node_id.toMapKey(nodeId);
             }));
             self.nodeWidgetsInSet.forEach(function(nodeWidget, nodeIdKey) {
@@ -227,7 +228,7 @@
                 self.addNodeWidget(self.node_id.fromMapKey(nodeIdKey));
               }
             });
-          });
+          }
         },
         updateSet: function(linksAdded, linksRemoved) {
         
@@ -253,7 +254,7 @@
                 to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
               }
             });
-            self.client.setLinks(links, []);
+            self.web.setLinks(links, []);
           }
         },
         removeNodes: function(nodeIds) {
@@ -266,7 +267,7 @@
                 to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
               }
             });
-            self.client.setLinks([], links);
+            self.web.setLinks([], links);
           }
         },
         addNodeWidget: function(nodeId) {
@@ -297,30 +298,28 @@
             return;
           }
           var nodeWidgets = event.detail;
-          require(['core/client', 'core/node_id'], function(client, node_id) {
-            var links = Array.from(nodeWidgets).map(function(nodeWidget) {
-              if (!self.from) {
-                return {
-                  from: node_id.fromHex(nodeWidget.nodeId),
-                  via:  node_id.fromHex(self.via),
-                  to:   node_id.fromHex(self.to),
-                }
-              } else if (!self.via) {
-                return {
-                  from: node_id.fromHex(self.from),
-                  via:  node_id.fromHex(nodeWidget.nodeId),
-                  to:   node_id.fromHex(self.to),
-                }
-              } else if (!self.to) {
-                return {
-                  from: node_id.fromHex(self.from),
-                  via:  node_id.fromHex(self.via),
-                  to:   node_id.fromHex(nodeWidget.nodeId),
-                }
+          var links = Array.from(nodeWidgets).map(function(nodeWidget) {
+            if (!self.from) {
+              return {
+                from: self.node_id.fromHex(nodeWidget.nodeId),
+                via:  self.node_id.fromHex(self.via),
+                to:   self.node_id.fromHex(self.to),
               }
-            });
-            client.setLinks(links, []);
+            } else if (!self.via) {
+              return {
+                from: self.node_id.fromHex(self.from),
+                via:  self.node_id.fromHex(nodeWidget.nodeId),
+                to:   self.node_id.fromHex(self.to),
+              }
+            } else if (!self.to) {
+              return {
+                from: self.node_id.fromHex(self.from),
+                via:  self.node_id.fromHex(self.via),
+                to:   self.node_id.fromHex(nodeWidget.nodeId),
+              }
+            }
           });
+          self.web.setLinks(links, []);
         },
       });
     })();

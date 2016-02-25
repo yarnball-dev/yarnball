@@ -24,17 +24,17 @@
           this.widgetsContainer = this.$.widgetsContainer;
           this.nodeWidgets = new Map();
         },
-        attached: function() {
+        onWebInit: function(web) {
           var self = this;
-          require(['core/client', 'core/node_id'], function(client, node_id) {
           
-            self.client = client;
+          require(['core/node_id'], function(node_id) {
+          
             self.node_id = node_id;
           
-            client.web.getNames().forEach(function(node) {
+            web.getNames().forEach(function(node) {
               self.addNodeWidget(node.id);
             });
-            client.web.onNames(function(namesAdded, namesRemoved) {
+            web.onNames(function(namesAdded, namesRemoved) {
               namesAdded.forEach(function(node) {
                 if (self.nodeWidgets.has(self.node_id.toMapKey(node.id))) {
                   var nodeWidget = self.nodeWidgets.get(self.node_id.toMapKey(node.id));

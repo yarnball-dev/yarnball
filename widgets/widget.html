@@ -35,9 +35,23 @@
       });
     },
     attached: function() {
-      this._parent = this.parentNode;
-      var event = new CustomEvent('widgetAttached', { detail: this, bubbles: true });
-      this._parent.dispatchEvent(event);
+      var self = this;
+    
+      self._parent = self.parentNode;
+      var event = new CustomEvent('widgetAttached', { detail: self, bubbles: true });
+      self._parent.dispatchEvent(event);
+      
+      var parentWebElement = self.getParentWebElement();
+      if (!parentWebElement) {
+        throw 'Could not find parent web element for widget.';
+      }
+      
+      parentWebElement.onInit(function(web) {
+        self.web = web;
+        if (self.onWebInit) {
+          self.onWebInit(web);
+        }
+      });
     },
     detached: function() {
       var event = new CustomEvent('widgetDetached', { detail: this, bubbles: true });
@@ -52,6 +66,16 @@
     },
     _widgetDetached: function(event) {
       this.widgets.delete(event.detail);
+    },
+    getParentWebElement: function() {
+      var parent = this.parentNode;
+      while (parent) {
+        if (parent.isYbWeb) {
+          return parent;
+        }
+        parent = parent.parentNode;
+      }
+      return null;
     },
     hasHandles: function() {
       return this.getHandles().length > 0;
