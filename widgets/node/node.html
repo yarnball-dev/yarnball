@@ -65,8 +65,6 @@
               self.updateName(client.web.getName(self.id_));
             }
             
-            self.widgetId = node_id.make();
-            
             client.web.onNames(function(namesAdded, namesRemoved) {
               namesAdded.forEach(function(node) {
                 if (node_id.equal(node.id, self.id_)) {

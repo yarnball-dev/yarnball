@@ -13,8 +13,14 @@
       },
     },
     created: function() {
-      this.widgetType = this.tagName.toLowerCase();
-      this.widgets = new Set();
+      var self = this;
+      self.widgetType = self.tagName.toLowerCase();
+      self.widgets = new Set();
+      require(['core/node_id'], function(node_id) {
+        if (!self.widgetId) {
+          self.widgetId = node_id.make();
+        }
+      });
     },
     ready: function() {
       var self = this;
