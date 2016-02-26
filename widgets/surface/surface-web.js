@@ -46,11 +46,23 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
       }], []);
       WidgetProperties.set(Represents, Node.fromHex(widget.nodeId));
     } else if (widget.widgetType === 'yb-connector') {
+      if (!widget.fromWidget || !widget.viaWidget || !widget.toWidget) {
+        throw 'Cannot add connector widget to surface web, from/via/to widgets not attached.';
+      }
+      if (!widget.fromWidget.widgetId || !widget.viaWidget.widgetId || !widget.toWidget.widgetId) {
+        throw 'Cannot add connector widget to surface web, from/via/to widgets do not have widget ids.';
+      }
+      
+      if (!this.hasWidget(widget.fromWidget.widgetId) || !this.hasWidget(widget.viaWidget.widgetId) || !this.hasWidget(widget.toWidget.widgetId)) {
+        throw 'Cannot add connector widget to surface web, from/via/to widgets not already present in web.';
+      }
+        
       transaction.setLinks([{
         from: widget.widgetId,
         via: Is,
         to: Connector,
       }], []);
+      
       WidgetProperties.set(From, widget.fromWidget.widgetId);
       WidgetProperties.set(Via,  widget.viaWidget.widgetId);
       WidgetProperties.set(To,   widget.toWidget.widgetId);
@@ -97,9 +109,13 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
     transaction.apply();
   }
   
-  SurfaceWeb.prototype.getWidgetPosition = function(Widget) {
+  SurfaceWeb.prototype.hasWidget = function(Widget_) {
+    return this._web.hasLink(Widget_, Is, Widget);
+  }
+  
+  SurfaceWeb.prototype.getWidgetPosition = function(Widget_) {
     
-    var WidgetProperties = Map_(this._web, Widget);
+    var WidgetProperties = Map_(this._web, Widget_);
     
     var WidgetPosition = WidgetProperties.getMap(Position);
     if (!WidgetPosition) {
