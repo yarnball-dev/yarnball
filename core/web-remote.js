@@ -87,6 +87,10 @@ define(['./web'], function(Web) {
   
   // Query
   
+  Client.prototype.hasLink = function(from, via, to) {
+    return this._web.hasLink(from, via, to);
+  }
+  
   Client.prototype.query = function(from, via, to) {
     return this._web.query(from, via, to);
   }
