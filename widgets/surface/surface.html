@@ -172,6 +172,7 @@
               'widgets/surface/box-selection-operation',
               'widgets/surface/drag-operation',
               'widgets/surface/new-widget-operation',
+              'widgets/surface/remove-widgets-operation',
               'widgets/surface/new-connector-drag-operation',
               'widgets/surface/rename-operation',
             ],
@@ -572,14 +573,14 @@
         handleKey_Backspace: function(event) {
           if (this.canBeginOperation() && document.activeElement === this) {
             event.preventDefault();
-            this.hideSelectedWidgets();
+            this.beginOperation(this.RemoveWidgetsOperation, this.getSelectedWidgetsTopLevel());
             return false;
           }
         },
         handleKey_Del: function(event) {
           if (this.canBeginOperation() && document.activeElement === this) {
             event.preventDefault();
-            this.deleteSelected();
+            this.beginOperation(this.RemoveWidgetsOperation, this.getSelectedWidgetsTopLevel(), {removeRepresented: true});
             return false;
           }
         },
@@ -658,7 +659,13 @@
         },
         handleKey_CtrlSpace: function(event) {
           if (this.canBeginOperation()) {
-            this.removeConnectorsBetweenSelected();
+            var connectors = this.getSelectedWidgetsOfType('yb-connector');
+            this.getConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
+              if (connector.active) {
+                connectors.add(connector);
+              }
+            });
+            this.beginOperation(this.RemoveWidgetsOperation, connectors);
           }
         },
         searchQueryChanged: function(event) {
@@ -913,16 +920,6 @@
                    nodeWidgets.has(connector.viaWidget) &&
                    nodeWidgets.has(connector.toWidget);
           });
-        },
-        removeConnectorsBetweenSelected: function() {
-          var self = this;
-          var connectors = self.getSelectedWidgetsOfType('yb-connector');
-          self.getConnectorsBetweenNodeWidgets(self.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
-            if (connector.active) {
-              connectors.add(connector);
-            }
-          });
-          self.removeWidgets(connectors);
         },
         getConnectorsForWidgetTriple: function(nodeWidgetsTriple) {
           var nodeWidgetsLinkKey = this.Node.linkToKey({
@@ -1311,26 +1308,6 @@
             return widget.widgetType === type;
           }));
         },
-        hideSelectedWidgets: function() {
-          var self = this;
-          self.removeWidgets(self.getSelectedWidgetsTopLevel());
-        },
-        deleteSelected: function() {
-          var self = this;
-        
-          var widgetsToRemove = new Set(self.getSelectedWidgetsTopLevel());
-          
-          var linkKeysToRemove = new Set(Array.from(self.getSelectedWidgetsOfType('yb-connector')).map(function(connector) {
-            return self.Node.linkToKey(connector.link());
-          }));
-          var linksToRemove = Array.from(linkKeysToRemove).map(function(linkKey) {
-            return self.Node.linkFromKey(linkKey);
-          });
-          
-          self.removeWidgets(widgetsToRemove);
-
-          self.web.setLinks([], linksToRemove);
-        },
         duplicateWidgets: function(widgets, offset) {
           var self = this;
           
@@ -1649,11 +1626,15 @@
         },
         menuItem_DeleteSelected: function() {
           this.closeSelectionMenu();
-          this.deleteSelected();
+          if (this.canBeginOperation()) {
+            this.beginOperation(this.RemoveWidgetsOperation, this.getSelectedWidgetsTopLevel(), {removeRepresented: true});
+          }
         },
         menuItem_HideSelected: function() {
           this.closeSelectionMenu();
-          this.hideSelectedWidgets();
+          if (this.canBeginOperation()) {
+            this.beginOperation(this.RemoveWidgetsOperation, this.getSelectedWidgetsTopLevel());
+          }
         },
         menuItem_CopySelected: function() {
           this.closeSelectionMenu();
@@ -1668,7 +1649,15 @@
         menuItem_HideLinks: function() {
           var self = this;
           this.closeSelectionMenu();
-          this.removeConnectorsBetweenSelected();
+          if (this.canBeginOperation()) {
+            var connectors = this.getSelectedWidgetsOfType('yb-connector');
+            this.getConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
+              if (connector.active) {
+                connectors.add(connector);
+              }
+            });
+            this.beginOperation(this.RemoveWidgetsOperation, connectors);
+          }
         },
       });
     })();

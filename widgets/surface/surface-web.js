@@ -69,6 +69,24 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
     if (widget.widgetType === 'yb-node') {
       WidgetProperties.delete(Is, NodeWidget);
       WidgetProperties.delete(Represents);
+      
+      var WidgetPosition = WidgetProperties.getMap(Position);
+      if (WidgetPosition) {
+        var WidgetXAxis = WidgetPosition.get(XAxis);
+        var WidgetYAxis = WidgetPosition.get(YAxis);
+        
+        if (WidgetXAxis) {
+          Number(this._web, WidgetXAxis).clear();
+          WidgetPosition.delete(WidgetXAxis);
+        }
+        if (WidgetYAxis) {
+          Number(this._web, WidgetYAxis).clear();
+          WidgetPosition.delete(WidgetYAxis);
+        }
+        
+        WidgetProperties.delete(Position);
+      }
+      
     } else if (widget.widgetType === 'yb-connector') {
       WidgetProperties.delete(Is, Connector);
       WidgetProperties.delete(From);
