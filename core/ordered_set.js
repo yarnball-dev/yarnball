@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id'], function(node_id) {
+define(['./node', './node-set'], function(Node, NodeSet) {
   
   function OrderedSet(web, next, base) {
     if (!next) {
@@ -19,12 +19,12 @@ define(['./node_id'], function(node_id) {
     if (this._base) {
       nodes.push(this._base);
       
-      var nodesSet = new Set([node_id.toMapKey(this._base)]);
+      var nodesAlreadySeen = NodeSet([this._base]);
     
       var currentNode = this._base;
       while (true) {
         var nextNode = this.next(currentNode);
-        if (!nextNode || nodesSet.has(node_id.toMapKey(nextNode))) {
+        if (!nextNode || nodesAlreadySeen.has(nextNode)) {
           break;
         }
         currentNode = nextNode;
@@ -48,10 +48,10 @@ define(['./node_id'], function(node_id) {
       return null;
     }
     var currentNode = this._base;
-    var nodesSet = new Set([node_id.toMapKey(this._base)]);
+    var nodesAlreadySeen = NodeSet([this._base]);
     while (true) {
       var nextNode = this.next(currentNode);
-      if (!nextNode || nodesSet.has(node_id.toMapKey(nextNode))) {
+      if (!nextNode || nodesAlreadySeen.has(nextNode)) {
         return currentNode;
       }
       currentNode = nextNode;
@@ -64,9 +64,7 @@ define(['./node_id'], function(node_id) {
     if (nodes.length > 0) {
       
       // Check for duplicates
-      var nodesSet = new Set(nodes.map(function(node) {
-        return node_id.toMapKey(node);
-      }));
+      var nodesSet = NodeSet(nodes);
       if (nodesSet.size !== nodes.length) {
         throw 'Cannot append nodes to set, the given list of nodes contains duplicates.';
       }
@@ -76,10 +74,8 @@ define(['./node_id'], function(node_id) {
       if (self._base) {
         var existingNodes = self.get();
         // Check if any nodes already exist in the set
-        var existingNodesSet = new Set(self.get().map(function(existingNode) {
-          return node_id.toMapKey(existingNode);
-        }));
-        if (nodes.some(function(node) { return existingNodesSet.has(node_id.toMapKey(node)) })) {
+        var existingNodesSet = NodeSet(existingNodes);
+        if (nodes.some(function(node) { return existingNodesSet.has(node) })) {
           throw 'Cannot append nodes to set, one or more nodes already exist in the set.';
         }
         previousNode = existingNodes[existingNodes.length - 1];
@@ -109,9 +105,7 @@ define(['./node_id'], function(node_id) {
       return;
     }
     
-    nodes = new Set(Array.from(nodes).map(function(node) {
-      return node_id.toMapKey(node);
-    }));
+    nodes = NodeSet(nodes);
     
     if (nodes.size > 0) {
       
@@ -119,11 +113,11 @@ define(['./node_id'], function(node_id) {
       var linksRemoved = [];
     
       var currentNode = self._base;
-      var nodesAlreadySeen = new Set();
+      var nodesAlreadySeen = NodeSet();
       var previousNode = null;
       var lastNonDeletedNode = null;
       while (currentNode) {
-        var deletingCurrentNode = nodes.has(node_id.toMapKey(currentNode));
+        var deletingCurrentNode = nodes.has(currentNode);
         if (previousNode && deletingCurrentNode) {
           linksRemoved.push({
             from: previousNode,
@@ -132,7 +126,7 @@ define(['./node_id'], function(node_id) {
           });
         }
         if (!deletingCurrentNode) {
-          if (previousNode && nodes.has(node_id.toMapKey(previousNode))) {
+          if (previousNode && nodes.has(previousNode)) {
             linksRemoved.push({
               from: previousNode,
               via: self._next,
@@ -151,8 +145,8 @@ define(['./node_id'], function(node_id) {
           lastNonDeletedNode = currentNode;
         }
         var nextNode = self.next(currentNode);
-        nodesAlreadySeen.add(node_id.toMapKey(currentNode));
-        if (!nextNode || nodesAlreadySeen.has(node_id.toMapKey(nextNode))) {
+        nodesAlreadySeen.add(currentNode);
+        if (!nextNode || nodesAlreadySeen.has(nextNode)) {
           break;
         }
         previousNode = currentNode;

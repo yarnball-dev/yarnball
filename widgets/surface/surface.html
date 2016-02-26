@@ -142,8 +142,8 @@
           
           self.currentOperation = null;
           
-          require(['core/node_id', 'core/transaction', 'widgets/zindex-manager'], function(node_id, Transaction, zindex_manager) {
-            self.node_id = node_id;
+          require(['core/node', 'core/transaction', 'widgets/zindex-manager'], function(Node, Transaction, zindex_manager) {
+            self.Node = Node;
             self.Transaction = Transaction;
             self.zIndexManager = zindex_manager();
             self.connectorsLayer          = self.zIndexManager.addLayer();
@@ -217,17 +217,17 @@
           
           parentWebElement.onInit(function(web) {
           
-            require(['core/node_id', 'widgets/surface/surface-web'], function(node_id, SurfaceWeb) {
+            require(['core/node', 'widgets/surface/surface-web'], function(Node, SurfaceWeb) {
             
               self.web = web;
               self.SurfaceWeb = SurfaceWeb;
               
               if (self.node) {
                 if (typeof self.node === 'string') {
-                  self.node = node_id.fromHex(self.node);
+                  self.node = Node.fromHex(self.node);
                 }
               } else {
-                self.node = node_id.make();
+                self.node = Node();
               }
               
               self.onLinks = self.onLinks.bind(self);
@@ -683,7 +683,7 @@
           }));
         },
         getWidgetById: function(widgetId) {
-          return this.widgetsById.get(this.node_id.toMapKey(widgetId));
+          return this.widgetsById.get(this.Node.toMapKey(widgetId));
         },
         getWidgetsOfType: function(type) {
           return new Set(Array.from(this.widgets).filter(function(widget) {
@@ -764,7 +764,7 @@
           }
         },
         getWidgetsForNode: function(id) {
-          var idMapKey = this.node_id.toMapKey(id);
+          var idMapKey = this.Node.toMapKey(id);
           if (this.nodesToWidgets.has(idMapKey)) {
             return this.nodesToWidgets.get(idMapKey);
           } else {
@@ -892,7 +892,7 @@
           });
         },
         getConnectorsForLink: function(link) {
-          var linkKey = this.node_id.linkToKey(link);
+          var linkKey = this.Node.linkToKey(link);
           if (this.linksToConnectors.has(linkKey)) {
             return new Set(Array.from(this.linksToConnectors.get(linkKey)));
           } else {
@@ -917,7 +917,7 @@
           self.removeWidgets(connectors);
         },
         getConnectorsForWidgetTriple: function(nodeWidgetsTriple) {
-          var nodeWidgetsLinkKey = this.node_id.linkToKey({
+          var nodeWidgetsLinkKey = this.Node.linkToKey({
             from: nodeWidgetsTriple.from.widgetId,
             via:  nodeWidgetsTriple.via.widgetId,
             to:   nodeWidgetsTriple.to.widgetId,
@@ -971,9 +971,9 @@
           
           var nodeWidget = document.createElement('yb-node');
           if (!id) {
-            id = this.node_id.make();
+            id = this.Node();
           }
-          nodeWidget.set('nodeId', this.node_id.toHex(id));
+          nodeWidget.set('nodeId', this.Node.toHex(id));
           if (widgetId) {
             nodeWidget.widgetId = widgetId;
           }
@@ -1027,12 +1027,12 @@
           
           self.widgets.add(widget);
           
-          if (self.node_id) {
-            self.widgetsById.set(self.node_id.toMapKey(widget.widgetId), widget);
-            
+          if (self.Node) {
             if (!widget.widgetId) {
-              widget.widgetId = self.node_id.make();
+              widget.widgetId = self.Node();
             }
+            
+            self.widgetsById.set(self.Node.toMapKey(widget.widgetId), widget);
           }
           
           if (!self.widgetsOfType.has(widget.widgetType)) {
@@ -1043,7 +1043,7 @@
           
           if (widget.widgetType === 'yb-node') {
           
-            var idMapKey = self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId));
+            var idMapKey = self.Node.toMapKey(self.Node.fromHex(widget.nodeId));
             
             if (!self.nodesToWidgets.has(idMapKey)) {
               self.nodesToWidgets.set(idMapKey, new Set([widget]));
@@ -1082,7 +1082,7 @@
               if (widget.widgetType !== 'yb-connector' || widget.active) {
                 self.surfaceWeb.addWidget(widget);
                 if (widget.widgetType !== 'yb-connector') {
-                  self.surfaceWeb.setWidgetPosition(widget.widgetId, self.getWidgetCenter(widget));
+                  self.surfaceWeb.setWidgetPosition(widget.widgetId, self.getWidgetPosition(widget));
                 }
               }
             }
@@ -1101,10 +1101,10 @@
             
             if (widget.fromWidget && widget.viaWidget && widget.toWidget) {
           
-              var linkKey = self.node_id.linkToKey({
-                from: self.node_id.fromHex(widget.fromWidget.nodeId),
-                via:  self.node_id.fromHex(widget.viaWidget.nodeId),
-                to:   self.node_id.fromHex(widget.toWidget.nodeId),
+              var linkKey = self.Node.linkToKey({
+                from: self.Node.fromHex(widget.fromWidget.nodeId),
+                via:  self.Node.fromHex(widget.viaWidget.nodeId),
+                to:   self.Node.fromHex(widget.toWidget.nodeId),
               });
               if (self.linksToConnectors.has(linkKey)) {
                 var connectors = self.linksToConnectors.get(linkKey);
@@ -1114,7 +1114,7 @@
                 }
               }
               
-              var nodeWidgetsKey = self.node_id.linkToKey({
+              var nodeWidgetsKey = self.Node.linkToKey({
                 from: widget.fromWidget.widgetId,
                 via:  widget.viaWidget.widgetId,
                 to:   widget.toWidget.widgetId,
@@ -1157,7 +1157,7 @@
           
           self.widgets.delete(widget);
           
-          self.widgetsById.delete(self.node_id.toMapKey(widget.widgetId));
+          self.widgetsById.delete(self.Node.toMapKey(widget.widgetId));
           
           if (self.selectedWidgets.has(widget)) {
             self.selectedWidgets.delete(widget);
@@ -1179,8 +1179,8 @@
             self.getWidgetsOfType('yb-node').forEach(function(otherNodeWidget) {
               if (otherNodeWidget !== nodeWidget && (
                   otherNodeWidget.nodeId === nodeWidget.nodeId ||
-                  self.node_id.equal(self.node_id.fromHex(otherNodeWidget.nodeId), nodeWidget.widgetId) ||
-                  self.node_id.equal(otherNodeWidget.widgetId, self.node_id.fromHex(nodeWidget.nodeId))
+                  self.Node.equal(self.Node.fromHex(otherNodeWidget.nodeId), nodeWidget.widgetId) ||
+                  self.Node.equal(otherNodeWidget.widgetId, self.Node.fromHex(nodeWidget.nodeId))
                   )) {
                 nodeCopies.push(otherNodeWidget);
                 otherNodeWidget.set('highlighted', true);
@@ -1322,10 +1322,10 @@
           var widgetsToRemove = new Set(self.getSelectedWidgetsTopLevel());
           
           var linkKeysToRemove = new Set(Array.from(self.getSelectedWidgetsOfType('yb-connector')).map(function(connector) {
-            return self.node_id.linkToKey(connector.link());
+            return self.Node.linkToKey(connector.link());
           }));
           var linksToRemove = Array.from(linkKeysToRemove).map(function(linkKey) {
-            return self.node_id.linkFromKey(linkKey);
+            return self.Node.linkFromKey(linkKey);
           });
           
           self.removeWidgets(widgetsToRemove);
@@ -1344,7 +1344,7 @@
             var newWidget = null;
             
             if (widget.widgetType === 'yb-node') {
-              newWidget = self.createNodeWidget(self.node_id.fromHex(widget.nodeId));
+              newWidget = self.createNodeWidget(self.Node.fromHex(widget.nodeId));
               oldToNewNodeWidgetMap.set(widget, newWidget);
             } else if (widget.widgetType === 'yb-set') {
               newWidget = self.createSetWidget(widget.getFilter());
@@ -1447,10 +1447,10 @@
           nodeWidgets.via.connectorsVia.add(connector);
           nodeWidgets.to.connectorsTo.add(connector);
           
-          var linkKey = self.node_id.linkToKey({
-            from: self.node_id.fromHex(nodeWidgets.from.nodeId),
-            via:  self.node_id.fromHex(nodeWidgets.via.nodeId),
-            to:   self.node_id.fromHex(nodeWidgets.to.nodeId),
+          var linkKey = self.Node.linkToKey({
+            from: self.Node.fromHex(nodeWidgets.from.nodeId),
+            via:  self.Node.fromHex(nodeWidgets.via.nodeId),
+            to:   self.Node.fromHex(nodeWidgets.to.nodeId),
           });
           if (self.linksToConnectors.has(linkKey)) {
             self.linksToConnectors.get(linkKey).add(connector);
@@ -1458,7 +1458,7 @@
             self.linksToConnectors.set(linkKey, new Set([connector]));
           }
           
-          var nodeWidgetsLinkKey = self.node_id.linkToKey({
+          var nodeWidgetsLinkKey = self.Node.linkToKey({
             from: nodeWidgets.from.widgetId,
             via:  nodeWidgets.via.widgetId,
             to:   nodeWidgets.to.widgetId,
@@ -1564,13 +1564,13 @@
           
           if (filter) {
             if (filter.from) {
-              setWidget.set('from', this.node_id.toHex(filter.from));
+              setWidget.set('from', this.Node.toHex(filter.from));
             }
             if (filter.via) {
-              setWidget.set('via', this.node_id.toHex(filter.via));
+              setWidget.set('via', this.Node.toHex(filter.via));
             }
             if (filter.to) {
-              setWidget.set('to', this.node_id.toHex(filter.to));
+              setWidget.set('to', this.Node.toHex(filter.to));
             }
           }
           

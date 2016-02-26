@@ -1,23 +1,23 @@
-define(['core/node_id', 'core/transaction', 'core/map', 'core/number'], function(node_id, Transaction, Map_, Number) {
+define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(Node, Transaction, Map_, Number) {
   
   function SurfaceWeb(web, base) {
     this._web  = web;
     this._base = base;
   }
   
-  var Is         = node_id.fromHex('52f9cf0e223d559931856acc98400f21');
-  var Widget     = node_id.fromHex('31e32c8610ff671d93a4d664d26b21f8');
-  var NodeWidget = node_id.fromHex('9c9eebc2fa256211d901aef59489923e');
-  var Represents = node_id.fromHex('262fb8be7b32196d8da05337c2116afa');
-  var Connector  = node_id.fromHex('b47270cd4c9a491dc1f230ec4a01523e');
+  var Is         = Node.fromHex('52f9cf0e223d559931856acc98400f21');
+  var Widget     = Node.fromHex('31e32c8610ff671d93a4d664d26b21f8');
+  var NodeWidget = Node.fromHex('9c9eebc2fa256211d901aef59489923e');
+  var Represents = Node.fromHex('262fb8be7b32196d8da05337c2116afa');
+  var Connector  = Node.fromHex('b47270cd4c9a491dc1f230ec4a01523e');
   
-  var From       = node_id.fromHex('96be22fbb74e6934574107e94e5ea694');
-  var Via        = node_id.fromHex('e999d3deae40585aba30546bdbc77d1c');
-  var To         = node_id.fromHex('6056f9214eac9efef194de63d978e520');
+  var From       = Node.fromHex('96be22fbb74e6934574107e94e5ea694');
+  var Via        = Node.fromHex('e999d3deae40585aba30546bdbc77d1c');
+  var To         = Node.fromHex('6056f9214eac9efef194de63d978e520');
   
-  var Position = node_id.fromHex('23852101c8b5798fe8c72e9a668575ef');
-  var XAxis    = node_id.fromHex('7dba86e48248ff4c115012ff46fe41fe');
-  var YAxis    = node_id.fromHex('233b57fa8d66698978054e9bd8b116f4');
+  var Position = Node.fromHex('23852101c8b5798fe8c72e9a668575ef');
+  var XAxis    = Node.fromHex('7dba86e48248ff4c115012ff46fe41fe');
+  var YAxis    = Node.fromHex('233b57fa8d66698978054e9bd8b116f4');
   
   SurfaceWeb.prototype.getNodeWidgets = function() {
     return this._web.query(null, Is, NodeWidget);
@@ -44,7 +44,7 @@ define(['core/node_id', 'core/transaction', 'core/map', 'core/number'], function
         via: Is,
         to: NodeWidget,
       }], []);
-      WidgetProperties.set(Represents, node_id.fromHex(widget.nodeId));
+      WidgetProperties.set(Represents, Node.fromHex(widget.nodeId));
     } else if (widget.widgetType === 'yb-connector') {
       transaction.setLinks([{
         from: widget.widgetId,

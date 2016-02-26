@@ -1,4 +1,4 @@
-define(function() {
+define(['core/node'], function(Node) {
   
   function NewConnectorDragOperation() {
 
@@ -125,9 +125,9 @@ define(function() {
               });
             }
             newLinks.push({
-              from: surface.node_id.fromHex(fromNodeWidget.nodeId),
-              via:  surface.node_id.fromHex(draggingConnectorNodes.via.nodeId),
-              to:   surface.node_id.fromHex(draggingConnectorNodes.to.nodeId)
+              from: Node.fromHex(fromNodeWidget.nodeId),
+              via:  Node.fromHex(draggingConnectorNodes.via.nodeId),
+              to:   Node.fromHex(draggingConnectorNodes.to.nodeId)
             });
           });
           

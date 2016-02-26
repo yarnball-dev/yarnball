@@ -102,12 +102,12 @@
             if (widgetsDraggedOut.size > 0) {
             
               var nodeIds = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
-                return self.node_id.fromHex(nodeWidget.nodeId);
+                return self.Node.fromHex(nodeWidget.nodeId);
               });
               var detachedWidgets = Array.from(widgetsDraggedOut).map(function(nodeWidget) {
                 nodeWidget.style.transform = null;
                 nodeWidget.classList.remove('yb-set');
-                self.nodeWidgetsInSet.delete(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)));
+                self.nodeWidgetsInSet.delete(self.Node.toMapKey(self.Node.fromHex(nodeWidget.nodeId)));
                 self.widgets.delete(nodeWidget);
                 return Polymer.dom(self.setContent).removeChild(nodeWidget);
               });
@@ -131,7 +131,7 @@
             event.detail.widgets.forEach(function(nodeWidget) {
               self.attachNodeWidget(nodeWidget);
               nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
-              nodeIds.push(self.node_id.fromHex(nodeWidget.nodeId));
+              nodeIds.push(self.Node.fromHex(nodeWidget.nodeId));
             });
             self.addNodes(nodeIds);
           });
@@ -156,8 +156,8 @@
         },
         onWebInit: function(web) {
           var self = this;
-          require(['core/node_id'], function(node_id) {
-            self.node_id = node_id;
+          require(['core/node'], function(Node) {
+            self.Node = Node;
             self.refreshSet();
             self.onLinks = self.onLinks.bind(self);
             web.onLinks(self.onLinks);
@@ -186,9 +186,9 @@
         },
         getFilter: function() {
           return {
-            from: this.from ? this.node_id.fromHex(this.from) : null,
-            via:  this.via  ? this.node_id.fromHex(this.via)  : null,
-            to:   this.to   ? this.node_id.fromHex(this.to)   : null,
+            from: this.from ? this.Node.fromHex(this.from) : null,
+            via:  this.via  ? this.Node.fromHex(this.via)  : null,
+            to:   this.to   ? this.Node.fromHex(this.to)   : null,
           }
         },
         filterLinks: function(links) {
@@ -199,9 +199,9 @@
             return [];
           }
           return links.filter(function(link) {
-            return (!self.from || self.node_id.toHex(link.from) === self.from) &&
-                   (!self.via  || self.node_id.toHex(link.via)  === self.via) &&
-                   (!self.to   || self.node_id.toHex(link.to)   === self.to);
+            return (!self.from || self.Node.toHex(link.from) === self.from) &&
+                   (!self.via  || self.Node.toHex(link.via)  === self.via) &&
+                   (!self.to   || self.Node.toHex(link.to)   === self.to);
           }).map(function(link) {
             if (!self.from) return link.from;
             if (!self.via)  return link.via;
@@ -216,16 +216,16 @@
           if (self.web) {
           
             var nodeIdKeys = new Set(self.filterLinks(self.web.getLinks()).map(function(nodeId) {
-              return self.node_id.toMapKey(nodeId);
+              return self.Node.toMapKey(nodeId);
             }));
             self.nodeWidgetsInSet.forEach(function(nodeWidget, nodeIdKey) {
               if (!nodeIdKeys.has(nodeIdKey)) {
-                self.removeNodeWidget(self.node_id.fromMapKey(nodeIdKey));
+                self.removeNodeWidget(self.Node.fromMapKey(nodeIdKey));
               }
             });
             nodeIdKeys.forEach(function(nodeIdKey) {
               if (!self.nodeWidgetsInSet.has(nodeIdKey)) {
-                self.addNodeWidget(self.node_id.fromMapKey(nodeIdKey));
+                self.addNodeWidget(self.Node.fromMapKey(nodeIdKey));
               }
             });
           }
@@ -235,7 +235,7 @@
           var self = this;
           
           self.filterLinks(linksAdded).forEach(function(nodeId) {
-            if (!self.nodeWidgetsInSet.has(self.node_id.toMapKey(nodeId))) {
+            if (!self.nodeWidgetsInSet.has(self.Node.toMapKey(nodeId))) {
               self.addNodeWidget(nodeId);
             }
           });
@@ -249,9 +249,9 @@
           if (self.isFilterValid()) {
             var links = Array.from(nodeIds).map(function(nodeId) {
               return {
-                from: self.from ? self.node_id.fromHex(self.from) : nodeId,
-                via:  self.via  ? self.node_id.fromHex(self.via)  : nodeId,
-                to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
+                from: self.from ? self.Node.fromHex(self.from) : nodeId,
+                via:  self.via  ? self.Node.fromHex(self.via)  : nodeId,
+                to:   self.to   ? self.Node.fromHex(self.to)   : nodeId,
               }
             });
             self.web.setLinks(links, []);
@@ -262,9 +262,9 @@
           if (self.isFilterValid()) {
             var links = Array.from(nodeIds).map(function(nodeId) {
               return {
-                from: self.from ? self.node_id.fromHex(self.from) : nodeId,
-                via:  self.via  ? self.node_id.fromHex(self.via)  : nodeId,
-                to:   self.to   ? self.node_id.fromHex(self.to)   : nodeId,
+                from: self.from ? self.Node.fromHex(self.from) : nodeId,
+                via:  self.via  ? self.Node.fromHex(self.via)  : nodeId,
+                to:   self.to   ? self.Node.fromHex(self.to)   : nodeId,
               }
             });
             self.web.setLinks([], links);
@@ -272,9 +272,9 @@
         },
         addNodeWidget: function(nodeId) {
           var nodeWidget = document.createElement('yb-node');
-          nodeWidget.nodeId = this.node_id.toHex(nodeId);
+          nodeWidget.nodeId = this.Node.toHex(nodeId);
           Polymer.dom(this.setContent).appendChild(nodeWidget);
-          this.nodeWidgetsInSet.set(this.node_id.toMapKey(nodeId), nodeWidget);
+          this.nodeWidgetsInSet.set(this.Node.toMapKey(nodeId), nodeWidget);
         },
         attachNodeWidget: function(nodeWidget) {
           nodeWidget.style.position = null;
@@ -282,13 +282,13 @@
           nodeWidget.style.top  = null;
           nodeWidget.style['z-index'] = null;
           Polymer.dom(this.setContent).appendChild(nodeWidget);
-          this.nodeWidgetsInSet.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
+          this.nodeWidgetsInSet.set(this.Node.toMapKey(this.Node.fromHex(nodeWidget.nodeId)), nodeWidget);
         },
         removeNodeWidget: function(nodeId) {
-          var nodeWidget = this.nodeWidgetsInSet.get(this.node_id.toMapKey(nodeId));
+          var nodeWidget = this.nodeWidgetsInSet.get(this.Node.toMapKey(nodeId));
           if (nodeWidget) {
             this.widgets.delete(nodeWidget);
-            this.nodeWidgetsInSet.delete(this.node_id.toMapKey(nodeId));
+            this.nodeWidgetsInSet.delete(this.Node.toMapKey(nodeId));
             Polymer.dom(this.setContent).removeChild(nodeWidget);
           }
         },
@@ -301,21 +301,21 @@
           var links = Array.from(nodeWidgets).map(function(nodeWidget) {
             if (!self.from) {
               return {
-                from: self.node_id.fromHex(nodeWidget.nodeId),
-                via:  self.node_id.fromHex(self.via),
-                to:   self.node_id.fromHex(self.to),
+                from: self.Node.fromHex(nodeWidget.nodeId),
+                via:  self.Node.fromHex(self.via),
+                to:   self.Node.fromHex(self.to),
               }
             } else if (!self.via) {
               return {
-                from: self.node_id.fromHex(self.from),
-                via:  self.node_id.fromHex(nodeWidget.nodeId),
-                to:   self.node_id.fromHex(self.to),
+                from: self.Node.fromHex(self.from),
+                via:  self.Node.fromHex(nodeWidget.nodeId),
+                to:   self.Node.fromHex(self.to),
               }
             } else if (!self.to) {
               return {
-                from: self.node_id.fromHex(self.from),
-                via:  self.node_id.fromHex(self.via),
-                to:   self.node_id.fromHex(nodeWidget.nodeId),
+                from: self.Node.fromHex(self.from),
+                via:  self.Node.fromHex(self.via),
+                to:   self.Node.fromHex(nodeWidget.nodeId),
               }
             }
           });

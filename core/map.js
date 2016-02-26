@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id'], function(node_id) {
+define(['./node'], function(Node) {
   
   function Map_(web, base) {
     if (!web) {
@@ -48,7 +48,7 @@ define(['./node_id'], function(node_id) {
     var linksToRemove = [];
     var hasValue = false;
     results.forEach(function(result) {
-      if (node_id.equal(result, value)) {
+      if (Node.equal(result, value)) {
         hasValue = true;
       } else {
         linksToRemove.push({
@@ -75,7 +75,7 @@ define(['./node_id'], function(node_id) {
     var self = this;
     var results = self._web.query(self._base, key, null);
     if (results.size() === 0) {
-      var value = node_id.make();
+      var value = Node();
       self._web.setLinks([{
         from: self._base,
         via: key,
@@ -92,7 +92,7 @@ define(['./node_id'], function(node_id) {
           to: result,
         }
       });
-      var value = node_id.make();
+      var value = Node();
       self._web.setLinks(
         [
           {

@@ -4,7 +4,7 @@ if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
 define(function() {
   
-  function make(buffer) {
+  function Node(buffer) {
     
     if (buffer) {
       if (!(buffer instanceof ArrayBuffer)) {
@@ -31,20 +31,33 @@ define(function() {
     return buffer;
   }
   
-  function equal(a, b) {
-    return toMapKey(a) === toMapKey(b);
+  Node.isNode = function(object) {
+    return (object instanceof ArrayBuffer || (typeof Buffer !== 'undefined' && object instanceof Buffer)) && object.byteLength === 16;
   }
   
-  function toMapKey(id) {
-    return Array.from(new Uint8Array(id)).toString();
+  Node.equal = function(a, b) {
+    if (!Node.isNode(a) || !Node.isNode(b)) {
+      throw 'Cannot compare node equality, given parameter(s) are not nodes.';
+    }
+    return Node.toMapKey(a) === Node.toMapKey(b);
   }
   
-  function fromMapKey(key) {
+  Node.toMapKey = function(node) {
+    if (!Node.isNode(node)) {
+      throw 'Cannot convert node to map key, parameter is not a node.';
+    }
+    return Array.from(new Uint8Array(node)).toString();
+  }
+  
+  Node.fromMapKey = function(key) {
     return new Uint8Array(JSON.parse('[' + key + ']')).buffer;
   }
     
-  function toHex(id) {
-    var array = new Uint8Array(id);
+  Node.toHex = function(node) {
+    if (!Node.isNode(node)) {
+      throw 'Cannot convert node to hex string, parameter is not a node.';
+    }
+    var array = new Uint8Array(node);
     var hexString = "";
     array.forEach(function(v) {
       var hex = v.toString(16);
@@ -56,12 +69,12 @@ define(function() {
     return hexString;
   }
   
-  function makeHex() {
-    var id = make();
-    return toHex(id);
+  Node.makeHex = function() {
+    var node = Node();
+    return Node.toHex(node);
   }
     
-  function fromHex(hexString) {
+  Node.fromHex = function(hexString) {
     if (hexString.length !== 16*2) {
       throw "Can't convert hex string '" + hexString + "' to node id, length is not 32.";
     }
@@ -77,35 +90,31 @@ define(function() {
     return array.buffer;
   }
   
-  function linkToKey(link) {
+  Node.linkToKey = function(link) {
     if (!link.from || !link.via || !link.to) {
       throw 'Cannot make key for link, from, via or to not specified.';
     }
-    return toHex(link.from) +
-           toHex(link.via) +
-           toHex(link.to);
+    return Node.toHex(link.from) +
+           Node.toHex(link.via) +
+           Node.toHex(link.to);
   }
   
-  function linkFromKey(linkKey) {
+  Node.linkFromKey = function(linkKey) {
     if (linkKey.length !== 32 + 32 + 32) {
       throw 'Cannot get link from key, key length is incorrect.';
     }
     return {
-      from: fromHex(linkKey.slice(0, 32)),
-      via:  fromHex(linkKey.slice(32, 32 + 32)),
-      to:   fromHex(linkKey.slice(32 + 32, 32 + 32 + 32)),
+      from: Node.fromHex(linkKey.slice(0, 32)),
+      via:  Node.fromHex(linkKey.slice(32, 32 + 32)),
+      to:   Node.fromHex(linkKey.slice(32 + 32, 32 + 32 + 32)),
     }
   }
   
-  return {
-    make:        make,
-    equal:       equal,
-    toMapKey:    toMapKey,
-    fromMapKey:  fromMapKey,
-    toHex:       toHex,
-    makeHex:     makeHex,
-    fromHex:     fromHex,
-    linkToKey:   linkToKey,
-    linkFromKey: linkFromKey,
+  Node.linksEqual = function(link1, link2) {
+    return Node.equal(link1.from, link2.from) &&
+           Node.equal(link1.via,  link2.via) &&
+           Node.equal(link1.to,   link2.to);
   }
+  
+  return Node;
 });

@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
+define(['./node', './node-multimap'], function(Node, NodeMultimap) {
   
   function Web() {
     this.names = new Map();
@@ -18,7 +18,7 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
   
   Web.prototype.getNodes = function() {
     return Array.from(this.names.keys(), function(entry) {
-      return node_id.fromMapKey(entry);
+      return Node.fromMapKey(entry);
     });
   }
   
@@ -27,14 +27,14 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
   
   Web.prototype.getNames = function() {
     return Array.from(this.names.entries(), function(entry) {
-      return {id: node_id.fromMapKey(entry[0]), name: entry[1]};
+      return {id: Node.fromMapKey(entry[0]), name: entry[1]};
     });
   }
   
   Web.prototype.addNames = function(names) {
     var self = this;
     names.forEach(function(node) {
-      self.names.set(node_id.toMapKey(node.id), node.name);
+      self.names.set(Node.toMapKey(node.id), node.name);
     });
     this._notifyNames(names, []);
   }
@@ -42,17 +42,17 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
   Web.prototype.removeNames = function(nodes) {
     var self = this;
     nodes.forEach(function(nodeId) {
-      self.names.delete(node_id.toMapKey(nodeId));
+      self.names.delete(Node.toMapKey(nodeId));
     });
     this._notifyNames([], nodes);
   }
   
   Web.prototype.hasName = function(id) {
-    return this.names.has(node_id.toMapKey(id));
+    return this.names.has(Node.toMapKey(id));
   }
   
   Web.prototype.getName = function(nodeId) {
-    var mapKey = node_id.toMapKey(nodeId);
+    var mapKey = Node.toMapKey(nodeId);
     if (!this.names.has(mapKey)) {
       return "";
     } else {
@@ -72,7 +72,7 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
     var addedLinks   = [];
     var removedLinks = [];
     add.forEach(function(link) {
-      var linkKey = node_id.linkToKey(link);
+      var linkKey = Node.linkToKey(link);
       if (!self.links.has(linkKey)) {
         self.links.add(linkKey);
         self.fromVia.add([link.from, link.via], link.to);
@@ -82,7 +82,7 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
       }
     });
     remove.forEach(function(link) {
-      var linkKey = node_id.linkToKey(link);
+      var linkKey = Node.linkToKey(link);
       if (self.links.has(linkKey)) {
         self.links.delete(linkKey);
         self.fromVia.delete([link.from, link.via], link.to);
@@ -97,14 +97,14 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
   }
   
   Web.prototype.hasLink = function(from, via, to) {
-    return this.links.has(node_id.toHex(from) +
-                          node_id.toHex(via) +
-                          node_id.toHex(to));
+    return this.links.has(Node.toHex(from) +
+                          Node.toHex(via) +
+                          Node.toHex(to));
   }
   
   Web.prototype.getLinks = function() {
     return Array.from(this.links.values(), function(key) {
-      return node_id.linkFromKey(key);
+      return Node.linkFromKey(key);
     });
   }
   

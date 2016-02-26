@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id', 'fs', 'readline'], function(node_id, fs, readline) {
+define(['./node', 'fs', 'readline'], function(Node, fs, readline) {
   
   function WebFile(namesPath, linksPath) {
     this.namesPath = namesPath;
@@ -22,7 +22,7 @@ define(['./node_id', 'fs', 'readline'], function(node_id, fs, readline) {
         var hexString = line.slice(0, 32);
         var name = line.slice(33);
         names.push({
-          id: node_id.fromHex(hexString),
+          id: Node.fromHex(hexString),
           name: name,
         });
       }
@@ -46,9 +46,9 @@ define(['./node_id', 'fs', 'readline'], function(node_id, fs, readline) {
         var viaString  = line.slice(32 + 1, 32 + 1 + 32);
         var toString   = line.slice(32 + 1 + 32 + 1, 32 + 1 + 32 + 1 + 32);
         links.push({
-          from: node_id.fromHex(fromString),
-          via:  node_id.fromHex(viaString),
-          to:   node_id.fromHex(toString),
+          from: Node.fromHex(fromString),
+          via:  Node.fromHex(viaString),
+          to:   Node.fromHex(toString),
         });
       }
     })

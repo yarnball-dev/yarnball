@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id', './node-set'], function(node_id, NodeSet) {
+define(['./node', './node-set'], function(Node, NodeSet) {
   
   function NodeMultimap() {
     this._map = new Map();
@@ -41,7 +41,7 @@ define(['./node_id', './node-set'], function(node_id, NodeSet) {
   
   NodeMultimap.prototype._keyForNodes = function(nodes) {
     return nodes.map(function(node) {
-      return node_id.toMapKey(node);
+      return Node.toMapKey(node);
     }).join('');
   }
   

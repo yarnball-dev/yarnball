@@ -1,4 +1,4 @@
-define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Number) {
+define(['core/map', 'core/number'], function(Map_, Number) {
   
   function DragOperation() {
     

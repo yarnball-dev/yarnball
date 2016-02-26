@@ -64,7 +64,7 @@
               }
               
               // Must not already be in the list
-              if (self.nodeWidgetMap.has(self.node_id.toMapKey(self.node_id.fromHex(widget.nodeId)))) {
+              if (self.nodeWidgetMap.has(self.Node.toMapKey(self.Node.fromHex(widget.nodeId)))) {
                 return false;
               }
               
@@ -95,7 +95,7 @@
             if (widgetsDraggedOut.length > 0) {
             
               var nodeIds = widgetsDraggedOut.map(function(nodeWidget) {
-                return self.node_id.fromHex(nodeWidget.nodeId);
+                return self.Node.fromHex(nodeWidget.nodeId);
               });
               var detachedWidgets = widgetsDraggedOut.map(function(nodeWidget) {
                 nodeWidget.style.transform = null;
@@ -115,10 +115,10 @@
             if (self.orderedSet) {
               var nodeIds = [];
               event.detail.widgets.forEach(function(nodeWidget) {
-                if (!self.nodeWidgetMap.has(self.node_id.toMapKey(self.node_id.fromHex(nodeWidget.nodeId)))) {
+                if (!self.nodeWidgetMap.has(self.Node.toMapKey(self.Node.fromHex(nodeWidget.nodeId)))) {
                   self.attachNodeWidget(nodeWidget);
                   nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
-                  nodeIds.push(self.node_id.fromHex(nodeWidget.nodeId));
+                  nodeIds.push(self.Node.fromHex(nodeWidget.nodeId));
                 }
               });
               var needsRefresh = !self.orderedSet._base && nodeIds.length === 1;
@@ -138,10 +138,10 @@
           });
         },
         onWebInit: function(web) {
-          require(['core/node_id', 'core/ordered_set'], function(node_id, ordered_set) {
-            self.node_id = node_id;
+          require(['core/node', 'core/ordered_set'], function(Node, ordered_set) {
+            self.Node = Node;
             self.ordered_set = ordered_set;
-            self.orderedSet = self.next ? ordered_set(web, node_id.fromHex(self.next)) : null;
+            self.orderedSet = self.next ? ordered_set(web, Node.fromHex(self.next)) : null;
             self.refreshList();
             self.onLinks = self.onLinks.bind(self);
             web.onLinks(self.onLinks);
@@ -152,7 +152,7 @@
         },
         nextChanged: function(next) {
           if (next) {
-            this.orderedSet = this.ordered_set(this.web, this.node_id.fromHex(next));
+            this.orderedSet = this.ordered_set(this.web, this.Node.fromHex(next));
           } else {
             this.orderedSet = null;
           }
@@ -179,7 +179,7 @@
           var nodes = self.orderedSet ? self.orderedSet.get() : [];
             
           var nodesSet = new Set(nodes.map(function(node){
-            return self.node_id.toMapKey(node);
+            return self.Node.toMapKey(node);
           }));
           
           // Remove node widgets not in the set
@@ -191,7 +191,7 @@
           
           // Re-order node widgets and add any new ones
           nodes.forEach(function(node, index) {
-            var nodeIdKey = self.node_id.toMapKey(node)
+            var nodeIdKey = self.Node.toMapKey(node)
             var nodeWidget = self.nodeWidgetMap.get(nodeIdKey);
             if (!nodeWidget) {
               nodeWidget = self.addNodeWidget(node);
@@ -201,20 +201,20 @@
         },
         addNodeWidget: function(nodeId) {
           var nodeWidget = document.createElement('yb-node');
-          nodeWidget.nodeId = this.node_id.toHex(nodeId);
+          nodeWidget.nodeId = this.Node.toHex(nodeId);
           Polymer.dom(this.listContent).appendChild(nodeWidget);
-          this.nodeWidgetMap.set(this.node_id.toMapKey(nodeId), nodeWidget);
+          this.nodeWidgetMap.set(this.Node.toMapKey(nodeId), nodeWidget);
           return nodeWidget;
         },
         attachNodeWidget: function(nodeWidget) {
           nodeWidget.style.position = null;
           nodeWidget.style.left = 0;
           nodeWidget.style.top  = 0;
-          this.nodeWidgetMap.set(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)), nodeWidget);
+          this.nodeWidgetMap.set(this.Node.toMapKey(this.Node.fromHex(nodeWidget.nodeId)), nodeWidget);
           Polymer.dom(this.listContent).appendChild(nodeWidget);
         },
         detachNodeWidget: function(nodeWidget) {
-          this.nodeWidgetMap.delete(this.node_id.toMapKey(this.node_id.fromHex(nodeWidget.nodeId)));
+          this.nodeWidgetMap.delete(this.Node.toMapKey(this.Node.fromHex(nodeWidget.nodeId)));
           return this.listContent.removeChild(nodeWidget);
         },
       });

@@ -23,8 +23,8 @@
         ready: function() {
           var self = this;
           self.widgetHandle = self;
-          require(['core/node_id'], function(node_id) {
-            self.node_id = node_id;
+          require(['core/node'], function(Node) {
+            self.Node = Node;
           });
         },
         listeners: {
@@ -46,7 +46,7 @@
         },
         create: function() {
           var nodeWidget = document.createElement('yb-node');
-          nodeWidget.set('nodeId', this.node_id.toHex(this.node_id.make()));
+          nodeWidget.set('nodeId', this.Node.makeHex());
           return nodeWidget;
         },
       });

@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id', './web'], function(node_id, Web) {
+define(['./web'], function(Web) {
   
   function Transaction(web) {
     this._targetWeb = web;

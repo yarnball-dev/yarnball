@@ -56,21 +56,21 @@
         },
         onWebInit: function(web) {
           var self = this;
-          require(['core/node_id'], function(node_id) {
+          require(['core/node'], function(Node) {
           
-            self.id_ = node_id.fromHex(self.nodeId);
+            self.id_ = Node.fromHex(self.nodeId);
             if (web.hasName(self.id_)) {
               self.updateName(web.getName(self.id_));
             }
             
             web.onNames(function(namesAdded, namesRemoved) {
               namesAdded.forEach(function(node) {
-                if (node_id.equal(node.id, self.id_)) {
+                if (Node.equal(node.id, self.id_)) {
                   self.updateName(node.name);
                 }
               });
               namesRemoved.forEach(function(node) {
-                if (node_id.equal(node, self.id_)) {
+                if (Node.equal(node, self.id_)) {
                   self.updateName('');
                 }
               });

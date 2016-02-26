@@ -2,6 +2,7 @@
 
 <link rel="import" href="all-nodes-styles.html">
 
+<link rel="import" href="../widget.html">
 <link rel="import" href="../node/node.html">
 
 <dom-module id="yb-all-nodes">
@@ -19,6 +20,7 @@
       
       Polymer({
         is: 'yb-all-nodes',
+        behaviors: [WidgetBehavior],
         ready: function() {
           this.searchTextbox    = this.$.searchTextbox;
           this.widgetsContainer = this.$.widgetsContainer;
@@ -27,17 +29,17 @@
         onWebInit: function(web) {
           var self = this;
           
-          require(['core/node_id'], function(node_id) {
+          require(['core/node'], function(Node) {
           
-            self.node_id = node_id;
+            self.Node = Node;
           
             web.getNames().forEach(function(node) {
               self.addNodeWidget(node.id);
             });
             web.onNames(function(namesAdded, namesRemoved) {
               namesAdded.forEach(function(node) {
-                if (self.nodeWidgets.has(self.node_id.toMapKey(node.id))) {
-                  var nodeWidget = self.nodeWidgets.get(self.node_id.toMapKey(node.id));
+                if (self.nodeWidgets.has(self.Node.toMapKey(node.id))) {
+                  var nodeWidget = self.nodeWidgets.get(self.Node.toMapKey(node.id));
                   nodeWidget.updateName(node.name);
                 } else {
                   self.addNodeWidget(node.id, node.name);
@@ -51,18 +53,18 @@
           });
         },
         addNodeWidget: function(nodeId, name) {
-          if (!this.nodeWidgets.has(this.node_id.toMapKey(nodeId))) {
+          if (!this.nodeWidgets.has(this.Node.toMapKey(nodeId))) {
             var nodeWidget = document.createElement('yb-node');
-            nodeWidget.nodeId = this.node_id.toHex(nodeId);
+            nodeWidget.nodeId = this.Node.toHex(nodeId);
             nodeWidget.updateName(name);
-            this.nodeWidgets.set(this.node_id.toMapKey(nodeId), nodeWidget);
+            this.nodeWidgets.set(this.Node.toMapKey(nodeId), nodeWidget);
             Polymer.dom(this.widgetsContainer).appendChild(nodeWidget);
           }
         },
         removeNodeWidget: function(nodeId) {
-          if (this.nodeWidgets.has(this.node_id.toMapKey(nodeId))) {
-            var nodeWidget = this.nodeWidgets.get(this.node_id.toMapKey(nodeId));
-            this.nodeWidgets.delete(this.node_id.toMapKey(nodeId));
+          if (this.nodeWidgets.has(this.Node.toMapKey(nodeId))) {
+            var nodeWidget = this.nodeWidgets.get(this.Node.toMapKey(nodeId));
+            this.nodeWidgets.delete(this.Node.toMapKey(nodeId));
             Polymer.dom(this.widgetsContainer).removeChild(nodeWidget);
           }
         },

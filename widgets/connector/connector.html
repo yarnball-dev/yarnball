@@ -46,8 +46,8 @@
         },
         created: function() {
           var self = this;
-          require(['core/node_id'], function(node_id) {
-            self.node_id = node_id;
+          require(['core/node'], function(Node) {
+            self.Node = Node;
           });
         },
         ready: function() {
@@ -102,9 +102,9 @@
               this.toWidget) {
             
             return {
-              from: this.node_id.fromHex(this.fromWidget.nodeId),
-              via:  this.node_id.fromHex(this.viaWidget.nodeId),
-              to:   this.node_id.fromHex(this.toWidget.nodeId),
+              from: this.Node.fromHex(this.fromWidget.nodeId),
+              via:  this.Node.fromHex(this.viaWidget.nodeId),
+              to:   this.Node.fromHex(this.toWidget.nodeId),
             }
           } else {
             return null;

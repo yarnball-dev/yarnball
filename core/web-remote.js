@@ -48,6 +48,10 @@ define(['./web'], function(Web) {
     this._socketio.emit('removeNames', nodes);
   }
   
+  Client.prototype.getNames = function() {
+    return this._web.getNames();
+  }
+  
   Client.prototype.hasName = function(node) {
     return this._web.hasName(node);
   }

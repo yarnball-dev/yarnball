@@ -2,9 +2,16 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id'], function(node_id) {
+define(['./node', './node-set'], function(Node, NodeSet) {
   
   function List(web, next, value, base) {
+    if (!next) {
+      throw 'Cannot create list, next node not specified.';
+    }
+    if (!value) {
+      throw 'Cannot create list, value node not specified.';
+    }
+    
     this._web   = web;
     this._next  = next;
     this._value = value;
@@ -17,16 +24,16 @@ define(['./node_id'], function(node_id) {
     if (this._base) {
       keys.push(this._base);
       
-      var keysAlreadySeen = new Set([node_id.toMapKey(this._base)]);
+      var keysAlreadySeen = NodeSet([this._base]);
     
       var currentKey = this._base;
       while (true) {
         var nextKey = this.nextKey(currentKey);
-        if (!nextKey || keysAlreadySeen.has(node_id.toMapKey(nextKey))) {
+        if (!nextKey || keysAlreadySeen.has(nextKey)) {
           break;
         }
         currentKey = nextKey;
-        keysAlreadySeen.add(node_id.toMapKey(currentKey));
+        keysAlreadySeen.add(currentKey);
         keys.push(currentKey);
       }
     }
@@ -53,15 +60,19 @@ define(['./node_id'], function(node_id) {
     return this._web.queryOne(null, this._next, key);
   }
   
+  List.prototype.firstKey = function() {
+    return this._base;
+  }
+  
   List.prototype.lastKey = function() {
     if (!this._base) {
       return null;
     }
     var currentNode = this._base;
-    var nodesSet = new Set([node_id.toMapKey(this._base)]);
+    var keysAlreadySeen = NodeSet([this._base]);
     while (true) {
       var nextNode = this.nextKey(currentNode);
-      if (!nextNode || nodesSet.has(node_id.toMapKey(nextNode))) {
+      if (!nextNode || keysAlreadySeen.has(nextNode)) {
         return currentNode;
       }
       currentNode = nextNode;
@@ -70,12 +81,16 @@ define(['./node_id'], function(node_id) {
   
   List.prototype.append = function(values) {
     var self = this;
-    values = Array.from(values);
+    if (Node.isNode(values)) {
+      values = [values];
+    } else {
+      values = Array.from(values);
+    }
     if (values.length > 0) {
       var newLinks = [];
       var previousKey = self.lastKey();
       values.forEach(function(value) {
-        var key = node_id.make();
+        var key = Node();
         if (!self._base) {
           self._base = key;
         }
@@ -107,21 +122,19 @@ define(['./node_id'], function(node_id) {
       return;
     }
     
-    keys = new Set(Array.from(keys).map(function(key) {
-      return node_id.toMapKey(key);
-    }));
+    keys = NodeSet(keys);
     
-    if (keys.size > 0) {
+    if (keys.size() > 0) {
       
       var linksAdded   = [];
       var linksRemoved = [];
     
       var currentKey = self._base;
-      var keysAlreadySeen = new Set();
+      var keysAlreadySeen = NodeSet();
       var previousKey = null;
       var lastNonDeletedKey = null;
       while (currentKey) {
-        var deletingCurrentNode = keys.has(node_id.toMapKey(currentKey));
+        var deletingCurrentNode = keys.has(currentKey);
         if (deletingCurrentNode) {
           linksRemoved.push({
             from: currentKey,
@@ -131,13 +144,13 @@ define(['./node_id'], function(node_id) {
         }
         if (previousKey && deletingCurrentNode) {
           linksRemoved.push({
-            from: previousNode,
+            from: previousKey,
             via: self._next,
             to: currentKey,
           });
         }
         if (!deletingCurrentNode) {
-          if (previousNode && keys.has(node_id.toMapKey(previousKey))) {
+          if (previousKey && keys.has(previousKey)) {
             linksRemoved.push({
               from: previousKey,
               via: self._next,
@@ -156,8 +169,8 @@ define(['./node_id'], function(node_id) {
           lastNonDeletedKey = currentKey;
         }
         var nextKey = self.nextKey(currentKey);
-        keysAlreadySeen.add(node_id.toMapKey(currentKey));
-        if (!nextKey || keysAlreadySeen.has(node_id.toMapKey(nextKey))) {
+        keysAlreadySeen.add(currentKey);
+        if (!nextKey || keysAlreadySeen.has(nextKey)) {
           break;
         }
         previousKey = currentKey;
@@ -194,6 +207,7 @@ define(['./node_id'], function(node_id) {
           to: key,
         });
       }
+      previousKey = key;
     });
     self._base = null;
     if (linksRemoved.length > 0) {

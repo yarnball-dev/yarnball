@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id'], function(node_id) {
+define(function() {
   
   function Set(web, from, via, to) {
     if (((from ? 1:0) + (via ? 1:0) + (to ? 1:0)) !== 2) {
