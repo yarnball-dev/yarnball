@@ -43,6 +43,18 @@ define(['./node'], function(Node) {
   
   Map_.prototype.set = function(key, value) {
     var self = this;
+    if (!key) {
+      throw 'Cannot set value on Map, key not given';
+    }
+    if (!value) {
+      throw 'Cannot set value on Map, value not given.';
+    }
+    if (!Node.isNode(key)) {
+      throw 'Cannot set value on Map, given key is not a node.';
+    }
+    if (!Node.isNode(value)) {
+      throw 'Cannot set value on Map, given value is not a node.';
+    }
     var results = self._web.query(self._base, key, null);
     var linksToAdd    = [];
     var linksToRemove = [];
