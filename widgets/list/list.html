@@ -19,7 +19,7 @@
       <div class="header">
         <yb-selector id="nextNodeSelector" placeholder="next" node-id="{{next}}"> </yb-selector>
       </div>
-      <yb-dragdrop-area id="listContent" drop-on-hover>
+      <yb-dragdrop-area id="listContent">
       </yb-dragdrop-area>
     </div>
   </template>
@@ -111,21 +111,22 @@
             }
           });
           
-          self.listContent.addEventListener('widgetsDraggedIn', function(event) {
-            if (self.orderedSet) {
+          self.listContent.addEventListener('nodes-dropped', function(event) {
+            if (self.next) {
               var nodeIds = [];
-              event.detail.widgets.forEach(function(nodeWidget) {
+              event.detail.forEach(function(nodeWidget) {
                 if (!self.nodeWidgetMap.has(self.Node.toMapKey(self.Node.fromHex(nodeWidget.nodeId)))) {
                   self.attachNodeWidget(nodeWidget);
-                  nodeWidget.dragdropStartCursorPageX = event.detail.mouseEvent.pageX;
                   nodeIds.push(self.Node.fromHex(nodeWidget.nodeId));
                 }
               });
-              var needsRefresh = !self.orderedSet._base && nodeIds.length === 1;
+              
+              var needsRefresh = !self.orderedSet._base;
               
               self.orderedSet.append(nodeIds);
               
               if (needsRefresh) {
+                self.web.onLinks(self.onLinks);
                 self.refreshList();
               }
             }
@@ -139,26 +140,42 @@
         },
         onWebInit: function(web) {
           var self = this;
-          require(['core/node', 'core/ordered_set'], function(Node, ordered_set) {
+          require(['core/node', 'core/ordered_set'], function(Node, OrderedSet) {
             self.Node = Node;
-            self.ordered_set = ordered_set;
-            self.orderedSet = self.next ? ordered_set(web, Node.fromHex(self.next)) : null;
-            self.refreshList();
+            self.OrderedSet = OrderedSet;
             self.onLinks = self.onLinks.bind(self);
-            web.onLinks(self.onLinks);
           });
         },
         detached: function() {
           this.web.removeLinksListener(this.onLinks);
         },
         nextChanged: function(next) {
+          var self = this;
           if (next) {
-            this.orderedSet = this.ordered_set(this.web, this.Node.fromHex(next));
+            if (this.orderedSet) {
+              this.orderedSet._next = this.Node.fromHex(this.next);
+            } else {
+              this.orderedSet = this.OrderedSet(this.web, this.Node.fromHex(this.next));
+            }
+            if (this.orderedSet._base) {
+              self.refreshList();
+              self.web.onLinks(self.onLinks);
+            } else {
+              self.clearNodeWidgets();
+            }
+            self.listContent.set('enabled', true);
           } else {
-            this.orderedSet = null;
+            self.listContent.set('enabled', false);
+            self.web.removeLinksListener(self.onLinks);
+            self.clearNodeWidgets();
           }
-          this.listContent.set('enabled', Boolean(next));
-          this.refreshList();
+        },
+        getOrderedSet: function() {
+          if (this.next) {
+            return this.OrderedSet(this.web, this.Node.fromHex(this.next));
+          } else {
+            return null;
+          }
         },
         onLinks: function(linksAdded, linksRemoved) {
           this.refreshList();
@@ -177,15 +194,11 @@
         refreshList: function() {
           var self = this;
           
-          var nodes = self.orderedSet ? self.orderedSet.get() : [];
-            
-          var nodesSet = new Set(nodes.map(function(node){
-            return self.Node.toMapKey(node);
-          }));
+          var nodes = this.orderedSet.get();
           
           // Remove node widgets not in the set
           Array.from(self.nodeWidgetMap.entries()).forEach(function(entry) {
-            if (!nodesSet.has(entry[0])) {
+            if (!nodes.has(self.Node.fromMapKey(entry[0]))) {
               self.detachNodeWidget(entry[1]);
             }
           });
@@ -217,6 +230,12 @@
         detachNodeWidget: function(nodeWidget) {
           this.nodeWidgetMap.delete(this.Node.toMapKey(this.Node.fromHex(nodeWidget.nodeId)));
           return this.listContent.removeChild(nodeWidget);
+        },
+        clearNodeWidgets: function() {
+          var self = this;
+          Array.from(self.nodeWidgetMap.values()).forEach(function(nodeWidget) {
+            self.detachNodeWidget(nodeWidget);
+          });
         },
       });
     })();
