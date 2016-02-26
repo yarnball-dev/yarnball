@@ -174,6 +174,7 @@
               'widgets/surface/new-widget-operation',
               'widgets/surface/remove-widgets-operation',
               'widgets/surface/new-connector-drag-operation',
+              'widgets/surface/new-connectors-operation',
               'widgets/surface/rename-operation',
             ],
             function() {
@@ -654,7 +655,7 @@
         },
         handleKey_Space: function(event) {
           if (this.canBeginOperation() && !event.detail.keyboardEvent.ctrlKey) {
-            this.createConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'));
+            this.beginOperation(this.NewConnectorsOperation, this.getLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node')));
           }
         },
         handleKey_CtrlSpace: function(event) {
@@ -1377,11 +1378,14 @@
             }
           });
         },
-        createConnectorsBetweenNodeWidgets: function(nodeWidgets) {
+        getLinksBetweenNodeWidgets: function(nodeWidgets) {
           var self = this;
+          var nodeWidgetTriples = [];
           self.web.getLinks().forEach(function(link) {
-            self.createConnectorsForLink(link, nodeWidgets);
+            var triples = self.getBestNodeWidgetTriplesForLink(link, nodeWidgets);
+            nodeWidgetTriples = nodeWidgetTriples.concat(triples);
           });
+          return nodeWidgetTriples;
         },
         _setupNodeWidgetMenu: function(nodeWidget) {
           var self = this;
@@ -1644,7 +1648,9 @@
         },
         menuItem_RevealLinks: function() {
           this.closeSelectionMenu();
-          this.createConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'), true);
+          if (this.canBeginOperation()) {
+            this.beginOperation(this.NewConnectorsOperation, this.getLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node')));
+          }
         },
         menuItem_HideLinks: function() {
           var self = this;
