@@ -138,6 +138,7 @@
           });
         },
         onWebInit: function(web) {
+          var self = this;
           require(['core/node', 'core/ordered_set'], function(Node, ordered_set) {
             self.Node = Node;
             self.ordered_set = ordered_set;
