@@ -171,6 +171,7 @@
               'widgets/surface/selection-operation',
               'widgets/surface/box-selection-operation',
               'widgets/surface/drag-operation',
+              'widgets/surface/new-widget-operation',
               'widgets/surface/new-connector-drag-operation',
               'widgets/surface/rename-operation',
             ],
@@ -328,17 +329,21 @@
         hasOperation: function() {
           return this.currentOperation !== null;
         },
+        canBeginOperation: function() {
+          return !this.hasOperation();
+        },
         beginOperation: function(operation /* ... */) {
           if (this.currentOperation != null) {
             return null;
           }
-          this.currentOperation = new operation();
-          this.currentOperation.surface     = this;
-          this.currentOperation.transaction = this.Transaction(this.web);
-          this.currentOperation.surfaceWeb  = this.SurfaceWeb(this.currentOperation.transaction, this.node);
+          var operation = new operation();
+          operation.surface     = this;
+          operation.transaction = this.Transaction(this.web);
+          operation.surfaceWeb  = this.SurfaceWeb(operation.transaction, this.node);
+          this.currentOperation = operation;
           var args = Array.prototype.slice.call(arguments, 1);
-          this.currentOperation.begin.apply(this.currentOperation, args);
-          return this.currentOperation;
+          operation.begin.apply(operation, args);
+          return operation;
         },
         finishOperation: function(operation) {
           operation.finish();
@@ -514,13 +519,11 @@
           if (event.button === 0) {
             
             if (event.shiftKey) {
-              var nodeWidget = self.createNodeWidget();
-              self.attachWidget(nodeWidget, {
-                x: mouseEvent.positionView.x - 28,
-                y: mouseEvent.positionView.y - 28,
-              });
-              self.selectWidgets([nodeWidget]);
-              self.beginOperation(self.DragOperation, event);
+              if (self.canBeginOperation()) {
+                var operation = this.beginOperation(self.NewWidgetOperation, mouseEvent.positionView);
+                self.selectWidgets([operation.nodeWidget]);
+                self.beginOperation(self.DragOperation, event);
+              }
             } else {
               if (!event.ctrlKey) {
                 self.deselect();
@@ -562,14 +565,14 @@
           'ctrl+space':         'handleKey_CtrlSpace',
         },
         handleKey_Backspace: function(event) {
-          if (!this.hasOperation() && document.activeElement === this) {
+          if (this.canBeginOperation() && document.activeElement === this) {
             event.preventDefault();
             this.hideSelectedWidgets();
             return false;
           }
         },
         handleKey_Del: function(event) {
-          if (!this.hasOperation() && document.activeElement === this) {
+          if (this.canBeginOperation() && document.activeElement === this) {
             event.preventDefault();
             this.deleteSelected();
             return false;
@@ -644,12 +647,12 @@
           this.fire('enterKey', event);
         },
         handleKey_Space: function(event) {
-          if (!this.hasOperation() && !event.detail.keyboardEvent.ctrlKey) {
+          if (this.canBeginOperation() && !event.detail.keyboardEvent.ctrlKey) {
             this.createConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node'));
           }
         },
         handleKey_CtrlSpace: function(event) {
-          if (!this.hasOperation()) {
+          if (this.canBeginOperation()) {
             this.removeConnectorsBetweenSelected();
           }
         },
