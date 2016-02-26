@@ -4,15 +4,10 @@ define(function() {
     
   }
   
-  NewWidgetOperation.prototype.begin = function(position) {
-    this.nodeWidget = this.surface.createNodeWidget();
-    this.surface.attachWidget(this.nodeWidget, {
-      x: position.x - 28,
-      y: position.y - 28,
-    });
-    
-    this.surfaceWeb.addWidget(this.nodeWidget);
-    this.surfaceWeb.setWidgetPosition(this.nodeWidget.widgetId, this.surface.getWidgetPosition(this.nodeWidget));
+  NewWidgetOperation.prototype.begin = function(widget, position) {
+    this.surface.attachWidget(widget, position);
+    this.surfaceWeb.addWidget(widget);
+    this.surfaceWeb.setWidgetPosition(widget.widgetId, this.surface.getWidgetPosition(widget));
     
     this.surface.finishOperation(this);
   }

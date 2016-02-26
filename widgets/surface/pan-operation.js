@@ -29,7 +29,7 @@ define(function() {
     install: function(surface) {
       surface.background.addEventListener('mousedown', function(event) {
         if (event.button === 1 || (event.button === 0 && event.metaKey)) {
-          if (!surface.hasOperation()) {
+          if (surface.canBeginOperation()) {
             event.preventDefault();
             surface.beginOperation(PanOperation, event);
             return false;

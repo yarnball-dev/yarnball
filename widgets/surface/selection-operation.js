@@ -25,7 +25,7 @@ define(function() {
     install: function(surface) {
       
       function handleWidgetSelected(event) {
-        if (!surface.hasOperation() && (!surface.isWidgetSelected(event.detail.widget) || event.detail.mouseEvent.ctrlKey)) {
+        if (surface.canBeginOperation() && (!surface.isWidgetSelected(event.detail.widget) || event.detail.mouseEvent.ctrlKey)) {
           if (surface.isTopLevelWidget(event.detail.widget)) {
             surface.bringWidgetsToFront([event.detail.widget]);
           }

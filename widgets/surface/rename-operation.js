@@ -46,7 +46,7 @@ define(function() {
       });
       
       surface.addEventListener('enterKey', function(event) {
-        if (!surface.hasOperation()) {
+        if (surface.canBeginOperation()) {
           if (surface.selectedWidgets.size === 1) {
             var selectedWidget = Array.from(surface.selectedWidgets)[0];
             if (selectedWidget.tagName === 'yb-node'.toUpperCase() && !selectedWidget.isEditing) {

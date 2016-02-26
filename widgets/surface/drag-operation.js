@@ -248,7 +248,7 @@ define(['core/map', 'core/number'], function(Map_, Number) {
       surface.addEventListener('widgetAttached', function(event) {
         var widget = event.detail;
         widget.addEventListener('dragStart', function(event) {
-          if (!surface.hasOperation()) {
+          if (surface.canBeginOperation()) {
             event.preventDefault();
             if (event.detail.shiftKey) {
               var newWidgets = surface.duplicateWidgets(surface.getSelectedWidgets());

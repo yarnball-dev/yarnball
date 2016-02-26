@@ -330,7 +330,7 @@
           return this.currentOperation !== null;
         },
         canBeginOperation: function() {
-          return !this.hasOperation();
+          return !this.hasOperation() && this.SurfaceWeb;
         },
         beginOperation: function(operation /* ... */) {
           if (this.currentOperation != null) {
@@ -520,8 +520,13 @@
             
             if (event.shiftKey) {
               if (self.canBeginOperation()) {
-                var operation = this.beginOperation(self.NewWidgetOperation, mouseEvent.positionView);
-                self.selectWidgets([operation.nodeWidget]);
+                var nodeWidget = self.createNodeWidget();
+                var position = {
+                  x: mouseEvent.positionView.x - 28,
+                  y: mouseEvent.positionView.y - 28,
+                }
+                var operation = self.beginOperation(self.NewWidgetOperation, nodeWidget, position);
+                self.selectWidgets([nodeWidget]);
                 self.beginOperation(self.DragOperation, event);
               }
             } else {
@@ -1604,7 +1609,11 @@
               self.background.removeEventListener('mouseenter', backgroundMouseenter);
               var newWidget = factoryWidget.create();
               var mouseEventTranslated = self.translateMouseEvent(event);
-              self.attachWidget(newWidget, mouseEventTranslated.positionView);
+              var widgetPosition = {
+                x: mouseEventTranslated.positionView.x - 28,
+                y: mouseEventTranslated.positionView.y - 28,
+              }
+              self.beginOperation(self.NewWidgetOperation, newWidget, widgetPosition);
               self.selectWidgets([newWidget]);
               self.beginOperation(self.DragOperation, event);
             }

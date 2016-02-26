@@ -158,7 +158,7 @@ define(['core/node'], function(Node) {
       function handleDragStart(event) {
         var nodeWidget = event.detail.widget;
         if (surface.isTopLevelWidget(nodeWidget)) {
-          if (!surface.hasOperation()) {
+          if (surface.canBeginOperation()) {
             event.preventDefault();
             surface.beginOperation(NewConnectorDragOperation, event.detail.mouseEvent, nodeWidget);
             return false;

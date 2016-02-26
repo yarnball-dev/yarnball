@@ -65,7 +65,7 @@ define(function() {
     install: function(surface) {
       surface.background.addEventListener('mousedown', function(event) {
         if (event.button === 0) {
-          if (!surface.hasOperation()) {
+          if (surface.canBeginOperation()) {
             event.preventDefault();
             surface.beginOperation(BoxSelectionOperation, event);
             return false;

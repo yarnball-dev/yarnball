@@ -38,7 +38,7 @@ define(function() {
   return {
     install: function(surface) {
       surface.background.addEventListener('wheel', function(event) {
-        if (!surface.hasOperation()) {
+        if (surface.canBeginOperation()) {
           event.preventDefault();
           surface.beginOperation(ZoomOperation, event);
           return false;
