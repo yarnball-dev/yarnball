@@ -107,6 +107,8 @@ define(['core/node'], function(Node) {
           
           var newLinks = [];
           
+          var newConnectors = [];
+          
           draggingConnectorNodes.from.forEach(function(fromNodeWidget) {
             var nodeWidgetTriple = {
               from: fromNodeWidget,
@@ -118,11 +120,11 @@ define(['core/node'], function(Node) {
               return connector.active;
             });
             if (!hasActiveConnector) {
-              surface.createConnector({
+              newConnectors.push(surface.createConnector({
                 from: fromNodeWidget,
                 via:  draggingConnectorNodes.via,
                 to:   draggingConnectorNodes.to,
-              });
+              }));
             }
             newLinks.push({
               from: Node.fromHex(fromNodeWidget.nodeId),
@@ -131,7 +133,10 @@ define(['core/node'], function(Node) {
             });
           });
           
-          surface.web.setLinks(newLinks, []);
+          self.transaction.setLinks(newLinks, []);
+          newConnectors.forEach(function(connector) {
+            self.surfaceWeb.addWidget(connector);
+          });
         }
         
         draggingConnectors.forEach(function(draggingConnector) {
