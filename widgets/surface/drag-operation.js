@@ -251,8 +251,8 @@ define(['core/map', 'core/number'], function(Map_, Number) {
           if (surface.canBeginOperation()) {
             event.preventDefault();
             if (event.detail.shiftKey) {
-              var newWidgets = surface.duplicateWidgets(surface.getSelectedWidgets());
-              surface.selectWidgets(newWidgets);
+              var cloneOperation = surface.beginOperation(surface.CloneWidgetsOperation, surface.getSelectedWidgets());
+              surface.selectWidgets(cloneOperation.newWidgets);
             }
             surface.bringWidgetsToFront(surface.getSelectedWidgetsTopLevel());
             surface.beginOperation(DragOperation, event.detail);

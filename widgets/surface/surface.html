@@ -175,6 +175,7 @@
               'widgets/surface/remove-widgets-operation',
               'widgets/surface/new-connector-drag-operation',
               'widgets/surface/new-connectors-operation',
+              'widgets/surface/clone-widgets-operation',
               'widgets/surface/rename-operation',
             ],
             function() {
@@ -1144,12 +1145,6 @@
             }
 
             self.widgetsTopLevel.delete(widget);
-            
-            if (self.surfaceWeb) {
-              if (widget.widgetType != 'yb-connector' || widget.active) {
-                self.surfaceWeb.removeWidget(widget);
-              }
-            }
           }
           
           self.widgets.delete(widget);
@@ -1643,8 +1638,8 @@
         menuItem_CopySelected: function() {
           this.closeSelectionMenu();
           var offset = 10;
-          var newWidgets = this.duplicateWidgets(this.getSelectedWidgets(), offset);
-          this.selectWidgets(newWidgets);
+          var operation = this.beginOperation(this.CloneWidgetsOperation, this.getSelectedWidgets(), offset);
+          this.selectWidgets(operation.newWidgets);
         },
         menuItem_RevealLinks: function() {
           this.closeSelectionMenu();
