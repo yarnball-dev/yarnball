@@ -29,10 +29,12 @@
     "gulp-uglify": "^1.5.1",
     "level": "^1.4.0",
     "main-bower-files": "^2.11.1",
-    "socket.io": "^1.4.0"
+    "socket.io": "^1.4.0",
+    "yargs": "^3.32.0"
   },
   "devDependencies": {
     "browser-sync": "^2.11.0",
-    "yargs": "^3.32.0"
+    "tap-spec": "^4.1.1",
+    "tape": "^4.4.0"
   }
 }
