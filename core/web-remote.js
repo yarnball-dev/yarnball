@@ -133,7 +133,7 @@ define(['./web'], function(Web) {
       });
       connection.on('removeNames', function(nodes) {
         self._web.removeNames(nodes);
-        socketconnection.broadcast.emit('removeNames', nodes);
+        connection.broadcast.emit('removeNames', nodes);
       });
     });
   }
