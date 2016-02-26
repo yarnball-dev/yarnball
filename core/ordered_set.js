@@ -14,21 +14,19 @@ define(['./node', './node-set'], function(Node, NodeSet) {
   }
   
   OrderedSet.prototype.get = function() {
-    var nodes = [];
+    var nodes = NodeSet();
     
     if (this._base) {
-      nodes.push(this._base);
+      nodes.add(this._base);
       
-      var nodesAlreadySeen = NodeSet([this._base]);
-    
       var currentNode = this._base;
       while (true) {
         var nextNode = this.next(currentNode);
-        if (!nextNode || nodesAlreadySeen.has(nextNode)) {
+        if (!nextNode || nodes.has(nextNode)) {
           break;
         }
         currentNode = nextNode;
-        nodes.push(currentNode);
+        nodes.add(currentNode);
       }
     }
     
@@ -65,7 +63,7 @@ define(['./node', './node-set'], function(Node, NodeSet) {
       
       // Check for duplicates
       var nodesSet = NodeSet(nodes);
-      if (nodesSet.size !== nodes.length) {
+      if (nodesSet.size() !== nodes.length) {
         throw 'Cannot append nodes to set, the given list of nodes contains duplicates.';
       }
         
@@ -74,11 +72,10 @@ define(['./node', './node-set'], function(Node, NodeSet) {
       if (self._base) {
         var existingNodes = self.get();
         // Check if any nodes already exist in the set
-        var existingNodesSet = NodeSet(existingNodes);
-        if (nodes.some(function(node) { return existingNodesSet.has(node) })) {
+        if (nodes.some(function(node) { return existingNodes.has(node) })) {
           throw 'Cannot append nodes to set, one or more nodes already exist in the set.';
         }
-        previousNode = existingNodes[existingNodes.length - 1];
+        previousNode = self.last();
       } else {
         self._base = nodes[0];
       }
@@ -107,7 +104,7 @@ define(['./node', './node-set'], function(Node, NodeSet) {
     
     nodes = NodeSet(nodes);
     
-    if (nodes.size > 0) {
+    if (nodes.size() > 0) {
       
       var linksAdded   = [];
       var linksRemoved = [];
