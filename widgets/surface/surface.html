@@ -1085,15 +1085,6 @@
             widget.addEventListener('dimensionsChanged', function(event) {
               self.updateConnectorsForNodeWidget(widget);
             });
-            
-            if (self.surfaceWeb) {
-              if (widget.widgetType !== 'yb-connector' || widget.active) {
-                self.surfaceWeb.addWidget(widget);
-                if (widget.widgetType !== 'yb-connector') {
-                  self.surfaceWeb.setWidgetPosition(widget.widgetId, self.getWidgetPosition(widget));
-                }
-              }
-            }
           }
         },
         widgetDetached: function(event) {
