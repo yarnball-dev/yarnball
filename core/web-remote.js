@@ -80,6 +80,10 @@ define(['./web'], function(Web) {
     this._web.onLinks(callback);
   }
   
+  Client.prototype.removeLinksListener = function(callback) {
+    this._web.removeLinksListener(callback);
+  }
+  
   Client.prototype.getLinks = function() {
     return this._web.getLinks();
   }
