@@ -108,6 +108,16 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
     });
   }
   
+  Web.prototype.clear = function() {
+    this.links.clear();
+    this.fromVia.clear();
+    this.viaTo.clear();
+    this.fromTo.clear();
+  }
+  
+  
+  // Events
+  
   Web.prototype.onLinks = function(callback) {
     this._onLinks.add(callback);
   }
@@ -134,8 +144,8 @@ define(['./node_id', './node-multimap'], function(node_id, NodeMultimap) {
   
   Web.prototype.queryOne = function(from, via, to) {
     var result = this.query(from, via, to);
-    if (result && result.length === 1) {
-      return result[0];
+    if (result && result.size() === 1) {
+      return result.getOne();
     } else {
       return null;
     }

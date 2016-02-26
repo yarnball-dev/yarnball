@@ -17,16 +17,16 @@ define(['./node_id'], function(node_id) {
   }
   
   Map_.prototype.hasValidValue = function(key) {
-    return this._web.query(this._base, key, null).length === 1;
+    return this._web.query(this._base, key, null).size() === 1;
   }
   
   Map_.prototype.get = function(key) {
     var results = this._web.query(this._base, key, null);
-    if (results.length > 1) {
+    if (results.size() > 1) {
       throw 'Multiple results found for key in map.';
     }
-    if (results.length === 1) {
-      return Array.from(results)[0];
+    if (results.size() === 1) {
+      return results.getOne();
     } else {
       return null;
     }
@@ -74,7 +74,7 @@ define(['./node_id'], function(node_id) {
   Map_.prototype.getOrMake = function(key) {
     var self = this;
     var results = self._web.query(self._base, key, null);
-    if (results.length === 0) {
+    if (results.size() === 0) {
       var value = node_id.make();
       self._web.setLinks([{
         from: self._base,
@@ -82,9 +82,9 @@ define(['./node_id'], function(node_id) {
         to: value,
       }], []);
       return value;
-    } else if (results.length === 1) {
-      return results[0];
-    } else if (results.length > 1) {
+    } else if (results.size() === 1) {
+      return results.getOne();
+    } else if (results.size() > 1) {
       var linksToRemove = results.map(function(result) {
         return {
           from: self._base,

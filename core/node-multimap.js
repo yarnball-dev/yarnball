@@ -2,44 +2,41 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node_id'], function(node_id) {
+define(['./node_id', './node-set'], function(node_id, NodeSet) {
   
   function NodeMultimap() {
-    this.map = new Map();
+    this._map = new Map();
   }
   
   NodeMultimap.prototype.get = function(nodes) {
-    var values = this.map.get(this._keyForNodes(nodes));
-    if (values) {
-      return Array.from(values).map(function(value) {
-        return node_id.fromMapKey(value);
-      });
-    } else {
-      return [];
-    }
+    return this._map.get(this._keyForNodes(nodes)) || NodeSet();
   }
   
   NodeMultimap.prototype.add = function(nodes, value) {
     var nodesKey = this._keyForNodes(nodes);
-    var values = this.map.get(nodesKey);
+    var values = this._map.get(nodesKey);
     if (values) {
-      values.add(node_id.toMapKey(value));
+      values.add(value);
     } else {
-      this.map.set(nodesKey, new Set([node_id.toMapKey(value)]));
+      this._map.set(nodesKey, NodeSet([value]));
     }
   }
   
   NodeMultimap.prototype.delete = function(nodes, value) {
     var nodesKey = this._keyForNodes(nodes);
     if (value) {
-      var values = this.map.get(nodesKey);
-      values.delete(node_id.toMapKey(value));
-      if (values.size === 0) {
-        this.map.delete(nodesKey);
+      var values = this._map.get(nodesKey);
+      values.delete(value);
+      if (values.size() === 0) {
+        this._map.delete(nodesKey);
       }
     } else {
-      this.map.delete(nodesKey);
+      this._map.delete(nodesKey);
     }
+  }
+  
+  NodeMultimap.prototype.clear = function() {
+    this._map.clear();
   }
   
   NodeMultimap.prototype._keyForNodes = function(nodes) {

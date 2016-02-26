@@ -142,8 +142,9 @@
           
           self.currentOperation = null;
           
-          require(['core/node_id', 'widgets/zindex-manager'], function(node_id, zindex_manager) {
+          require(['core/node_id', 'core/transaction', 'widgets/zindex-manager'], function(node_id, Transaction, zindex_manager) {
             self.node_id = node_id;
+            self.Transaction = Transaction;
             self.zIndexManager = zindex_manager();
             self.connectorsLayer          = self.zIndexManager.addLayer();
             self.connectorHighlightsLayer = self.zIndexManager.addLayer();
@@ -219,6 +220,7 @@
             require(['core/node_id', 'widgets/surface/surface-web'], function(node_id, SurfaceWeb) {
             
               self.web = web;
+              self.SurfaceWeb = SurfaceWeb;
               
               if (self.node) {
                 if (typeof self.node === 'string') {
@@ -331,13 +333,16 @@
             return null;
           }
           this.currentOperation = new operation();
-          this.currentOperation.surface = this;
+          this.currentOperation.surface     = this;
+          this.currentOperation.transaction = this.Transaction(this.web);
+          this.currentOperation.surfaceWeb  = this.SurfaceWeb(this.currentOperation.transaction, this.node);
           var args = Array.prototype.slice.call(arguments, 1);
           this.currentOperation.begin.apply(this.currentOperation, args);
           return this.currentOperation;
         },
         finishOperation: function(operation) {
           operation.finish();
+          operation.transaction.apply();
           if (this.currentOperation === operation) {
             this.currentOperation = null;
           }

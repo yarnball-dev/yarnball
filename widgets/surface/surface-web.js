@@ -1,4 +1,4 @@
-define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Number) {
+define(['core/node_id', 'core/transaction', 'core/map', 'core/number'], function(node_id, Transaction, Map_, Number) {
   
   function SurfaceWeb(web, base) {
     this._web  = web;
@@ -28,23 +28,25 @@ define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Numb
   }
   
   SurfaceWeb.prototype.addWidget = function(widget) {
-    var WidgetProperties = Map_(this._web, widget.widgetId);
+    var transaction = Transaction(this._web);
     
-    this._web.setLinks([{
+    var WidgetProperties = Map_(transaction, widget.widgetId);
+    
+    transaction.setLinks([{
       from: widget.widgetId,
       via: Is,
       to: Widget,
     }], []);
     
     if (widget.widgetType === 'yb-node') {
-      this._web.setLinks([{
+      transaction.setLinks([{
         from: widget.widgetId,
         via: Is,
         to: NodeWidget,
       }], []);
       WidgetProperties.set(Represents, node_id.fromHex(widget.nodeId));
     } else if (widget.widgetType === 'yb-connector') {
-      this._web.setLinks([{
+      transaction.setLinks([{
         from: widget.widgetId,
         via: Is,
         to: Connector,
@@ -53,9 +55,13 @@ define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Numb
       WidgetProperties.set(Via,  widget.viaWidget.widgetId);
       WidgetProperties.set(To,   widget.toWidget.widgetId);
     }
+    
+    transaction.apply();
   }
   
   SurfaceWeb.prototype.removeWidget = function(widget) {
+    var transaction = Transaction(this._web);
+    
     var WidgetProperties = Map_(this._web, widget.widgetId);
     
     WidgetProperties.delete(Is, Widget);
@@ -69,6 +75,8 @@ define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Numb
       WidgetProperties.delete(Via);
       WidgetProperties.delete(To);
     }
+    
+    transaction.apply();
   }
   
   SurfaceWeb.prototype.getWidgetPosition = function(Widget) {
@@ -93,6 +101,7 @@ define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Numb
   }
   
   SurfaceWeb.prototype.setWidgetPosition = function(Widget, position) {
+    var transaction = Transaction(this._web);
     
     var WidgetProperties = Map_(this._web, Widget);
     
@@ -103,6 +112,8 @@ define(['core/node_id', 'core/map', 'core/number'], function(node_id, Map_, Numb
     
     WidgetPosition.set(XAxis, Number(this._web, X).set(position.x));
     WidgetPosition.set(YAxis, Number(this._web, Y).set(position.y));
+    
+    transaction.apply();
   }
   
   SurfaceWeb.prototype.initializeSurface = function(surface) {
