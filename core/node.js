@@ -7,32 +7,31 @@ define(function() {
   function Node(buffer) {
     
     if (buffer) {
-      if (!(buffer instanceof ArrayBuffer)) {
-        throw 'Cannot create node ID, the given parameter is not an ArrayBuffer';
+      if (!(buffer instanceof Uint8Array)) {
+        throw 'Cannot create node ID, the given parameter is not an Uint8Array';
       }
       if (buffer.byteLength != 16) {
         throw 'Cannot create node ID, the given buffer is not 16 bytes.';
       }
     } else {
-      buffer = new ArrayBuffer(16);
+      buffer = new Uint8Array(16);
     }
     
     if (typeof window === 'object' && window.crypto && window.crypto.getRandomValues) {
-      window.crypto.getRandomValues(new Uint8Array(buffer));
+      window.crypto.getRandomValues(buffer);
     } else if (typeof window === 'object' && typeof window.msCrypto === 'object' && typeof window.msCrypto.getRandomValues === 'function') {
-      window.msCrypto.getRandomValues(new Uint8Array(buffer));
+      window.msCrypto.getRandomValues(buffer);
     } else {
       var nodeCrypto = require('crypto');
       var bytes = nodeCrypto.randomBytes(16);
-      var bufferView = new Uint8Array(buffer);
-      bufferView.set(bytes);
+      buffer.set(bytes);
     }
     
     return buffer;
   }
   
   Node.isNode = function(object) {
-    return (object instanceof ArrayBuffer || (typeof Buffer !== 'undefined' && object instanceof Buffer)) && object.byteLength === 16;
+    return object instanceof Uint8Array && object.byteLength === 16;
   }
   
   Node.equal = function(a, b) {
@@ -46,20 +45,19 @@ define(function() {
     if (!Node.isNode(node)) {
       throw 'Cannot convert node to map key, parameter is not a node.';
     }
-    return Array.from(new Uint8Array(node)).toString();
+    return Array.from(node).toString();
   }
   
   Node.fromMapKey = function(key) {
-    return new Uint8Array(JSON.parse('[' + key + ']')).buffer;
+    return new Uint8Array(JSON.parse('[' + key + ']'));
   }
     
   Node.toHex = function(node) {
     if (!Node.isNode(node)) {
       throw 'Cannot convert node to hex string, parameter is not a node.';
     }
-    var array = new Uint8Array(node);
     var hexString = "";
-    array.forEach(function(v) {
+    node.forEach(function(v) {
       var hex = v.toString(16);
       if (hex.length === 1) {
         hex = "0" + hex;
@@ -87,7 +85,33 @@ define(function() {
       }
       array[i] = int;
     }
-    return array.buffer;
+    return array;
+  }
+  
+  Node.serialize = function(nodes) {
+    nodes = Array.from(nodes);
+    if (nodes.some(function(node) { return !Node.isNode(node); })) {
+      throw 'Cannot serialize nodes, one or more entries in the given array are not valid nodes.';
+    }
+    var buffer = new Uint8Array(nodes.length * 16);
+    var i=0;
+    nodes.forEach(function(node) {
+      buffer.set(node, i);
+      i += 16;
+    });
+    return buffer;
+  }
+  
+  Node.deserialize = function(buffer) {
+    buffer = new Uint8Array(buffer);
+    if (buffer.byteLength % 16 !== 0) {
+      throw 'Cannot deserialize nodes, given buffer length is not a multiple of 16.';
+    }
+    var nodes = [];
+    for (var i=0; i < buffer.byteLength; i += 16) {
+      nodes.push(buffer.subarray(i, i + 16));
+    }
+    return nodes;
   }
   
   Node.linkToKey = function(link) {

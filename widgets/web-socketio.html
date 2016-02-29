@@ -1,13 +1,13 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
-<dom-module id="yb-web-remote">
+<dom-module id="yb-web-socketio">
 
   <script>
     (function() {
       'use strict';
       
       Polymer({
-        is: 'yb-web-remote',
+        is: 'yb-web-socketio',
         created: function() {
           this.isYbWeb = true;
           this._socketio;
@@ -15,10 +15,10 @@
         },
         ready: function() {
           var self = this;
-          require(['socket.io-client/socket.io', 'core/web-remote'], function(SocketIO, WebRemote) {
+          require(['socket.io-client/socket.io', 'core/web-socketio'], function(SocketIO, WebSocketIO) {
           
             self._socketio = SocketIO();
-            self.ybWeb = WebRemote.Client(self._socketio);
+            self.ybWeb = WebSocketIO.Client(self._socketio);
             
             if (self.ybWeb.isSeeded()) {
               self._notifyInit(self.ybWeb);

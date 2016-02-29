@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./web'], function(Web) {
+define(['./web', './link'], function(Web, Link) {
   
   function Client(socketio) {
     var self = this;
@@ -13,7 +13,8 @@ define(['./web'], function(Web) {
     self._isSeeded = false;
     self._onSeed = new Set();
     
-    socketio.on('seedLinks', function(links) {
+    socketio.on('seedLinks', function(serializedLinks) {
+      var links = Link.deserialize(serializedLinks);
       self._web.setLinks(links, []);
       self._isSeeded = true;
       self._onSeed.forEach(function(callback) {
@@ -22,16 +23,25 @@ define(['./web'], function(Web) {
       self._onSeed.clear();
     });
     
-    socketio.on('addNames', function(names) {
+    socketio.on('addNames', function(namesArray) {
+      var names = namesArray.map(function(node) {
+        return {
+          id: new Uint8Array(node[0]),
+          name: node[1],
+        }
+      });
       self._web.addNames(names);
     });
     
-    socketio.on('removeNames', function(nodes) {
+    socketio.on('removeNames', function(nodesData) {
+      var nodes = Node.deserialize(nodesData);
       self._web.removeNames(nodes);
     });
     
     socketio.on('setLinks', function(params) {
-      self._web.setLinks(params.add, params.remove);
+      var add    = Link.deserialize(params.add);
+      var remove = Link.deserialize(params.remove);
+      self._web.setLinks(add, remove);
     });
   }
   
@@ -40,12 +50,19 @@ define(['./web'], function(Web) {
   
   Client.prototype.addNames = function(names) {
     this._web.addNames(names);
-    this._socketio.emit('addNames', names);
+    var namesData = Array.from(names, function(node) {
+      return [
+        (new Uint8Array(node.id)).buffer,
+        node.name,
+      ]
+    });
+    this._socketio.emit('addNames', namesData);
   }
   
   Client.prototype.removeNames = function(nodes) {
     this._web.removeNames(nodes);
-    this._socketio.emit('removeNames', nodes);
+    var nodesData = Node.serialize(nodes);
+    this._socketio.emit('removeNames', nodesData);
   }
   
   Client.prototype.getNames = function() {
@@ -69,11 +86,15 @@ define(['./web'], function(Web) {
   
   Client.prototype.setLinks = function(add, remove) {
     this._web.setLinks(add, remove);
-    var params = {
-      add:    Array.from(add), 
-      remove: Array.from(remove),
+    var linksData = {
+      add:    Link.serialize(add).buffer,
+      remove: Link.serialize(remove).buffer,
     }
-    this._socketio.emit('setLinks', params);
+    this._socketio.emit('setLinks', linksData);
+  }
+  
+  Client.prototype.equal = function(web) {
+    return this._web.equal(web);
   }
   
   Client.prototype.onLinks = function(callback) {
@@ -122,26 +143,42 @@ define(['./web'], function(Web) {
       
       // Seed client
       self._web.getNames(function(names) {
-        connection.emit('addNames', names);
+        var dataToSend = Array.from(names, function(node) {
+          return [
+            Buffer(node.id),
+            node.name,
+          ]
+        });
+        connection.emit('addNames', dataToSend);
       });
       self._web.getLinks(function(links) {
-        connection.emit('seedLinks', links);
+        var serializedLinks = Link.serialize(links);
+        connection.emit('seedLinks', Buffer(serializedLinks));
       });
       
       // Links
-      connection.on('setLinks', function(params) {
-        self._web.setLinks(params.add, params.remove);
-        connection.broadcast.emit('setLinks', params);
+      connection.on('setLinks', function(linksData) {
+        var add    = Link.deserialize(linksData.add);
+        var remove = Link.deserialize(linksData.remove);
+        self._web.setLinks(add, remove);
+        connection.broadcast.emit('setLinks', linksData);
       });
       
       // Names
-      connection.on('addNames', function(names) {
+      connection.on('addNames', function(namesData) {
+        var names = Array.from(namesData, function(node) {
+          return {
+            id: Buffer(node[0]),
+            name: node[1],
+          }
+        });
         self._web.addNames(names);
-        connection.broadcast.emit('addNames', names);
+        connection.broadcast.emit('addNames', namesData);
       });
-      connection.on('removeNames', function(nodes) {
+      connection.on('removeNames', function(nodesData) {
+        var nodes = Node.deserialize(nodesData);
         self._web.removeNames(nodes);
-        connection.broadcast.emit('removeNames', nodes);
+        connection.broadcast.emit('removeNames', nodesData);
       });
     });
   }

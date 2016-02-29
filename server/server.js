@@ -7,9 +7,9 @@ var app = express();
 var server = http.Server(app);
 var io = socketio(server);
 
-var web_db    = require('./core/web_db');
-var web_file  = require('./core/web_file');
-var WebRemote = require('./core/web-remote');
+var web_db      = require('./core/web_db');
+var web_file    = require('./core/web_file');
+var WebSocketIO = require('./core/web-socketio');
 
 if (yargs.argv['serve-static']) {
   app.use(express.static('../site'));
@@ -22,7 +22,7 @@ webDb.merge(webFile, function() {
   console.log('merge complete');
 });
 
-var webRemoteServer = WebRemote.Server(io, webDb);
+var webSocketIOServer = WebSocketIO.Server(io, webDb);
 
 server.listen(3000, function() {
   console.log('listening on port 3000');
