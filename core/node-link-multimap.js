@@ -2,27 +2,27 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node', './node-set'], function(Node, NodeSet) {
+define(['./node', './link-set'], function(Node, LinkSet) {
   
-  function NodeMultimap() {
+  function NodeLinkMultimap() {
     this._map = new Map();
   }
   
-  NodeMultimap.prototype.get = function(nodes) {
-    return this._map.get(this._keyForNodes(nodes)) || NodeSet();
+  NodeLinkMultimap.prototype.get = function(nodes) {
+    return this._map.get(this._keyForNodes(nodes)) || LinkSet();
   }
   
-  NodeMultimap.prototype.add = function(nodes, value) {
+  NodeLinkMultimap.prototype.add = function(nodes, value) {
     var nodesKey = this._keyForNodes(nodes);
     var values = this._map.get(nodesKey);
     if (values) {
       values.add(value);
     } else {
-      this._map.set(nodesKey, NodeSet([value]));
+      this._map.set(nodesKey, LinkSet([value]));
     }
   }
   
-  NodeMultimap.prototype.delete = function(nodes, value) {
+  NodeLinkMultimap.prototype.delete = function(nodes, value) {
     var nodesKey = this._keyForNodes(nodes);
     if (value) {
       var values = this._map.get(nodesKey);
@@ -35,21 +35,21 @@ define(['./node', './node-set'], function(Node, NodeSet) {
     }
   }
   
-  NodeMultimap.prototype.clear = function() {
+  NodeLinkMultimap.prototype.clear = function() {
     this._map.clear();
   }
   
-  NodeMultimap.prototype.size = function() {
+  NodeLinkMultimap.prototype.size = function() {
     return this._map.size;
   }
   
-  NodeMultimap.prototype._keyForNodes = function(nodes) {
+  NodeLinkMultimap.prototype._keyForNodes = function(nodes) {
     return nodes.map(function(node) {
       return Node.toMapKey(node);
     }).join('');
   }
   
   return function() {
-    return new NodeMultimap();
+    return new NodeLinkMultimap();
   }
 });

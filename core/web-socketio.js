@@ -112,6 +112,14 @@ define(['./web', './link'], function(Web, Link) {
   
   // Query
   
+  Client.prototype.getLinkCount = function() {
+    return this._web.getLinkCount();
+  }
+  
+  Client.prototype.getNodeCount = function() {
+    return this._web.getNodeCount();
+  }
+  
   Client.prototype.hasLink = function(from, via, to) {
     return this._web.hasLink(from, via, to);
   }

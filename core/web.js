@@ -2,11 +2,13 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node', './link', './node-multimap'], function(Node, Link, NodeMultimap) {
+define(['./node', './link', './node-multimap', './node-link-multimap'], function(Node, Link, NodeMultimap, NodeLinkMultimap) {
   
   function Web() {
     this.names = new Map();
     this.links = new Set();
+    
+    this.nodesToLinks = NodeLinkMultimap();
     
     this.fromVia = NodeMultimap();
     this.viaTo   = NodeMultimap();
@@ -92,6 +94,9 @@ define(['./node', './link', './node-multimap'], function(Node, Link, NodeMultima
       var linkKey = Link.toKey(link);
       if (!self.links.has(linkKey)) {
         self.links.add(linkKey);
+        self.nodesToLinks.add([link.from], link);
+        self.nodesToLinks.add([link.via],  link);
+        self.nodesToLinks.add([link.to],   link);
         self.fromVia.add([link.from, link.via], link.to);
         self.viaTo.add(  [link.via,  link.to],  link.from);
         self.fromTo.add( [link.from, link.to],  link.via);
@@ -102,6 +107,9 @@ define(['./node', './link', './node-multimap'], function(Node, Link, NodeMultima
       var linkKey = Link.toKey(link);
       if (self.links.has(linkKey)) {
         self.links.delete(linkKey);
+        self.nodesToLinks.delete([link.from], link);
+        self.nodesToLinks.delete([link.via],  link);
+        self.nodesToLinks.delete([link.to],   link);
         self.fromVia.delete([link.from, link.via], link.to);
         self.viaTo.delete(  [link.via,  link.to],  link.from);
         self.fromTo.delete( [link.from, link.to],  link.via);
@@ -117,6 +125,14 @@ define(['./node', './link', './node-multimap'], function(Node, Link, NodeMultima
     return this.links.has(Node.toHex(from) +
                           Node.toHex(via) +
                           Node.toHex(to));
+  }
+  
+  Web.prototype.getLinkCount = function() {
+    return this.links.size;
+  }
+  
+  Web.prototype.getNodeCount = function() {
+    return this.nodesToLinks.size();
   }
   
   Web.prototype.getLinks = function(callback) {
