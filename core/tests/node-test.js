@@ -2,8 +2,15 @@ var Node = require('../node');
 var test = require('tape');
 
 test('node test', function(t) {
-  var n1 = Node();
-  var n2 = Node();
+  var n1 = null;
+  var n2 = null;
+  
+  t.doesNotThrow(function() {
+    n1 = Node();
+    n2 = Node();
+  }, 'Node constructor should not throw.');
+  
+  t.ok(Node.isNode(n1) && Node.isNode(n2), 'isNode() should return true on newly created nodes.');
   
   t.notOk(Node.equal(n1, n2), 'Two created nodes should not be equal.');
   t.ok(Node.equal(n1, n1), 'Node should compare equal to itself.');
@@ -33,6 +40,18 @@ test('node test', function(t) {
   t.notEqual(Node.linkToKey(l1), Node.linkToKey(l2), 'Key for two different links should not be equal.');
   t.equal(Node.linkToKey(l1), Node.linkToKey(l1), 'Keys for the same link should be equal.');
   t.ok(Node.linksEqual(Node.linkFromKey(Node.linkToKey(l1)), Node.linkFromKey(Node.linkToKey(l1))), 'Link -> key -> link should compare equal.');
+  
+  var serializedNodes = null;
+  t.doesNotThrow(function() {
+    serializedNodes = Node.serialize([n1, n2]);
+  }, 'Calling serialize() on an array of two nodes should not throw.');
+  
+  var deserializedNodes = null;
+  t.doesNotThrow(function() {
+    deserializedNodes = Node.deserialize(serializedNodes);
+  }, 'Calling deserialize() on the result of serialize() should not throw.');
+  
+  t.ok(Node.equal(deserializedNodes[0], n1) && Node.equal(deserializedNodes[1], n2), 'Each item in the result of deserialize() should compare equal to the nodes originally given to serialize()');
   
   t.end();
 });
