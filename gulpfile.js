@@ -192,6 +192,17 @@ gulp.task('serve', ['default'], function() {
   );
 });
 
+gulp.task('serve-debug', ['default'], function() {
+  spawn(
+    'node-debug',
+    ['server.js', '--serve-static'],
+    {
+      stdio: 'inherit',
+      cwd: 'dist/server/',
+    }
+  );
+});
+
 gulp.task('browser-sync', ['site', 'site-watch'], function() {
   
   browserSync({
