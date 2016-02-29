@@ -27,12 +27,6 @@
       
       Polymer({
         is: 'yb-socketio-status',
-        properties: {
-          status: {
-            type: String,
-            value: '',
-          }
-        },
         ready: function() {
           this.statusLed     = this.$.statusLed;
           this.statusText    = this.$.statusText;
