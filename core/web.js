@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node', './node-multimap'], function(Node, NodeMultimap) {
+define(['./node', './link', './node-multimap'], function(Node, Link, NodeMultimap) {
   
   function Web() {
     this.names = new Map();
@@ -89,7 +89,7 @@ define(['./node', './node-multimap'], function(Node, NodeMultimap) {
     var addedLinks   = [];
     var removedLinks = [];
     add.forEach(function(link) {
-      var linkKey = Node.linkToKey(link);
+      var linkKey = Link.toKey(link);
       if (!self.links.has(linkKey)) {
         self.links.add(linkKey);
         self.fromVia.add([link.from, link.via], link.to);
@@ -99,7 +99,7 @@ define(['./node', './node-multimap'], function(Node, NodeMultimap) {
       }
     });
     remove.forEach(function(link) {
-      var linkKey = Node.linkToKey(link);
+      var linkKey = Link.toKey(link);
       if (self.links.has(linkKey)) {
         self.links.delete(linkKey);
         self.fromVia.delete([link.from, link.via], link.to);
@@ -121,7 +121,7 @@ define(['./node', './node-multimap'], function(Node, NodeMultimap) {
   
   Web.prototype.getLinks = function(callback) {
     var links = Array.from(this.links.values(), function(key) {
-      return Node.linkFromKey(key);
+      return Link.fromKey(key);
     });
     if (callback) {
       callback(links);

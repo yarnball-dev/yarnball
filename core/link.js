@@ -33,6 +33,26 @@ define(['./node'], function(Node) {
            Node.equal(link1.to,   link2.to);
   }
   
+  Link.toKey = function(link) {
+    if (!link.from || !link.via || !link.to) {
+      throw 'Cannot make key for link, from, via or to not specified.';
+    }
+    return Node.toHex(link.from) +
+           Node.toHex(link.via) +
+           Node.toHex(link.to);
+  }
+  
+  Link.fromKey = function(key) {
+    if (key.length !== 32 + 32 + 32) {
+      throw 'Cannot get link from key, key length is incorrect.';
+    }
+    return {
+      from: Node.fromHex(key.slice(0, 32)),
+      via:  Node.fromHex(key.slice(32, 32 + 32)),
+      to:   Node.fromHex(key.slice(32 + 32, 32 + 32 + 32)),
+    }
+  }
+  
   Link.serialize = function(links) {
     links = Array.from(links);
     var combinedBuffer = new Uint8Array(links.length * 16 * 3);

@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node', 'level'], function(Node, level) {
+define(['./node', './link', 'level'], function(Node, Link, level) {
   
   function WebDb(databasePath) {
     this.db = level(databasePath);
@@ -81,13 +81,13 @@ define(['./node', 'level'], function(Node, level) {
     var ops = add.map(function(link) {
       return {
         type: 'put',
-        key: 'link:' + Node.linkToKey(link),
+        key: 'link:' + Link.toKey(link),
         value: '1',
       }
     }).concat(remove.map(function(link) {
       return {
         type: 'del',
-        key: 'link:' + Node.linkToKey(link),
+        key: 'link:' + Link.toKey(link),
       }
     }));
     this.db.batch(ops, function(err) {
@@ -103,7 +103,7 @@ define(['./node', 'level'], function(Node, level) {
     this.db.createReadStream()
       .on('data', function(data) {
         if (data.key.startsWith('link:')) {
-          links.push(Node.linkFromKey(data.key.slice('link:'.length)));
+          links.push(Link.fromKey(data.key.slice('link:'.length)));
         }
       })
       .on('error', function(err) {

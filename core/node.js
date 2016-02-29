@@ -114,31 +114,5 @@ define(function() {
     return nodes;
   }
   
-  Node.linkToKey = function(link) {
-    if (!link.from || !link.via || !link.to) {
-      throw 'Cannot make key for link, from, via or to not specified.';
-    }
-    return Node.toHex(link.from) +
-           Node.toHex(link.via) +
-           Node.toHex(link.to);
-  }
-  
-  Node.linkFromKey = function(linkKey) {
-    if (linkKey.length !== 32 + 32 + 32) {
-      throw 'Cannot get link from key, key length is incorrect.';
-    }
-    return {
-      from: Node.fromHex(linkKey.slice(0, 32)),
-      via:  Node.fromHex(linkKey.slice(32, 32 + 32)),
-      to:   Node.fromHex(linkKey.slice(32 + 32, 32 + 32 + 32)),
-    }
-  }
-  
-  Node.linksEqual = function(link1, link2) {
-    return Node.equal(link1.from, link2.from) &&
-           Node.equal(link1.via,  link2.via) &&
-           Node.equal(link1.to,   link2.to);
-  }
-  
   return Node;
 });

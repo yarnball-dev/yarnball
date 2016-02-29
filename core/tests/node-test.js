@@ -37,10 +37,6 @@ test('node test', function(t) {
     to:   Node(),
   }
   
-  t.notEqual(Node.linkToKey(l1), Node.linkToKey(l2), 'Key for two different links should not be equal.');
-  t.equal(Node.linkToKey(l1), Node.linkToKey(l1), 'Keys for the same link should be equal.');
-  t.ok(Node.linksEqual(Node.linkFromKey(Node.linkToKey(l1)), Node.linkFromKey(Node.linkToKey(l1))), 'Link -> key -> link should compare equal.');
-  
   var serializedNodes = null;
   t.doesNotThrow(function() {
     serializedNodes = Node.serialize([n1, n2]);

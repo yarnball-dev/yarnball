@@ -24,6 +24,10 @@ test('link test', function(t) {
   t.ok(Link.equal(link1, link1), 'A link should compare equal to itself.');
   t.notOk(Link.equal(link1, link2), 'Two different links should not compare equal.');
   
+  t.notEqual(Link.toKey(link1), Link.toKey(link2), 'Key for two different links should not compare equal.');
+  t.equal(Link.toKey(link1), Link.toKey(link1), 'Keys for the same link should compare equal.');
+  t.ok(Link.equal(Link.fromKey(Link.toKey(link1)), Link.fromKey(Link.toKey(link1))), 'Link -> key -> link should compare equal.');
+  
   var buffer = null;
   t.doesNotThrow(function() {
     buffer = Link.serialize([link1, link2, link3]);

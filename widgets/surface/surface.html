@@ -142,8 +142,9 @@
           
           self.currentOperation = null;
           
-          require(['core/node', 'core/transaction', 'widgets/zindex-manager'], function(Node, Transaction, zindex_manager) {
+          require(['core/node', 'core/link', 'core/transaction', 'widgets/zindex-manager'], function(Node, Link, Transaction, zindex_manager) {
             self.Node = Node;
+            self.Link = Link;
             self.Transaction = Transaction;
             self.zIndexManager = zindex_manager();
             self.connectorsLayer          = self.zIndexManager.addLayer();
@@ -909,7 +910,7 @@
           });
         },
         getConnectorsForLink: function(link) {
-          var linkKey = this.Node.linkToKey(link);
+          var linkKey = this.Link.toKey(link);
           if (this.linksToConnectors.has(linkKey)) {
             return new Set(Array.from(this.linksToConnectors.get(linkKey)));
           } else {
@@ -924,7 +925,7 @@
           });
         },
         getConnectorsForWidgetTriple: function(nodeWidgetsTriple) {
-          var nodeWidgetsLinkKey = this.Node.linkToKey({
+          var nodeWidgetsLinkKey = this.Link.toKey({
             from: nodeWidgetsTriple.from.widgetId,
             via:  nodeWidgetsTriple.via.widgetId,
             to:   nodeWidgetsTriple.to.widgetId,
@@ -1099,7 +1100,7 @@
             
             if (widget.fromWidget && widget.viaWidget && widget.toWidget) {
           
-              var linkKey = self.Node.linkToKey({
+              var linkKey = self.Link.toKey({
                 from: self.Node.fromHex(widget.fromWidget.nodeId),
                 via:  self.Node.fromHex(widget.viaWidget.nodeId),
                 to:   self.Node.fromHex(widget.toWidget.nodeId),
@@ -1112,7 +1113,7 @@
                 }
               }
               
-              var nodeWidgetsKey = self.Node.linkToKey({
+              var nodeWidgetsKey = self.Link.toKey({
                 from: widget.fromWidget.widgetId,
                 via:  widget.viaWidget.widgetId,
                 to:   widget.toWidget.widgetId,
@@ -1422,7 +1423,7 @@
           nodeWidgets.via.connectorsVia.add(connector);
           nodeWidgets.to.connectorsTo.add(connector);
           
-          var linkKey = self.Node.linkToKey({
+          var linkKey = self.Link.toKey({
             from: self.Node.fromHex(nodeWidgets.from.nodeId),
             via:  self.Node.fromHex(nodeWidgets.via.nodeId),
             to:   self.Node.fromHex(nodeWidgets.to.nodeId),
@@ -1433,7 +1434,7 @@
             self.linksToConnectors.set(linkKey, new Set([connector]));
           }
           
-          var nodeWidgetsLinkKey = self.Node.linkToKey({
+          var nodeWidgetsLinkKey = self.Link.toKey({
             from: nodeWidgets.from.widgetId,
             via:  nodeWidgets.via.widgetId,
             to:   nodeWidgets.to.widgetId,
