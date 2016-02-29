@@ -17,7 +17,12 @@
           var self = this;
           require(['socket.io-client/socket.io', 'core/web-socketio'], function(SocketIO, WebSocketIO) {
           
-            self._socketio = SocketIO();
+            self._socketio = SocketIO({
+              reconnection: true,
+              reconnectionDelay: 300,
+              reconnectionDelayMax: 1500,
+              timeout: 5000,
+            });
             self.ybWeb = WebSocketIO.Client(self._socketio);
             
             if (self.ybWeb.isSeeded()) {
