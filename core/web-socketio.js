@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./web', './link'], function(Web, Link) {
+define(['./web', './node', './link'], function(Web, Node, Link) {
   
   function Client(socketio) {
     var self = this;
