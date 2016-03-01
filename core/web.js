@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['./node', './link', './node-multimap', './node-link-multimap'], function(Node, Link, NodeMultimap, NodeLinkMultimap) {
+define(['./node', './link', './node-set', './node-multimap', './node-link-multimap'], function(Node, Link, NodeSet, NodeMultimap, NodeLinkMultimap) {
   
   function Web() {
     this.names = new Map();
@@ -19,9 +19,9 @@ define(['./node', './link', './node-multimap', './node-link-multimap'], function
   }
   
   Web.prototype.getNodes = function() {
-    return Array.from(this.names.keys(), function(entry) {
-      return Node.fromMapKey(entry);
-    });
+    return NodeSet(this.nodesToLinks.keys().map(function(nodes) {
+      return nodes[0];
+    }));
   }
   
   
@@ -143,6 +143,10 @@ define(['./node', './link', './node-multimap', './node-link-multimap'], function
       callback(links);
     }
     return links;
+  }
+  
+  Web.prototype.getLinksForNode = function(node) {
+    return this._nodesToLinks.get(node);
   }
   
   Web.prototype.clear = function() {
