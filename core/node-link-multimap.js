@@ -9,7 +9,7 @@ define(['./node', './link-set'], function(Node, LinkSet) {
   }
   
   NodeLinkMultimap.prototype.get = function(nodes) {
-    return this._map.get(this._keyForNodes(nodes)) || LinkSet();
+    return LinkSet(this._map.get(this._keyForNodes(nodes)) || []);
   }
   
   NodeLinkMultimap.prototype.add = function(nodes, value) {
@@ -43,9 +43,19 @@ define(['./node', './link-set'], function(Node, LinkSet) {
     return this._map.size;
   }
   
+  NodeLinkMultimap.prototype.keys = function() {
+    return Array.from(this._map.keys(), function(nodesKey) {
+      var nodes = [];
+      for (var i=0; i < nodesKey.length; i+=32) {
+        nodes.push(Node.fromHex(nodesKey.slice(i, i + 32)));
+      }
+      return nodes;
+    });
+  }
+  
   NodeLinkMultimap.prototype._keyForNodes = function(nodes) {
     return nodes.map(function(node) {
-      return Node.toMapKey(node);
+      return Node.toHex(node);
     }).join('');
   }
   
