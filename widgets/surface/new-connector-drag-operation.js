@@ -133,7 +133,7 @@ define(['core/node'], function(Node) {
             });
           });
           
-          self.transaction.setLinks(newLinks, []);
+          self.batch.setLinks(newLinks, []);
           newConnectors.forEach(function(connector) {
             self.surfaceWeb.addWidget(connector);
           });

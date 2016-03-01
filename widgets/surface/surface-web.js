@@ -1,4 +1,8 @@
-define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(Node, Transaction, Map_, Number) {
+// Allow this AMD module to be loaded in Node.js
+// See https://www.npmjs.com/package/amdefine
+if (typeof define !== 'function') { var define = require('amdefine')(module); }
+
+define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Batch, Map_, Number) {
   
   function SurfaceWeb(web, base) {
     this._web  = web;
@@ -28,18 +32,18 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
   }
   
   SurfaceWeb.prototype.addWidget = function(widget) {
-    var transaction = Transaction(this._web);
+    var batch = Batch(this._web);
     
-    var WidgetProperties = Map_(transaction, widget.widgetId);
+    var WidgetProperties = Map_(batch, widget.widgetId);
     
-    transaction.setLinks([{
+    batch.setLinks([{
       from: widget.widgetId,
       via: Is,
       to: Widget,
     }], []);
     
     if (widget.widgetType === 'yb-node') {
-      transaction.setLinks([{
+      batch.setLinks([{
         from: widget.widgetId,
         via: Is,
         to: NodeWidget,
@@ -57,7 +61,7 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
         throw 'Cannot add connector widget to surface web, from/via/to widgets not already present in web.';
       }
         
-      transaction.setLinks([{
+      batch.setLinks([{
         from: widget.widgetId,
         via: Is,
         to: Connector,
@@ -66,47 +70,48 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
       WidgetProperties.set(From, widget.fromWidget.widgetId);
       WidgetProperties.set(Via,  widget.viaWidget.widgetId);
       WidgetProperties.set(To,   widget.toWidget.widgetId);
+    } else {
+      throw 'Cannot add widget to surface-web, unknown widget type: ' + widget.widgetType;
     }
     
-    transaction.apply();
+    batch.apply();
   }
   
-  SurfaceWeb.prototype.removeWidget = function(widget) {
-    var transaction = Transaction(this._web);
+  SurfaceWeb.prototype.removeWidget = function(Widget_) {
+    var batch = Batch(this._web);
     
-    var WidgetProperties = Map_(this._web, widget.widgetId);
+    var WidgetProperties = Map_(batch, Widget_);
     
     WidgetProperties.delete(Is, Widget);
     
-    if (widget.widgetType === 'yb-node') {
+    if (WidgetProperties.has(Is, NodeWidget)) {
       WidgetProperties.delete(Is, NodeWidget);
       WidgetProperties.delete(Represents);
       
-      var WidgetPosition = WidgetProperties.getMap(Position);
-      if (WidgetPosition) {
-        var WidgetXAxis = WidgetPosition.get(XAxis);
-        var WidgetYAxis = WidgetPosition.get(YAxis);
+      var Position_ = WidgetProperties.getMap(Position);
+      if (Position_) {
+        var XAxis_ = Position_.get(XAxis);
+        var YAxis_ = Position_.get(YAxis);
         
-        if (WidgetXAxis) {
-          Number(this._web, WidgetXAxis).clear();
-          WidgetPosition.delete(WidgetXAxis);
+        if (XAxis_) {
+          Number(batch, XAxis_).clear();
+          Position_.delete(XAxis);
         }
-        if (WidgetYAxis) {
-          Number(this._web, WidgetYAxis).clear();
-          WidgetPosition.delete(WidgetYAxis);
+        if (YAxis_) {
+          Number(batch, YAxis_).clear();
+          Position_.delete(YAxis);
         }
         
         WidgetProperties.delete(Position);
       }
-      
-    } else if (widget.widgetType === 'yb-connector') {
+    } else if (WidgetProperties.has(Is, Connector)) {
       WidgetProperties.delete(Is, Connector);
       WidgetProperties.delete(From);
       WidgetProperties.delete(Via);
       WidgetProperties.delete(To);
     }
     
-    transaction.apply();
+    batch.apply();
   }
   
   SurfaceWeb.prototype.hasWidget = function(Widget_) {
@@ -135,19 +140,19 @@ define(['core/node', 'core/transaction', 'core/map', 'core/number'], function(No
   }
   
   SurfaceWeb.prototype.setWidgetPosition = function(Widget, position) {
-    var transaction = Transaction(this._web);
+    var batch = Batch(this._web);
     
-    var WidgetProperties = Map_(this._web, Widget);
+    var WidgetProperties = Map_(batch, Widget);
     
-    var WidgetPosition = Map_(this._web, WidgetProperties.getOrMake(Position));
+    var WidgetPosition = Map_(batch, WidgetProperties.getOrMake(Position));
     
     var X = WidgetPosition.hasValidValue(XAxis) ? WidgetPosition.get(XAxis) : null;
     var Y = WidgetPosition.hasValidValue(YAxis) ? WidgetPosition.get(YAxis) : null;
     
-    WidgetPosition.set(XAxis, Number(this._web, X).set(position.x));
-    WidgetPosition.set(YAxis, Number(this._web, Y).set(position.y));
+    WidgetPosition.set(XAxis, Number(batch, X).set(position.x));
+    WidgetPosition.set(YAxis, Number(batch, Y).set(position.y));
     
-    transaction.apply();
+    batch.apply();
   }
   
   SurfaceWeb.prototype.initializeSurface = function(surface) {

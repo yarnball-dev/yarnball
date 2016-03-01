@@ -27,17 +27,17 @@ define(function() {
     // Remove connectors
     connectorsToRemove.forEach(function(connector) {
       if (options.removeRepresented) {
-        self.transaction.setLinks([], [connector.link()]);
+        self.batch.setLinks([], [connector.link()]);
       }
       
       self.surface.detachWidget(connector);
-      self.surfaceWeb.removeWidget(connector);
+      self.surfaceWeb.removeWidget(connector.widgetId);
     });
     
     // Remove node widgets
     nodeWidgetsToRemove.forEach(function(nodeWidget) {
       self.surface.detachWidget(nodeWidget);
-      self.surfaceWeb.removeWidget(nodeWidget);
+      self.surfaceWeb.removeWidget(nodeWidget.widgetId);
     });
     
     self.surface.finishOperation(self);
