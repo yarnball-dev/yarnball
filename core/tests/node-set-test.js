@@ -13,6 +13,8 @@ test('node-set test', function(t) {
   t.doesNotThrow(function() { set.add(node); }, 'Adding node to node-set should not throw.');
   t.equal(set.size(), 1, 'Node-set size should be 1 after adding node.');
   t.ok(set.has(node), 'Node-set has() should return true for added node.');
+  t.ok(Node.equal(set.find(function(node_) { return Node.equal(node_, node); }), node), 'find() should return the correct node when given a valid search callback.');
+  
   t.doesNotThrow(function() { set.delete(node); }, 'Deleting node from node-set should not throw.');
   t.equal(set.size(), 0, 'Node-set size should be 0 after deleting node.');
   t.notOk(set.has(node), 'Node-set has() should return false after removing node.');

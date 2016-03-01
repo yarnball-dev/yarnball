@@ -74,6 +74,17 @@ define(['./node'], function(Node) {
     });
   }
   
+  NodeSet.prototype.find = function(callback) {
+    var result = Array.from(this._set).find(function(key) {
+      return callback(Node.fromMapKey(key));
+    });
+    if (result) {
+      return Node.fromMapKey(result);
+    } else {
+      return null;
+    }
+  }
+  
   return function(nodes) {
     return new NodeSet(nodes);
   }
