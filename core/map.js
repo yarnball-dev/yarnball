@@ -20,6 +20,14 @@ define(['./node'], function(Node) {
     return this._web.query(this._base, key, null).size() === 1;
   }
   
+  Map_.prototype.has = function(key, value) {
+    if (value) {
+      return this._web.hasLink(this._base, key, value);
+    } else {
+      return this._web.query(this._base, key, null).size() > 0;
+    }
+  }
+  
   Map_.prototype.get = function(key) {
     var results = this._web.query(this._base, key, null);
     if (results.size() > 1) {
