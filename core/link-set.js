@@ -74,6 +74,12 @@ define(['./link'], function(Link) {
     });
   }
   
+  LinkSet.prototype.every = function(callback) {
+    return Array.from(this._set).every(function(key) {
+      return callback(Link.fromKey(key));
+    });
+  }
+  
   return function(initialValue) {
     return new LinkSet(initialValue);
   }
