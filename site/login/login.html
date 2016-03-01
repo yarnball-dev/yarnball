@@ -1,0 +1,28 @@
+<link rel="import" href="/bower_components/polymer/polymer.html">
+
+<link rel="import" href="/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+
+<link rel="import" href="login-styles.html">
+
+<dom-module id="yb-login">
+
+  <style include="login-styles"></style>
+
+  <template>
+    <div class="container">
+      <paper-input label="username"></paper-input>
+      <paper-input label="password" type="password"></paper-input>
+      <paper-button id="login-button">Log in</paper-button>
+    </div>
+  </template>
+  
+  <script>
+    (function() {
+      Polymer({
+        is: 'yb-login',
+      });
+    })();
+  </script>
+
+</dom-module>

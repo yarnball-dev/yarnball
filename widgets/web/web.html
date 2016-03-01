@@ -1,0 +1,43 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<script>
+  WebBehavior = {
+    created: function() {
+      var self = this;
+      self.isYbWeb = true;
+      self._onInit = new Set();
+      require(['core/web'], function(Web) {
+        self.ybWeb = Web();
+        self._notifyInit(self.ybWeb);
+      });
+    },
+    onInit: function(callback) {
+      if (this.ybWeb) {
+        callback(this.ybWeb);
+      } else {
+        this._onInit.add(callback);
+      }
+    },
+    _notifyInit: function(web) {
+      this._onInit.forEach(function(callback) {
+        callback(web);
+      });
+      this._onInit.clear();
+    },
+  }
+</script>
+
+<dom-module id="yb-web">
+
+  <script>
+    (function() {
+      'use strict';
+      
+      Polymer({
+        is: 'yb-web',
+        behaviors: [WebBehavior],
+      });
+    })();
+  </script>
+  
+</dom-module>
