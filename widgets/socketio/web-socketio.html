@@ -13,17 +13,12 @@
           this._socketio;
           this._onInit = new Set();
         },
-        ready: function() {
+        setSocketio: function(socketio) {
           var self = this;
-          require(['socket.io-client/socket.io', 'core/web-socketio'], function(SocketIO, WebSocketIO) {
+          self._socketio = socketio;
           
-            self._socketio = SocketIO({
-              reconnection: true,
-              reconnectionDelay: 300,
-              reconnectionDelayMax: 1500,
-              timeout: 5000,
-            });
-            self.ybWeb = WebSocketIO.Client(self._socketio);
+          require(['core/web-socketio'], function(WebSocketIO) {
+            self.ybWeb = WebSocketIO.Client(socketio);
             
             if (self.ybWeb.isSeeded()) {
               self._notifyInit(self.ybWeb);
