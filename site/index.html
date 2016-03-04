@@ -7,18 +7,18 @@
     
     <title>Yarnball</title>
     
-    <link rel="icon" href="favicon.png">
+    <link rel="icon" href="/favicon.png">
     
     <meta name="viewport" content="width=device-width, user-scalable=no">
     
-    <link rel="stylesheet" href="bower_components/normalize-css/normalize.css">
+    <link rel="stylesheet" href="/bower_components/normalize-css/normalize.css">
     
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
     <link href='https://fonts.googleapis.com/css?family=Lora' rel='stylesheet' type='text/css'>
     <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
     <link href='https://fonts.googleapis.com/css?family=Titillium+Web' rel='stylesheet' type='text/css'>
     
-    <script src="bower_components/requirejs/require.js"></script>
+    <script src="/bower_components/requirejs/require.js"></script>
     <script>
       require.config({
         baseUrl: '/',
@@ -28,17 +28,17 @@
       });
     </script>
     
-    <script src="bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="/bower_components/webcomponentsjs/webcomponents-lite.js"></script>
     
-    <link rel="import" href="bower_components/iron-pages/iron-pages.html">
+    <link rel="import" href="/bower_components/iron-pages/iron-pages.html">
     
-    <link rel="import" href="landing-page/landing-page.html">
-    <link rel="import" href="scratchpad/scratchpad.html">
-    <link rel="import" href="login/login.html">
-    <link rel="import" href="signup/signup.html">
-    <link rel="import" href="user/user.html">
+    <link rel="import" href="/landing-page/landing-page.html">
+    <link rel="import" href="/scratchpad/scratchpad.html">
+    <link rel="import" href="/login/login.html">
+    <link rel="import" href="/signup/signup.html">
+    <link rel="import" href="/user/user.html">
     
-    <link rel="import" href="widgets/socketio/socketio-status.html">
+    <link rel="import" href="/widgets/socketio/socketio-status.html">
     
   </head>
 
@@ -56,7 +56,7 @@
     <script>
       document.addEventListener('WebComponentsReady', function() {
       
-        require(['bower_components/page/page.js', 'socket.io-client/socket.io'], function(page, SocketIO) {
+        require(['bower_components/page/page', 'socket.io-client/socket.io'], function(page, SocketIO) {
         
           var mainPages = document.getElementById('main-pages');
           
@@ -76,21 +76,30 @@
             mainPages.select(4);
           });
           page('*', function(context) {
-            var path = context.path.slice(1);
-            var socketioUsers = SocketIO();
-            socketioUsers.on('connect', function() {
-              socketioUsers.on('hasUser_result', function(username, hasUser) {
-                if (username === path) {
-                  if (hasUser) {
+          
+            function splitPath(path) {
+              return path.split('/').filter(function(element) {
+                return element !== '';
+              });
+            }
+            
+            var pathElements = splitPath(context.path);
+            if (pathElements.length > 0) {
+              var pathBase = pathElements[0];
+              
+              var socketioUsers = SocketIO();
+              socketioUsers.on('connect', function() {
+                socketioUsers.emit('hasUser', pathBase);
+                socketioUsers.on('hasUser_result', function(username, hasUser) {
+                  if (username === pathBase && hasUser) {
                     var userPage = document.createElement('yb-user');
                     userPage.set('username', username);
                     Polymer.dom(mainPages).appendChild(userPage);
                     mainPages.select(4);
                   }
-                }
+                });
               });
-              socketioUsers.emit('hasUser', path);
-            });
+            }
           });
           
           page();

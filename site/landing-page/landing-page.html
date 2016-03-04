@@ -153,12 +153,12 @@
         is: 'yb-landing-page',
         behaviors: [WebBehavior],
         signup: function() {
-          require(['bower_components/page/page.js'], function(page) {
+          require(['bower_components/page/page'], function(page) {
             page('/signup');
           });
         },
         login: function() {
-          require(['bower_components/page/page.js'], function(page) {
+          require(['bower_components/page/page'], function(page) {
             page('/login');
           });
         },
