@@ -1,29 +1,25 @@
 var express  = require('express');
 var http     = require('http');
-var socketio = require('socket.io');
+var SocketIO = require('socket.io');
 var yargs    = require('yargs');
 
 var app = express();
 var server = http.Server(app);
-var io = socketio(server);
+var socketio = SocketIO(server);
 
-var web_db      = require('./core/web_db');
-var web_file    = require('./core/web_file');
-var WebSocketIO = require('./core/web-socketio');
+var Users          = require('./users');
+var Users_SocketIO = require('./users-socketio');
 
 if (yargs.argv['serve-static']) {
   app.use(express.static('../site'));
 }
 
-var webDb = web_db('./db');
-var webFile = web_file('node_names.txt', 'links.txt');
+var users = Users('./users.db', './users/');
+var users_socketio = Users_SocketIO(users, socketio);
+users_socketio.setup()
 
-webDb.merge(webFile, function() {
-  console.log('merge complete');
-});
-
-var webSocketIOServer = WebSocketIO.Server(io, webDb);
-
-server.listen(3000, function() {
-  console.log('listening on port 3000');
+.then(function() {
+  server.listen(3000, function() {
+    console.log('listening on port 3000');
+  });
 });

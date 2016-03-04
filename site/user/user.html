@@ -1,0 +1,45 @@
+<link rel="import" href="/bower_components/polymer/polymer.html">
+
+<link rel="import" href="/widgets/socketio/web-socketio.html">
+<link rel="import" href="/widgets/web-status/web-status.html">
+<link rel="import" href="/widgets/surface/surface.html">
+
+<link rel="import" href="user-styles.html">
+
+<dom-module id="yb-user">
+
+  <style include="user-styles"></style>
+
+  <template>
+    USER
+    <yb-web-socketio id="web_socketio">
+      <yb-web-status></yb-web-status>
+      <yb-surface></yb-surface>
+    </yb-web-socketio>
+  </template>
+  
+  <script>
+    (function() {
+      Polymer({
+        is: 'yb-user',
+        properties: {
+          username: {
+            type: String,
+          },
+        },
+        attached: function() {
+          var self = this;
+          self.web_socketio = self.$.web_socketio;
+          require(['socket.io-client/socket.io'], function(SocketIO) {
+            var authToken = window.localStorage.authToken;
+            var socketio = SocketIO('/' + self.username);
+            socketio.on('connect', function() {
+              self.web_socketio.setSocketio(socketio);
+            });
+          });
+        },
+      });
+    })();
+  </script>
+
+</dom-module>

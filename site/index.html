@@ -19,6 +19,14 @@
     <link href='https://fonts.googleapis.com/css?family=Titillium+Web' rel='stylesheet' type='text/css'>
     
     <script src="bower_components/requirejs/require.js"></script>
+    <script>
+      require.config({
+        baseUrl: '/',
+        paths: {
+          core: '/core',
+        },
+      });
+    </script>
     
     <script src="bower_components/webcomponentsjs/webcomponents-lite.js"></script>
     
@@ -27,11 +35,10 @@
     <link rel="import" href="landing-page/landing-page.html">
     <link rel="import" href="scratchpad/scratchpad.html">
     <link rel="import" href="login/login.html">
+    <link rel="import" href="signup/signup.html">
+    <link rel="import" href="user/user.html">
     
-    <link rel="import" href="widgets/socketio/web-socketio.html">
     <link rel="import" href="widgets/socketio/socketio-status.html">
-    <link rel="import" href="widgets/web-status/web-status.html">
-    <link rel="import" href="widgets/surface/surface.html">
     
   </head>
 
@@ -39,19 +46,20 @@
   
     <span id="browser-sync-binding"></span>
     
-    <iron-pages id="main-pages" selected="0">
+    <iron-pages id="main-pages">
       <yb-landing-page></yb-landing-page>
       <yb-scratchpad></yb-scratchpad>
       <yb-login></yb-login>
+      <yb-signup></yb-signup>
     </iron-pages>
     
     <script>
       document.addEventListener('WebComponentsReady', function() {
       
-        require(['bower_components/page/page.js'], function(page) {
+        require(['bower_components/page/page.js', 'socket.io-client/socket.io'], function(page, SocketIO) {
         
           var mainPages = document.getElementById('main-pages');
-        
+          
           page('/', function(context) {
             mainPages.select(0);
           });
@@ -60,6 +68,29 @@
           });
           page('/login', function(context) {
             mainPages.select(2);
+          });
+          page('/signup', function(context) {
+            mainPages.select(3);
+          });
+          page('/user', function(context) {
+            mainPages.select(4);
+          });
+          page('*', function(context) {
+            var path = context.path.slice(1);
+            var socketioUsers = SocketIO();
+            socketioUsers.on('connect', function() {
+              socketioUsers.on('hasUser_result', function(username, hasUser) {
+                if (username === path) {
+                  if (hasUser) {
+                    var userPage = document.createElement('yb-user');
+                    userPage.set('username', username);
+                    Polymer.dom(mainPages).appendChild(userPage);
+                    mainPages.select(4);
+                  }
+                }
+              });
+              socketioUsers.emit('hasUser', path);
+            });
           });
           
           page();

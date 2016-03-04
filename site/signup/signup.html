@@ -1,1 +1,88 @@
- 
+<link rel="import" href="/bower_components/polymer/polymer.html">
+
+<link rel="import" href="/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+
+<link rel="import" href="signup-styles.html">
+
+<dom-module id="yb-signup">
+
+  <style include="signup-styles"></style>
+
+  <template>
+    <div class="container">
+      <paper-input id="usernameField" label="username" required on-input="usernameChanged"></paper-input>
+      <paper-input id="passwordField" label="password" type="password" required></paper-input>
+      <paper-input label="password (repeat)" type="password" required></paper-input>
+      <paper-button id="signupButton" on-tap="signup">Sign up</paper-button>
+    </div>
+  </template>
+  
+  <script>
+    (function() {
+      Polymer({
+        is: 'yb-signup',
+        ready: function() {
+          var self = this;
+          self.usernameField = this.$.usernameField;
+          self.passwordField = this.$.passwordField;
+          self.takenUsernames = new Set();
+          
+          require(['socket.io-client/socket.io'], function(SocketIO) {
+            self.users = SocketIO();
+            self.users.on('hasUser_result', self.hasUser_result.bind(self));
+            self.users.on('createUser_result', self.createUser_result.bind(self));
+          });
+        },
+        checkUsernameTaken: function(username) {
+          var self = this;
+          if (self.users) {
+            self.users.emit('hasUser', username);
+          }
+        },
+        hasUser_result: function(username, hasUser) {
+          if (hasUser) {
+            this.takenUsernames.add(username);
+          } else {
+            this.takenUsernames.delete(username);
+          }
+          
+          if (this.usernameField.value === username) {
+            if (hasUser) {
+              this.usernameField.set('errorMessage', 'this name is taken');
+              this.usernameField.set('invalid', true);
+            } else {
+              this.usernameField.set('errorMessage', '');
+              this.usernameField.set('invalid', false);
+            }
+          }
+        },
+        usernameChanged: function(event) {
+          var username = this.usernameField.value;
+          this.checkUsernameTaken(username);
+          if (this.takenUsernames.has(this.usernameField.value)) {
+            this.usernameField.set('errorMessage', 'this name is taken');
+            this.usernameField.set('invalid', true);
+          } else {
+            this.usernameField.set('errorMessage', '');
+            this.usernameField.set('invalid', false);
+          }
+        },
+        signup: function() {
+          if (this.usernameField.value && this.passwordField.value) {
+            this.users.emit('createUser', {username: this.usernameField.value, password: this.passwordField.value});
+          }
+        },
+        createUser_result: function(params) {
+          if (params.authToken) {
+            window.localStorage.authToken = params.authToken;
+            require(['bower_components/page/page.js'], function(page) {
+              page('/' + params.username);
+            });
+          }
+        },
+      });
+    })();
+  </script>
+
+</dom-module>
