@@ -10,10 +10,10 @@
     <img class="web-logo" src="web.svg" />
     
     <img class="node-logo" src="node.svg" />
-    <div id="nodesCount" class="status-count" ></div>
+    <div id="nodesCount" class="status-count">N/A</div>
     
     <img class="link-logo" src="link.svg" />
-    <div id="linksCount" class="status-count" ></div>
+    <div id="linksCount" class="status-count">N/A</div>
   </template>
 
   <script>
@@ -27,14 +27,15 @@
           this.linksCount = this.$.linksCount;
         },
         attached: function() {
-          var parentWebElement = this.getParentWebElement();
+          var self = this;
+          var parentWebElement = self.getParentWebElement();
           if (parentWebElement) {
             parentWebElement.onInit(function(web) {
-              nodesCount.textContent = web.getNodeCount();
-              linksCount.textContent = web.getLinkCount();
+              self.nodesCount.textContent = web.getNodeCount();
+              self.linksCount.textContent = web.getLinkCount();
               web.onLinks(function() {
-                nodesCount.textContent = web.getNodeCount();
-                linksCount.textContent = web.getLinkCount();
+                self.nodesCount.textContent = web.getNodeCount();
+                self.linksCount.textContent = web.getLinkCount();
               });
             });
           }
