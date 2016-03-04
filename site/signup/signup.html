@@ -69,14 +69,40 @@
           }
         },
         signup: function() {
-          if (this.usernameField.value && this.passwordField.value) {
-            this.users.emit('createUser', {username: this.usernameField.value, password: this.passwordField.value});
+          var self = this;
+          
+          // TODO: Check for valid username/password
+          if (!self.usernameField.value || !self.passwordField.value) {
+            // TODO: Show error prompt
+            return;
           }
+          
+          var username = self.usernameField.value;
+          var password = self.passwordField.value;
+          
+          require(['bower_components/page/page', 'hash'], function(page, hash) {
+          
+            // Perform the first round of hashing on the client-side to prevent the server (connected over TLS) from having the plaintext
+            // password. Note that without salt, reconstructing weaker passwords by brute-force is possible; a second round of salted hashing
+            // is performed server-side.
+            var passwordHash = hash(password);
+          
+            self.users.emit('createUser', {username: username, passwordHash: passwordHash}, function(result) {
+              if (typeof result === 'object' && 'error' in result) {
+                console.error(result.error);
+                // TODO: Show error prompt
+              } else {
+                var authToken = result;
+                window.localStorage.authToken = authToken;
+                page('/' + username);
+              }
+            });
+          });
         },
         createUser_result: function(params) {
           if (params.authToken) {
             window.localStorage.authToken = params.authToken;
-            require(['bower_components/page/page.js'], function(page) {
+            require(['bower_components/page/page'], function(page) {
               page('/' + params.username);
             });
           }

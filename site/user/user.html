@@ -31,10 +31,23 @@
           var self = this;
           self.web_socketio = self.$.web_socketio;
           require(['socket.io-client/socket.io'], function(SocketIO) {
+            console.log('User page for "' + self.username + '" attempting to connect..');
             var authToken = window.localStorage.authToken;
-            var socketio = SocketIO('/' + self.username);
+            if (!authToken) {
+              console.error('User page cannot connect to user namespace, no auth token found.');
+              return;
+            }
+            
+            // TODO: If already connected, send authenticate message instead of specifying forceNew
+            var socketio = SocketIO('/' + self.username, {forceNew: true, query: "token=" + authToken});
+            
             socketio.on('connect', function() {
+              console.log('User page for "' + self.username + '" connected to user namespace.');
               self.web_socketio.setSocketio(socketio);
+            });
+            
+            socketio.on('error', function(error) {
+              console.error(error);
             });
           });
         },

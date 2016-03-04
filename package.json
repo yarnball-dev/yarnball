@@ -27,9 +27,11 @@
     "gulp-style-modules": "^0.1.0",
     "gulp-svgmin": "^1.2.1",
     "gulp-uglify": "^1.5.1",
+    "jsonwebtoken": "^5.7.0",
     "level": "^1.4.0",
     "main-bower-files": "^2.11.1",
     "socket.io": "^1.4.0",
+    "socketio-jwt": "^4.3.4",
     "yargs": "^3.32.0"
   },
   "devDependencies": {

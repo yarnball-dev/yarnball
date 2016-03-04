@@ -2,6 +2,7 @@ var Level = require('level');
 var exec  = require('child_process').exec;
 var Path  = require('path');
 var WebDB = require('core/web_db');
+var jwt   = require('jsonwebtoken');
 
 function Users(databasePath, userDataPath) {
   this._db = Level(databasePath);
@@ -55,6 +56,31 @@ Users.prototype.createUser = function(username, passwordHash) {
       }
     });
   });
+}
+
+Users.prototype.getUser = function(username) {
+  var self = this;
+  
+  if (!Users.isValidUsername(username)) {
+    throw 'Cannot get user, given parameter "' + username + '" is not a valid username.';
+  }
+  
+  return new Promise(function(resolve, reject) {
+    self._db.get(username, function(err, value) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({username: username, passwordHash: value});
+      }
+    });
+  });
+}
+
+// TODO: Read certificate from file
+Users.tokenCertificate = '6914ecfd13cc057282142ee36e9f736a';
+
+Users.prototype.createUserToken = function(username) {
+  return jwt.sign({username: username}, Users.tokenCertificate);
 }
 
 Users.prototype.getUsernames = function() {
@@ -114,5 +140,6 @@ Users.prototype.close = function(callback) {
 function Users_(databasePath, userDataPath) {
   return new Users(databasePath, userDataPath);
 }
-Users_.isValidUsername = Users.isValidUsername;
+Users_.isValidUsername  = Users.isValidUsername;
+Users_.tokenCertificate = Users.tokenCertificate;
 module.exports = Users_;
