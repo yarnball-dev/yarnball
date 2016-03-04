@@ -194,23 +194,31 @@ gulp.task('default', ['core', 'widgets', 'site', 'server']);
 
 
 gulp.task('serve', ['default'], function() {
+  var env = Object.create(process.env);
+  env.NODE_PATH += ':.';
+  console.log(env.NODE_PATH);
   spawn(
     'node',
     ['server.js', '--serve-static'],
     {
       stdio: 'inherit',
       cwd: 'dist/server/',
+      env: env,
     }
   );
 });
 
 gulp.task('serve-debug', ['default'], function() {
+  var env = Object.create(process.env);
+  env.NODE_PATH += ':.';
+  console.log(env.NODE_PATH);
   spawn(
     'node-debug',
     ['server.js', '--serve-static'],
     {
       stdio: 'inherit',
       cwd: 'dist/server/',
+      env: env,
     }
   );
 });
