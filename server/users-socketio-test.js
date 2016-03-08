@@ -1,4 +1,5 @@
 var Users          = require('./users');
+var Node           = require('core/node');
 var Users_SocketIO = require('./users-socketio');
 var Web_SocketIO   = require('core/web-socketio');
 var SocketIO       = require('socket.io');
@@ -10,7 +11,9 @@ var test           = require('tape');
 
 test('users-socketio test', function(t) {
   exec('mkdir -p /tmp/yarnball-users-socketio-test/', function(err, stdout, stderr) {
-    t.notOk(err, 'Executing mkdir to create /tmp/yarnball-users-test/ should not output an error.');
+    if (err) {
+      t.notOk(err, 'Executing mkdir to create /tmp/yarnball-users-test/ should not output an error.');
+    }
   }).on('exit', function() {
   
     var users = Users('/tmp/yarnball-users-socketio-test/db', '/tmp/yarnball-users-socketio-test/users');
@@ -30,6 +33,9 @@ test('users-socketio test', function(t) {
     t.doesNotThrow(function() {
       usersSocketio = Users_SocketIO(users, socketio);
     }, 'users-socketio constructor does not throw.');
+    
+    var peach = null;
+    var token = null;
     
     usersSocketio.setup().then(function() { t.ok(true, 'setup() succeeds.'); })
     
@@ -57,14 +63,15 @@ test('users-socketio test', function(t) {
     
     // Create user
     .then(function() {
-      socketioClient.emit('createUser', {username: 'peach', passwordHash: '1234'});
       return new Promise(function(resolve, reject) {
-        socketioClient.on('createUser_result', function(result) {
+        socketioClient.emit('createUser', {username: 'peach', passwordHash: '1234'}, function(result) {
           if (typeof result === 'object' && 'error' in result) {
-            t.notOk(result.error, 'createUser_result should not have error');
+            t.notOk(result.error, 'createUser() should not have an error');
             reject(result.error);
           } else {
-            t.equal(result.username, 'peach', 'createUser_result has the username given in createUser');
+            peach = Node.fromHex(result.usernode);
+            token = result.token;
+            t.ok(Node.isNode(peach), 'createUser should return a node');
             resolve(result);
           }
         });
@@ -73,7 +80,7 @@ test('users-socketio test', function(t) {
     
     // Open remote Web
     .then(function() {
-      userNamespace = SocketIOClient.connect('http://localhost:3001/peach');
+      userNamespace = SocketIOClient.connect('http://localhost:3001/' + Node.toHex(peach), {forceNew: true, query: 'token=' + token});
       return new Promise(function(resolve, reject) {
         userNamespace.on('connect', function() {
           t.ok(true, 'user namespace connected');
@@ -81,7 +88,6 @@ test('users-socketio test', function(t) {
         });
       });
     })
-    
     .then(function() {
       var web = Web_SocketIO.Client(userNamespace);
       return new Promise(function(resolve, reject) {
@@ -100,6 +106,10 @@ test('users-socketio test', function(t) {
 //         });
 //       });
 //     })
+    
+    .catch(function(error) {
+      t.ok(false, error);
+    })
     
     .then(function() {
       t.end();

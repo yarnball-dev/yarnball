@@ -1,6 +1,7 @@
 var Level = require('level');
 var exec  = require('child_process').exec;
 var Path  = require('path');
+var Node  = require('core/node');
 var WebDB = require('core/web_db');
 var jwt   = require('jsonwebtoken');
 
@@ -14,15 +15,31 @@ Users.isValidUsername = function(string) {
   return typeof string === 'string' && string.length > 0 && /^[a-zA-Z0-9-_]+$/.test(string);
 }
 
-Users.prototype.hasUser = function(username) {
+Users.prototype.hasUsernode = function(usernode) {
+  var self = this;
+  
+  return new Promise(function(resolve, reject) {
+    self._db.get('usernode:' + Node.toHex(usernode), function(err, value) {
+      if (err && err.type === 'NotFoundError') {
+        resolve(false);
+      } else if (!err) {
+        resolve(true);
+      } else if (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+Users.prototype.hasUsername = function(username) {
   var self = this;
   
   if (!Users.isValidUsername(username)) {
-    throw 'Cannot check if user exists, given parameter "' + username + '" is not a valid username.';
+    throw 'Cannot check if username exists, given parameter "' + username + '" is not a valid username.';
   }
   
   return new Promise(function(resolve, reject) {
-    self._db.get(username, function(err, value) {
+    self._db.get('username:' + username, function(err, value) {
       if (err && err.type === 'NotFoundError') {
         resolve(false);
       } else if (!err) {
@@ -41,76 +58,127 @@ Users.prototype.createUser = function(username, passwordHash) {
     throw 'Cannot create user, given parameter "' + username + '" is not a valid username.';
   }
   
+  // Check if username already exists
+  return self.hasUsername(username).then(function(hasUsername) {
+    if (hasUsername) {
+      throw 'Cannot create user, a user with username "' + username + '" already exists.';
+    }
+  })
+  
+  // Create node entry
+  .then(function() {
+    var userNode = Node();
+    
+    return new Promise(function(resolve, reject) {
+      var user = {
+        usernode: Node.toHex(userNode),
+        username: username,
+        passwordHash: passwordHash
+      }
+      self._db.put('usernode:' + Node.toHex(userNode), JSON.stringify(user), function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(userNode);
+        }
+      });
+    });
+  })
+  
+  // Create username entry
+  .then(function(userNode) {
+    return new Promise(function(resolve, reject) {
+      self._db.put('username:' + username, Node.toHex(userNode), function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(userNode);
+        }
+      });
+    });
+  });
+}
+
+Users.prototype.getUserForNode = function(usernode) {
+  var self = this;
+  
   return new Promise(function(resolve, reject) {
-    self._db.get(username, function(err, value) {
-      if (value) {
-        reject('Cannot create user "' + username + '", user already exists.');
+    self._db.get('usernode:' + Node.toHex(usernode), function(err, value) {
+      if (err) {
+        if (err.type === 'NotFoundError') {
+          reject('Could not find user for node "' + Node.toHex(usernode) + '".');
+        } else {
+          reject('Could not get user for node "' + Node.toHex(usernode) + '": ' + err);
+        }
       } else {
-        self._db.put(username, passwordHash, function(err) {
-          if (!err) {
-            resolve();
-          } else {
-            reject(err);
-          }
-        });
+        var user = JSON.parse(value);
+        user.usernode = Node.fromHex(user.usernode);
+        resolve(user);
       }
     });
   });
 }
 
-Users.prototype.getUser = function(username) {
+Users.prototype.getUserForName = function(username) {
   var self = this;
   
   if (!Users.isValidUsername(username)) {
-    throw 'Cannot get user, given parameter "' + username + '" is not a valid username.';
+    throw 'Cannot get user for name, given parameter "' + username + '" is not a valid username.';
   }
   
   return new Promise(function(resolve, reject) {
-    self._db.get(username, function(err, value) {
+    self._db.get('username:' + username, function(err, value) {
       if (err) {
-        reject(err);
+        if (err.type === 'NotFoundError') {
+          reject('Could not find user for name "' + username + '".');
+        } else {
+          reject('Could not find user for name "' + username + '": ' + err);
+        }
       } else {
-        resolve({username: username, passwordHash: value});
+        resolve(Node.fromHex(value));
       }
     });
+  })
+  
+  .then(function(usernode) {
+    return self.getUserForNode(usernode);
   });
 }
 
 // TODO: Read certificate from file
 Users.tokenCertificate = '6914ecfd13cc057282142ee36e9f736a';
 
-Users.prototype.createUserToken = function(username) {
-  return jwt.sign({username: username}, Users.tokenCertificate);
+Users.prototype.createUserToken = function(usernode, username) {
+  return jwt.sign({usernode: Node.toHex(usernode), username: username}, Users.tokenCertificate);
 }
 
-Users.prototype.validateUserToken = function(username, token) {
+Users.prototype.validateUserToken = function(usernode, token) {
   return new Promise(function(resolve, reject) {
     jwt.verify(token, Users.tokenCertificate, function(error, decodedToken) {
       if (error) {
         resolve(false);
       } else {
-        resolve(decodedToken.username === username);
+        resolve(decodedToken.usernode === Node.toHex(usernode));
       }
     });
   });
 }
 
-Users.prototype.getUsernames = function() {
+Users.prototype.getUsernodes = function() {
   var self = this;
   return new Promise(function(resolve, reject) {
-    var usernames = [];
+    var usernodes = [];
     self._db.createReadStream()
       .on('data', function(data) {
-        if (!Users.isValidUsername(data.key)) {
-          reject('Could not get usernames, a key returned from the database is not a valid username: ' + data.key);
+        if (data.key.startsWith('usernode:')) {
+          usernodes.push(Node.fromHex(data.key.slice('usernode:'.length)));
         }
-        usernames.push(data.key);
       })
       .on('end', function() {
-        resolve(usernames);
+        resolve(usernodes);
       })
       .on('close', function() {
-        resolve(usernames);
+        resolve(usernodes);
       })
       .on('error', function(err) {
         reject(err);
@@ -118,27 +186,23 @@ Users.prototype.getUsernames = function() {
   });
 }
 
-Users.prototype.getUserWeb = function(username) {
+Users.prototype.getUserWeb = function(usernode) {
   var self = this;
   
-  if (!Users.isValidUsername(username)) {
-    throw 'Cannot get web for user, given parameter "' + username + '" is not a valid username.';
-  }
-  
   return new Promise(function(resolve, reject) {
-    var userWeb = self._userWebs.get(username);
+    var userWeb = self._userWebs.get(Node.toHex(usernode));
     if (userWeb) {
       resolve(userWeb);
     } else {
-      var userDir = Path.join(self._userDataPath, username);
+      var userDir = Path.join(self._userDataPath, Node.toHex(usernode));
       exec('mkdir -p ' + userDir, function(err, stdout, stderr) {
         if (err) {
-          reject('Could not get web for user "' + username + '", a directory could not be created at "' + userDir + '".');
+          reject('Could not get web for user "' + Node.toHex(usernode) + '", a directory could not be created at "' + userDir + '".');
         }
       }).on('exit', function() {
         var userWebDir = Path.join(userDir, 'db');
         var userWeb = WebDB(userWebDir);
-        self._userWebs.set(username, userWeb);
+        self._userWebs.set(Node.toHex(usernode), userWeb);
         resolve(userWeb);
       });
     }

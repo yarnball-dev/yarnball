@@ -39,7 +39,7 @@
           
           var userSession = JSON.parse(window.localStorage.userSession);
           
-          if (!('username' in userSession && 'token' in userSession)) {
+          if (!('usernode' in userSession && 'username' in userSession && 'token' in userSession)) {
             self.classList.add('has-session');
             self.classList.add('invalid-session');
             self.classList.remove('no-session');
@@ -54,7 +54,7 @@
           require(['socket.io-client/socket.io'], function(SocketIO) {
             var socketio = SocketIO();
             socketio.on('connect', function() {
-              socketio.emit('validateUserToken', {username: userSession.username, token: userSession.token}, function(result) {
+              socketio.emit('validateUserToken', {usernode: userSession.usernode, token: userSession.token}, function(result) {
                 if (typeof result === 'object' && 'error' in result) {
                   console.error(result);
                   return;

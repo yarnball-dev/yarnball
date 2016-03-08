@@ -1,10 +1,12 @@
 <link rel="import" href="/bower_components/polymer/polymer.html">
 
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+
 <link rel="import" href="/bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="/bower_components/iron-icons/social-icons.html">
 
 <link rel="import" href="/widgets/socketio/web-socketio.html">
 <link rel="import" href="/widgets/web-status/web-status.html">
-<link rel="import" href="/widgets/surface/surface.html">
 
 <link rel="import" href="user-styles.html">
 
@@ -13,13 +15,22 @@
   <style include="user-styles"></style>
 
   <template>
-    <yb-web-socketio id="web_socketio">
-      <yb-web-status></yb-web-status>
-      <yb-surface></yb-surface>
-    </yb-web-socketio>
+    <paper-button id="logoutButton" on-tap="logout">Log out</paper-button>
+    
     <div id="pageError">
       <iron-icon icon="icons:lock"></iron-icon>
       <span id="pageErrorMessage"></span>
+    </div>
+    
+    <div id="user">
+      <iron-icon id="userIcon" icon="social:person"></iron-icon>
+      <span id="username">{{username}}</span>
+    </div>
+    
+    <yb-web-status id="webStatus"></yb-web-status>
+    
+    <div id="surfaceList">
+      
     </div>
   </template>
   
@@ -27,6 +38,7 @@
     (function() {
       Polymer({
         is: 'yb-user',
+        behaviors: [Web_SocketIO_Behavior],
         properties: {
           username: {
             type: String,
@@ -34,20 +46,34 @@
         },
         setUserSession: function(userSession) {
           this.userSession = userSession;
+          this.set('username', userSession.username);
+        },
+        ready: function() {
+          this.onInit(function(web) {
+            require(['user-web'], function(UserWeb) {
+//               var userWeb = UserWeb(web
+            });
+          });
         },
         attached: function() {
           var self = this;
           
-          console.log('User page for "' + self.username + '" attempting to connect..');
+          if (!self.userSession) {
+            self.classList.add('page-error');
+            self.$.pageErrorMessage.textContent = 'Cannot open user page, no user session.';
+            return;
+          }
           
-          require(['socket.io-client/socket.io'], function(SocketIO) {
+          console.log('User page for "' + self.userSession.username + '" attempting to connect..');
+          
+          require(['socket.io-client/socket.io', 'core/node'], function(SocketIO, Node) {
             
             // TODO: If already connected, send authenticate message instead of specifying forceNew
-            var socketio = SocketIO('/' + self.username, {forceNew: true, query: self.userSession ? ("token=" + self.userSession.token) : null});
+            var socketio = SocketIO('/' + self.userSession.usernode, {forceNew: true, query: self.userSession ? ("token=" + self.userSession.token) : null});
             
             socketio.on('connect', function() {
-              console.log('User page for "' + self.username + '" connected to user namespace.');
-              self.$.web_socketio.setSocketio(socketio);
+              console.log('User page for "' + self.userSession.username + '" connected to user namespace.');
+              self.setSocketio(socketio);
             });
             
             socketio.on('error', function(error) {
@@ -59,6 +85,13 @@
               }
               self.$.pageErrorMessage.textContent = errorMessage;
             });
+          });
+        },
+        logout: function() {
+          window.localStorage.removeItem('userSession');
+          // TODO: Disconnect socket
+          require(['bower_components/page/page'], function(page) {
+            page('/login');
           });
         },
       });

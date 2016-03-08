@@ -32,8 +32,6 @@
     
     <link rel="import" href="/bower_components/iron-pages/iron-pages.html">
     
-    <link rel="import" href="/user-session-status/user-session-status.html">
-    
     <link rel="import" href="/landing-page/landing-page.html">
     <link rel="import" href="/scratchpad/scratchpad.html">
     <link rel="import" href="/login/login.html">
@@ -47,8 +45,6 @@
   <body unresolved>
   
     <span id="browser-sync-binding"></span>
-    
-    <yb-user-session-status id="userSessionStatus"></yb-user-session-status>
     
     <iron-pages id="main-pages" attr-for-selected="page-name">
       <yb-landing-page page-name="landing-page"></yb-landing-page>
@@ -68,10 +64,10 @@
           var userPage = userPages.get(username);
           if (!userPage) {
             userPage = document.createElement('yb-user');
-            userPage.set('username', username);
+//             userPage.set('username', username);
             if ('userSession' in window.localStorage) {
               var userSession = JSON.parse(window.localStorage.userSession);
-              if ('username' in userSession && 'token' in userSession) {
+              if ('usernode' in userSession && 'username' in userSession && 'token' in userSession) {
                 userPage.setUserSession(userSession);
               }
             }
@@ -111,8 +107,8 @@
               
               var socketioUsers = SocketIO();
               socketioUsers.on('connect', function() {
-                socketioUsers.emit('hasUser', pathBase, function(hasUser) {
-                  if (hasUser) {
+                socketioUsers.emit('hasUsername', pathBase, function(hasUsername) {
+                  if (hasUsername) {
                     goToUserPage(pathBase);
                   } else {
                     // TODO: Show 404

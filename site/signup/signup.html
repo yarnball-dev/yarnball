@@ -35,23 +35,23 @@
         checkUsernameTaken: function(username) {
           var self = this;
           if (self.users) {
-            self.users.emit('hasUser', username, function(result) {
+            self.users.emit('hasUsername', username, function(result) {
               
               if (typeof result === 'object' && 'error' in result) {
                 console.error(result.error);
                 return;
               }
               
-              var hasUser = result;
+              var hasUsername = result;
             
-              if (hasUser) {
+              if (hasUsername) {
                 self.takenUsernames.add(username);
               } else {
                 self.takenUsernames.delete(username);
               }
               
               if (self.usernameField.value === username) {
-                if (hasUser) {
+                if (hasUsername) {
                   self.usernameField.set('errorMessage', 'this name is taken');
                   self.usernameField.set('invalid', true);
                 } else {
@@ -97,23 +97,15 @@
                 console.error(result.error);
                 // TODO: Show error prompt
               } else {
-                var token = result;
                 window.localStorage.userSession = JSON.stringify({
+                  usernode: result.usernode,
                   username: username,
-                  token: token,
+                  token: result.token,
                 });
                 page('/' + username);
               }
             });
           });
-        },
-        createUser_result: function(params) {
-          if (params.authToken) {
-            window.localStorage.authToken = params.authToken;
-            require(['bower_components/page/page'], function(page) {
-              page('/' + params.username);
-            });
-          }
         },
       });
     })();

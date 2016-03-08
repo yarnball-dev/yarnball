@@ -52,10 +52,10 @@
                   self.$.errorPopup.set('text', result.error);
                   self.$.errorPopup.open();
                 } else {
-                  var token = result;
                   window.localStorage.userSession = JSON.stringify({
-                    username: username,
-                    token: token,
+                    usernode: result.usernode,
+                    username: result.username,
+                    token: result.token,
                   });
                   page('/' + username);
                 }

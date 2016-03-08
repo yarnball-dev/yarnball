@@ -1,47 +1,53 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<script>
+  Web_SocketIO_Behavior = {
+    created: function() {
+      this.isYbWeb = true;
+      this._socketio;
+      this._onInit = new Set();
+    },
+    setSocketio: function(socketio) {
+      var self = this;
+      self._socketio = socketio;
+      
+      require(['core/web-socketio'], function(WebSocketIO) {
+        self.ybWeb = WebSocketIO.Client(socketio);
+        
+        if (self.ybWeb.isSeeded()) {
+          self._notifyInit(self.ybWeb);
+        } else {
+          self.ybWeb.onSeed(function() {
+            self._notifyInit(self.ybWeb);
+          });
+        }
+      });
+    },
+    onInit: function(callback) {
+      if (this.ybWeb && this.ybWeb.isSeeded()) {
+        callback(this.ybWeb);
+      } else {
+        this._onInit.add(callback);
+      }
+    },
+    _notifyInit: function(web) {
+      this._onInit.forEach(function(callback) {
+        callback(web);
+      });
+      this._onInit.clear();
+    },
+  }
+</script>
+
 <dom-module id="yb-web-socketio">
 
   <script>
     (function() {
       'use strict';
-      
+      behaviors: [Web_SocketIO_Behavior],
       Polymer({
         is: 'yb-web-socketio',
-        created: function() {
-          this.isYbWeb = true;
-          this._socketio;
-          this._onInit = new Set();
-        },
-        setSocketio: function(socketio) {
-          var self = this;
-          self._socketio = socketio;
-          
-          require(['core/web-socketio'], function(WebSocketIO) {
-            self.ybWeb = WebSocketIO.Client(socketio);
-            
-            if (self.ybWeb.isSeeded()) {
-              self._notifyInit(self.ybWeb);
-            } else {
-              self.ybWeb.onSeed(function() {
-                self._notifyInit(self.ybWeb);
-              });
-            }
-          });
-        },
-        onInit: function(callback) {
-          if (this.ybWeb && this.ybWeb.isSeeded()) {
-            callback(this.ybWeb);
-          } else {
-            this._onInit.add(callback);
-          }
-        },
-        _notifyInit: function(web) {
-          this._onInit.forEach(function(callback) {
-            callback(web);
-          });
-          this._onInit.clear();
-        },
+
       });
     })();
   </script>
