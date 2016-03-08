@@ -83,6 +83,18 @@ Users.prototype.createUserToken = function(username) {
   return jwt.sign({username: username}, Users.tokenCertificate);
 }
 
+Users.prototype.validateUserToken = function(username, token) {
+  return new Promise(function(resolve, reject) {
+    jwt.verify(token, Users.tokenCertificate, function(error, decodedToken) {
+      if (error) {
+        resolve(false);
+      } else {
+        resolve(decodedToken.username === username);
+      }
+    });
+  });
+}
+
 Users.prototype.getUsernames = function() {
   var self = this;
   return new Promise(function(resolve, reject) {

@@ -14,9 +14,6 @@
 
   <template>
     
-    <paper-button class="top-panel-button" id="signup-button" on-tap="signup">Sign up</paper-button>
-    <paper-button class="top-panel-button" id="login-button" on-tap="login">Log in</paper-button>
-
     <section class="title">
       <div class="title">yarnball</div>
       <div class="beta-label">BETA</div>
@@ -152,16 +149,6 @@
       Polymer({
         is: 'yb-landing-page',
         behaviors: [WebBehavior],
-        signup: function() {
-          require(['bower_components/page/page'], function(page) {
-            page('/signup');
-          });
-        },
-        login: function() {
-          require(['bower_components/page/page'], function(page) {
-            page('/login');
-          });
-        },
       });
     })();
   </script>

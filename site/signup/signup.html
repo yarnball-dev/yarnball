@@ -30,31 +30,36 @@
           
           require(['socket.io-client/socket.io'], function(SocketIO) {
             self.users = SocketIO();
-            self.users.on('hasUser_result', self.hasUser_result.bind(self));
-            self.users.on('createUser_result', self.createUser_result.bind(self));
           });
         },
         checkUsernameTaken: function(username) {
           var self = this;
           if (self.users) {
-            self.users.emit('hasUser', username);
-          }
-        },
-        hasUser_result: function(username, hasUser) {
-          if (hasUser) {
-            this.takenUsernames.add(username);
-          } else {
-            this.takenUsernames.delete(username);
-          }
-          
-          if (this.usernameField.value === username) {
-            if (hasUser) {
-              this.usernameField.set('errorMessage', 'this name is taken');
-              this.usernameField.set('invalid', true);
-            } else {
-              this.usernameField.set('errorMessage', '');
-              this.usernameField.set('invalid', false);
-            }
+            self.users.emit('hasUser', username, function(result) {
+              
+              if (typeof result === 'object' && 'error' in result) {
+                console.error(result.error);
+                return;
+              }
+              
+              var hasUser = result;
+            
+              if (hasUser) {
+                self.takenUsernames.add(username);
+              } else {
+                self.takenUsernames.delete(username);
+              }
+              
+              if (self.usernameField.value === username) {
+                if (hasUser) {
+                  self.usernameField.set('errorMessage', 'this name is taken');
+                  self.usernameField.set('invalid', true);
+                } else {
+                  self.usernameField.set('errorMessage', '');
+                  self.usernameField.set('invalid', false);
+                }
+              }
+            });
           }
         },
         usernameChanged: function(event) {
@@ -92,8 +97,11 @@
                 console.error(result.error);
                 // TODO: Show error prompt
               } else {
-                var authToken = result;
-                window.localStorage.authToken = authToken;
+                var token = result;
+                window.localStorage.userSession = JSON.stringify({
+                  username: username,
+                  token: token,
+                });
                 page('/' + username);
               }
             });

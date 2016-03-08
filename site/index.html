@@ -32,6 +32,8 @@
     
     <link rel="import" href="/bower_components/iron-pages/iron-pages.html">
     
+    <link rel="import" href="/user-session-status/user-session-status.html">
+    
     <link rel="import" href="/landing-page/landing-page.html">
     <link rel="import" href="/scratchpad/scratchpad.html">
     <link rel="import" href="/login/login.html">
@@ -46,34 +48,54 @@
   
     <span id="browser-sync-binding"></span>
     
-    <iron-pages id="main-pages">
-      <yb-landing-page></yb-landing-page>
-      <yb-scratchpad></yb-scratchpad>
-      <yb-login></yb-login>
-      <yb-signup></yb-signup>
+    <yb-user-session-status id="userSessionStatus"></yb-user-session-status>
+    
+    <iron-pages id="main-pages" attr-for-selected="page-name">
+      <yb-landing-page page-name="landing-page"></yb-landing-page>
+      <yb-scratchpad   page-name="scratchpad">  </yb-scratchpad>
+      <yb-login        page-name="login">       </yb-login>
+      <yb-signup       page-name="signup">      </yb-signup>
     </iron-pages>
     
     <script>
       document.addEventListener('WebComponentsReady', function() {
+        
+        var mainPages = document.getElementById('main-pages');
+      
+        var userPages = new Map();
+        
+        function goToUserPage(username) {
+          var userPage = userPages.get(username);
+          if (!userPage) {
+            userPage = document.createElement('yb-user');
+            userPage.set('username', username);
+            if ('userSession' in window.localStorage) {
+              var userSession = JSON.parse(window.localStorage.userSession);
+              if ('username' in userSession && 'token' in userSession) {
+                userPage.setUserSession(userSession);
+              }
+            }
+            userPage.setAttribute('page-name', username);
+            Polymer.dom(mainPages).appendChild(userPage);
+            userPages.set(username, userPage);
+          }
+          
+          mainPages.select(username);
+        }
       
         require(['bower_components/page/page', 'socket.io-client/socket.io'], function(page, SocketIO) {
         
-          var mainPages = document.getElementById('main-pages');
-          
           page('/', function(context) {
-            mainPages.select(0);
+            mainPages.select('landing-page');
           });
           page('/scratchpad', function(context) {
-            mainPages.select(1);
+            mainPages.select('scratchpad');
           });
           page('/login', function(context) {
-            mainPages.select(2);
+            mainPages.select('login');
           });
           page('/signup', function(context) {
-            mainPages.select(3);
-          });
-          page('/user', function(context) {
-            mainPages.select(4);
+            mainPages.select('signup');
           });
           page('*', function(context) {
           
@@ -89,13 +111,11 @@
               
               var socketioUsers = SocketIO();
               socketioUsers.on('connect', function() {
-                socketioUsers.emit('hasUser', pathBase);
-                socketioUsers.on('hasUser_result', function(username, hasUser) {
-                  if (username === pathBase && hasUser) {
-                    var userPage = document.createElement('yb-user');
-                    userPage.set('username', username);
-                    Polymer.dom(mainPages).appendChild(userPage);
-                    mainPages.select(4);
+                socketioUsers.emit('hasUser', pathBase, function(hasUser) {
+                  if (hasUser) {
+                    goToUserPage(pathBase);
+                  } else {
+                    // TODO: Show 404
                   }
                 });
               });

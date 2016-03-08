@@ -1,5 +1,7 @@
 <link rel="import" href="/bower_components/polymer/polymer.html">
 
+<link rel="import" href="/bower_components/iron-icons/iron-icons.html">
+
 <link rel="import" href="/widgets/socketio/web-socketio.html">
 <link rel="import" href="/widgets/web-status/web-status.html">
 <link rel="import" href="/widgets/surface/surface.html">
@@ -11,11 +13,14 @@
   <style include="user-styles"></style>
 
   <template>
-    USER
     <yb-web-socketio id="web_socketio">
       <yb-web-status></yb-web-status>
       <yb-surface></yb-surface>
     </yb-web-socketio>
+    <div id="pageError">
+      <iron-icon icon="icons:lock"></iron-icon>
+      <span id="pageErrorMessage"></span>
+    </div>
   </template>
   
   <script>
@@ -25,29 +30,34 @@
         properties: {
           username: {
             type: String,
-          },
+          }
+        },
+        setUserSession: function(userSession) {
+          this.userSession = userSession;
         },
         attached: function() {
           var self = this;
-          self.web_socketio = self.$.web_socketio;
+          
+          console.log('User page for "' + self.username + '" attempting to connect..');
+          
           require(['socket.io-client/socket.io'], function(SocketIO) {
-            console.log('User page for "' + self.username + '" attempting to connect..');
-            var authToken = window.localStorage.authToken;
-            if (!authToken) {
-              console.error('User page cannot connect to user namespace, no auth token found.');
-              return;
-            }
             
             // TODO: If already connected, send authenticate message instead of specifying forceNew
-            var socketio = SocketIO('/' + self.username, {forceNew: true, query: "token=" + authToken});
+            var socketio = SocketIO('/' + self.username, {forceNew: true, query: self.userSession ? ("token=" + self.userSession.token) : null});
             
             socketio.on('connect', function() {
               console.log('User page for "' + self.username + '" connected to user namespace.');
-              self.web_socketio.setSocketio(socketio);
+              self.$.web_socketio.setSocketio(socketio);
             });
             
             socketio.on('error', function(error) {
               console.error(error);
+              self.classList.add('page-error');
+              var errorMessage = error;
+              if (typeof error === 'object' && 'message' in error) {
+                errorMessage = error.message;
+              }
+              self.$.pageErrorMessage.textContent = errorMessage;
             });
           });
         },

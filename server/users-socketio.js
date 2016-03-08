@@ -4,64 +4,83 @@ var SocketioJwt  = require("socketio-jwt");
 var UnauthorizedError = require("socketio-jwt/lib/UnauthorizedError");
 
 function Users_SocketIO(users, socketio) {
-  var self = this;
-  
-  self._users    = users;
-  self._socketio = socketio;
-  self._userNamespaces = new Map();
+  this._users    = users;
+  this._socketio = socketio;
+  this._userNamespaces = new Map();
   socketio.on('connection', this._onConnection.bind(this));
 }
 
 Users_SocketIO.prototype.setup = function() {
   var self = this;
-  return self._users.getUsernames().then(function(usernames) {
+  
+  return self._users.getUsernames()
+  
+  .then(function(usernames) {
     return Promise.all(usernames.map(function(username) {
       return self._createUserNamespace(username);
-    })).then(function(users) {
-      users.forEach(function(user) {
-        self._userNamespaces.set(user.username, user.namespace);
-      });
-      return usernames;
+    }));
+  })
+  
+  .then(function(users) {
+    users.forEach(function(user) {
+      self._userNamespaces.set(user.username, user.namespace);
     });
   });
 }
 
 Users_SocketIO.prototype._onConnection = function(connection) {
+  connection.on('hasUser',           this._hasUser.bind(this));
+  connection.on('createUser',        this._createUser.bind(this));
+  connection.on('login',             this._login.bind(this));
+  connection.on('validateUserToken', this._validateUserToken.bind(this));
+}
+
+Users_SocketIO.prototype._hasUser = function(username, callback) {
+  this._users.hasUser(username)
+  
+  .then(function(hasUser) {
+    callback(hasUser);
+  })
+  
+  .catch(function(error) {
+    callback({error: error});
+  });
+}
+
+Users_SocketIO.prototype._createUser = function(params, callback) {
   var self = this;
   
-  connection.on('hasUser', function(username) {
-    self._users.hasUser(username).then(function(hasUser) {
-      connection.emit('hasUser_result', username, hasUser);
-    });
-  });
+  self._users.createUser(params.username, params.passwordHash)
   
-  connection.on('createUser', function(params, callback) {
-    self._users.createUser(params.username, params.passwordHash).then(function() {
-        self._createUserNamespace(params.username).then(function(userNamespace) {
-          var token = self._users.createUserToken(params.username);
-          callback(token);
-        });
-      },
-      function(err) {
-        connection.emit('createUser_result', {error: err});
-      }
-    );
-  });
+  .then(function() {
+    return self._createUserNamespace(params.username);
+  })
   
-  connection.on('login', function(params, callback) {
-    self._users.getUser(params.username).then(
-      function(user) {
-        if (params.passwordHash === user.passwordHash) {
-          var token = self._users.createUserToken(user.username);
-          callback(token);
-        } else {
-          callback({error: 'Invalid username/password.'});
-        }
-      },
-      function(error) {
-        callback({error: 'Invalid username/password.'});
-      }
-    );
+  .then(function(userNamespace) {
+    var token = self._users.createUserToken(params.username);
+    callback(token);
+  })
+  
+  .catch(function(error) {
+    callback({error: error});
+  });
+}
+
+Users_SocketIO.prototype._login = function(params, callback) {
+  var self = this;
+  
+  self._users.getUser(params.username)
+  
+  .then(function(user) {
+    if (params.passwordHash !== user.passwordHash) {
+      throw 'Invalid username/password.';
+    }
+    
+    callback(self._users.createUserToken(user.username));
+  })
+  
+  .catch(function(error) {
+    callback({error: 'Invalid username/password.'});
   });
 }
 
@@ -98,6 +117,18 @@ Users_SocketIO.prototype._createUserNamespace = function(username) {
     });
     
     return {username: username, namespace: namespace};
+  });
+}
+
+Users_SocketIO.prototype._validateUserToken = function(params, callback) {
+  this._users.validateUserToken(params.username, params.token)
+  
+  .then(function(isValid) {
+    callback(isValid);
+  })
+  
+  .catch(function(error) {
+    callback({error: error});
   });
 }
 

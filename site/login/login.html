@@ -52,8 +52,11 @@
                   self.$.errorPopup.set('text', result.error);
                   self.$.errorPopup.open();
                 } else {
-                  var authToken = result;
-                  window.localStorage.authToken = authToken;
+                  var token = result;
+                  window.localStorage.userSession = JSON.stringify({
+                    username: username,
+                    token: token,
+                  });
                   page('/' + username);
                 }
               });
