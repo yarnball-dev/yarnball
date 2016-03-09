@@ -6,9 +6,17 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
   
   function SurfaceWeb(web, base) {
     this._web  = web;
-    this._base = base;
+    
+    if (!base) {
+      base = Node();
+      web.setLinks([{from: base, via: Is, to: Surface}], []);
+      this._base = base;
+    } else {
+      this._base = base;
+    }
   }
   
+  var Surface    = Node.fromHex('d78f5b59815a669cb45c022de57d2980');
   var Is         = Node.fromHex('52f9cf0e223d559931856acc98400f21');
   var Widget     = Node.fromHex('31e32c8610ff671d93a4d664d26b21f8');
   var NodeWidget = Node.fromHex('9c9eebc2fa256211d901aef59489923e');
@@ -32,6 +40,12 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
   }
   
   SurfaceWeb.prototype.addWidget = function(widget) {
+    
+    if (widget.widgetType !== 'yb-node' && widget.widgetType !== 'yb-connector') {
+//       throw 'Cannot add widget to surface-web, unknown widget type: ' + widget.widgetType;
+      return;
+    }
+    
     var batch = Batch(this._web);
     
     var WidgetProperties = Map_(batch, widget.widgetId);
@@ -70,8 +84,6 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
       WidgetProperties.set(From, widget.fromWidget.widgetId);
       WidgetProperties.set(Via,  widget.viaWidget.widgetId);
       WidgetProperties.set(To,   widget.toWidget.widgetId);
-    } else {
-      throw 'Cannot add widget to surface-web, unknown widget type: ' + widget.widgetType;
     }
     
     batch.apply();

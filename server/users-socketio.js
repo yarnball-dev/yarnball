@@ -26,11 +26,12 @@ Users_SocketIO.prototype.setup = function() {
 }
 
 Users_SocketIO.prototype._onConnection = function(connection) {
-  connection.on('hasUsernode',       this._hasUsernode.bind(this));
-  connection.on('hasUsername',       this._hasUsername.bind(this));
-  connection.on('createUser',        this._createUser.bind(this));
-  connection.on('login',             this._login.bind(this));
-  connection.on('validateUserToken', this._validateUserToken.bind(this));
+  connection.on('hasUsernode',        this._hasUsernode.bind(this));
+  connection.on('hasUsername',        this._hasUsername.bind(this));
+  connection.on('getUsernodeForName', this._getUsernodeForName.bind(this));
+  connection.on('createUser',         this._createUser.bind(this));
+  connection.on('login',              this._login.bind(this));
+  connection.on('validateUserToken',  this._validateUserToken.bind(this));
 }
 
 Users_SocketIO.prototype._hasUsernode = function(usernode, callback) {
@@ -50,6 +51,18 @@ Users_SocketIO.prototype._hasUsername = function(username, callback) {
   
   .then(function(hasUsername) {
     callback(hasUsername);
+  })
+  
+  .catch(function(error) {
+    callback({error: error});
+  });
+}
+
+Users_SocketIO.prototype._getUsernodeForName = function(username, callback) {
+  this._users.getUsernodeForName(username)
+  
+  .then(function(usernode) {
+    callback(Node.toHex(usernode));
   })
   
   .catch(function(error) {

@@ -37,6 +37,7 @@
     <link rel="import" href="/login/login.html">
     <link rel="import" href="/signup/signup.html">
     <link rel="import" href="/user/user.html">
+    <link rel="import" href="/user-surface/user-surface.html">
     
     <link rel="import" href="/widgets/socketio/socketio-status.html">
     
@@ -58,25 +59,45 @@
         
         var mainPages = document.getElementById('main-pages');
       
-        var userPages = new Map();
+        var userPages        = new Map();
+        var userSurfacePages = new Map();
         
-        function goToUserPage(username) {
-          var userPage = userPages.get(username);
+        function goToUserPage(usernode) {
+          var userPage = userPages.get(usernode);
           if (!userPage) {
             userPage = document.createElement('yb-user');
-//             userPage.set('username', username);
+            userPage._setUsernode(usernode);
             if ('userSession' in window.localStorage) {
               var userSession = JSON.parse(window.localStorage.userSession);
               if ('usernode' in userSession && 'username' in userSession && 'token' in userSession) {
                 userPage.setUserSession(userSession);
               }
             }
-            userPage.setAttribute('page-name', username);
+            userPage.setAttribute('page-name', usernode);
             Polymer.dom(mainPages).appendChild(userPage);
-            userPages.set(username, userPage);
+            userPages.set(usernode, userPage);
           }
           
-          mainPages.select(username);
+          mainPages.select(usernode);
+        }
+        
+        function goToUserSurfacePage(usernode) {
+          var userSurfacePage = userSurfacePages.get(usernode);
+          if (!userSurfacePage) {
+            userSurfacePage = document.createElement('yb-user-surface');
+            userSurfacePage._setUsernode(usernode);
+            if ('userSession' in window.localStorage) {
+              var userSession = JSON.parse(window.localStorage.userSession);
+              if ('usernode' in userSession && 'username' in userSession && 'token' in userSession) {
+                userSurfacePage.setUserSession(userSession);
+              }
+            }
+            userSurfacePage.setAttribute('page-name', usernode + '/surface');
+            Polymer.dom(mainPages).appendChild(userSurfacePage);
+            userSurfacePages.set(usernode, userSurfacePage);
+          }
+          
+          mainPages.select(usernode + '/surface');
         }
       
         require(['bower_components/page/page', 'socket.io-client/socket.io'], function(page, SocketIO) {
@@ -107,9 +128,13 @@
               
               var socketioUsers = SocketIO();
               socketioUsers.on('connect', function() {
-                socketioUsers.emit('hasUsername', pathBase, function(hasUsername) {
-                  if (hasUsername) {
-                    goToUserPage(pathBase);
+                socketioUsers.emit('getUsernodeForName', pathBase, function(usernode) {
+                  if (usernode) {
+                    if (pathElements.length === 1) {
+                      goToUserPage(usernode);
+                    } else if (pathElements.length === 2 && pathElements[1] === 'surface') {
+                      goToUserSurfacePage(usernode);
+                    }
                   } else {
                     // TODO: Show 404
                   }

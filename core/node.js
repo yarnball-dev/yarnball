@@ -88,6 +88,18 @@ define(function() {
     return array;
   }
   
+  Node.isHex = function(object) {
+    if (typeof object !== 'string') {
+      return false;
+    }
+    
+    if (object.length != 16*2) {
+      return false;
+    }
+    
+    return /^[0-9A-Fa-f]+$/.test(object);
+  }
+  
   Node.serialize = function(nodes) {
     nodes = Array.from(nodes);
     if (nodes.some(function(node) { return !Node.isNode(node); })) {

@@ -46,7 +46,7 @@
         throw 'Could not find parent web element for widget.';
       }
       
-      parentWebElement.onInit(function(web) {
+      parentWebElement.onInitWeb(function(web) {
         self.web = web;
         if (self.onWebInit) {
           self.onWebInit(web);

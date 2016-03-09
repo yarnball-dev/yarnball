@@ -30,7 +30,7 @@
           var self = this;
           var parentWebElement = self.getParentWebElement();
           if (parentWebElement) {
-            parentWebElement.onInit(function(web) {
+            parentWebElement.onInitWeb(function(web) {
               self.nodesCount.textContent = web.getNodeCount();
               self.linksCount.textContent = web.getLinkCount();
               web.onLinks(function() {

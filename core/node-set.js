@@ -85,6 +85,14 @@ define(['./node'], function(Node) {
     }
   }
   
+  NodeSet.prototype.filter = function(callback) {
+    return Array.from(this._set).filter(function(key) {
+      return callback(Node.fromMapKey(key));
+    }).map(function(key) {
+      return Node.fromMapKey(key);
+    });
+  }
+  
   return function(nodes) {
     return new NodeSet(nodes);
   }

@@ -1,9 +1,10 @@
-var Level = require('level');
-var exec  = require('child_process').exec;
-var Path  = require('path');
-var Node  = require('core/node');
-var WebDB = require('core/web_db');
-var jwt   = require('jsonwebtoken');
+var Level   = require('level');
+var exec    = require('child_process').exec;
+var Path    = require('path');
+var Node    = require('core/node');
+var WebDB   = require('core/web_db');
+var WebFile = require('core/web_file');
+var jwt     = require('jsonwebtoken');
 
 function Users(databasePath, userDataPath) {
   this._db = Level(databasePath);
@@ -44,6 +45,26 @@ Users.prototype.hasUsername = function(username) {
         resolve(false);
       } else if (!err) {
         resolve(true);
+      } else if (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+Users.prototype.getUsernodeForName = function(username) {
+  var self = this;
+  
+  if (!Users.isValidUsername(username)) {
+    throw 'Cannot get usernode for name, given parameter "' + username + '" is not a valid username.';
+  }
+  
+  return new Promise(function(resolve, reject) {
+    self._db.get('username:' + username, function(err, value) {
+      if (err && err.type === 'NotFoundError') {
+        resolve(null);
+      } else if (!err) {
+        resolve(Node.fromHex(value));
       } else if (err) {
         reject(err);
       }
@@ -202,8 +223,11 @@ Users.prototype.getUserWeb = function(usernode) {
       }).on('exit', function() {
         var userWebDir = Path.join(userDir, 'db');
         var userWeb = WebDB(userWebDir);
-        self._userWebs.set(Node.toHex(usernode), userWeb);
-        resolve(userWeb);
+        var defaultWeb = WebFile('./node_names.txt', './links.txt');
+        userWeb.merge(defaultWeb, function() {
+          self._userWebs.set(Node.toHex(usernode), userWeb);
+          resolve(userWeb);
+        });
       });
     }
   });

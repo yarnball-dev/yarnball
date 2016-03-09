@@ -7,20 +7,99 @@
 
 <link rel="import" href="/widgets/socketio/web-socketio.html">
 <link rel="import" href="/widgets/web-status/web-status.html">
+<link rel="import" href="/widgets/error-overlay/error-overlay.html">
+<link rel="import" href="/widgets/error-overlay/error-overlay-styles.html">
 
 <link rel="import" href="user-styles.html">
+
+<script>
+  UserBehavior = {
+    properties: {
+      usernode: {
+        type: String,
+        readOnly: true,
+      },
+    },
+    setUserSession: function(userSession) {
+      this._userSession = userSession;
+    },
+    created: function() {
+      this._onInitUser = new Set();
+    },
+    initUser: function() {
+      var self = this;
+      
+      try {
+      
+        if (self._initUserStarted) {
+          throw 'initUser() already called for user.';
+        }
+        self._initUserStarted = true;
+        
+        if (!self.usernode) {
+          throw 'Cannot initialize for user, usernode not specified.';
+        }
+//         if (!Node.isHex(self.usernode)) {
+//           throw 'Cannot initialize for user, given usernode attribute is not a valid hex node.';
+//         }
+        
+        require(['socket.io-client/socket.io'], function(SocketIO) {
+          var socketioOptions = {};
+          if (self._userSession) {
+            socketioOptions = {
+              forceNew: true,
+              query: 'token=' + self._userSession.token,
+            }
+          }
+          
+          var socketio = SocketIO('/' + self.usernode, socketioOptions);
+          
+          socketio.on('connect', function() {
+            self.onInitWeb(function(web) {
+              self._notifyInitUser(web);
+            });
+            self.setSocketio(socketio);
+          });
+          
+          socketio.on('error', function(error) {
+            console.error(error);
+            var errorMessage = error;
+            if (typeof error === 'object' && 'message' in error) {
+              errorMessage = error.message;
+            }
+            self.showErrorOverlay(errorMessage);
+          });
+        });
+        
+      } catch(error) {
+        self.showErrorOverlay(error);
+        throw error;
+      }
+    },
+    onInitUser: function(callback) {
+      this._onInitUser.add(callback);
+    },
+    _notifyInitUser: function(web) {
+      Array.from(this._onInitUser).forEach(function(callback) {
+        callback(web);
+      });
+      this._onInitUser.clear();
+    },
+    attached: function() {
+      if (!this._initUserStarted) {
+        this.initUser();
+      }
+    },
+  }
+</script>
 
 <dom-module id="yb-user">
 
   <style include="user-styles"></style>
+  <style include="error-overlay-styles"></style>
 
   <template>
     <paper-button id="logoutButton" on-tap="logout">Log out</paper-button>
-    
-    <div id="pageError">
-      <iron-icon icon="icons:lock"></iron-icon>
-      <span id="pageErrorMessage"></span>
-    </div>
     
     <div id="user">
       <iron-icon id="userIcon" icon="social:person"></iron-icon>
@@ -28,6 +107,11 @@
     </div>
     
     <yb-web-status id="webStatus"></yb-web-status>
+    
+    <div id="surfaces">
+    </div>
+    
+    <paper-button id="createSurfaceButton" on-tap="createSurface">create surface</paper-button>
     
     <div id="surfaceList">
       
@@ -38,52 +122,19 @@
     (function() {
       Polymer({
         is: 'yb-user',
-        behaviors: [Web_SocketIO_Behavior],
+        behaviors: [ErrorOverlay, Web_SocketIO_Behavior, UserBehavior],
         properties: {
           username: {
             type: String,
           }
         },
-        setUserSession: function(userSession) {
-          this.userSession = userSession;
-          this.set('username', userSession.username);
-        },
         ready: function() {
-          this.onInit(function(web) {
-            require(['user-web'], function(UserWeb) {
-//               var userWeb = UserWeb(web
-            });
-          });
-        },
-        attached: function() {
           var self = this;
-          
-          if (!self.userSession) {
-            self.classList.add('page-error');
-            self.$.pageErrorMessage.textContent = 'Cannot open user page, no user session.';
-            return;
-          }
-          
-          console.log('User page for "' + self.userSession.username + '" attempting to connect..');
-          
-          require(['socket.io-client/socket.io', 'core/node'], function(SocketIO, Node) {
-            
-            // TODO: If already connected, send authenticate message instead of specifying forceNew
-            var socketio = SocketIO('/' + self.userSession.usernode, {forceNew: true, query: self.userSession ? ("token=" + self.userSession.token) : null});
-            
-            socketio.on('connect', function() {
-              console.log('User page for "' + self.userSession.username + '" connected to user namespace.');
-              self.setSocketio(socketio);
-            });
-            
-            socketio.on('error', function(error) {
-              console.error(error);
-              self.classList.add('page-error');
-              var errorMessage = error;
-              if (typeof error === 'object' && 'message' in error) {
-                errorMessage = error.message;
-              }
-              self.$.pageErrorMessage.textContent = errorMessage;
+          self.onInitUser(function(web) {
+            require(['user-web', 'core/node'], function(UserWeb, Node) {
+              var userWeb = UserWeb(web, Node.fromHex(self._userSession.usernode));
+              self.onSurfaces(userWeb.getSurfaces(), []);
+              userWeb.onSurfaces(self.onSurfaces.bind(self));
             });
           });
         },
@@ -92,6 +143,41 @@
           // TODO: Disconnect socket
           require(['bower_components/page/page'], function(page) {
             page('/login');
+          });
+        },
+        createSurface: function() {
+          var self = this;
+          if (self.ybWeb) {
+            require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {
+              var batch = Batch(self.ybWeb);
+              var surface = SurfaceWeb(batch);
+              var userWeb = UserWeb(batch, Node.fromHex(self._userSession.usernode));
+              userWeb.addSurface(surface._base);
+              batch.apply();
+            });
+          }
+        },
+        onSurfaces: function(added, removed) {
+          var self = this;
+          
+          require(['core/node'], function(Node) {
+          
+            added.forEach(function(surface) {
+              var surfaceElement = document.createElement('div');
+              surfaceElement.classList.add('yb-user');
+              surfaceElement.classList.add('surface-status');
+              surfaceElement.textContent = 'surface';
+              surfaceElement.setAttribute('node', Node.toHex(surface));
+              self.$.surfaces.appendChild(surfaceElement);
+            });
+            
+            removed.forEach(function(surface) {
+              var surfaceElement = self.$.surfaces.querySelector("div[node='" + Node.toHex(surface) + "']");
+              if (surfaceElement) {
+                self.$.surfaces.removeChild(surfaceElement);
+              }
+            });
+            
           });
         },
       });

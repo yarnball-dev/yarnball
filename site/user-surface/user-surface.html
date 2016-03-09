@@ -1,0 +1,41 @@
+<link rel="import" href="/bower_components/polymer/polymer.html">
+
+<link rel="import" href="user-surface-styles.html">
+
+<link rel="import" href="/user/user.html">
+
+<link rel="import" href="/widgets/socketio/web-socketio.html">
+<link rel="import" href="/widgets/surface/surface.html">
+
+<link rel="import" href="/widgets/error-overlay/error-overlay.html">
+<link rel="import" href="/widgets/error-overlay/error-overlay-styles.html">
+
+<dom-module id="yb-user-surface">
+
+  <style include="user-surface-styles"></style>
+  <style include="error-overlay-styles"></style>
+  
+  <template>
+    <yb-web-status id="webStatus"></yb-web-status>
+    <yb-surface id="surface"></yb-surface>
+  </template>
+  
+  <script>
+    (function() {
+      Polymer({
+        is: 'yb-user-surface',
+        behaviors: [ErrorOverlay, Web_SocketIO_Behavior, UserBehavior],
+        properties: {
+          usernode: {
+            type: String,
+            readOnly: true,
+          },
+        },
+        setUserSession: function(userSession) {
+          this._userSession = userSession;
+        },
+      });
+    })();
+  </script>
+
+</dom-module>

@@ -5,7 +5,7 @@
     created: function() {
       this.isYbWeb = true;
       this._socketio;
-      this._onInit = new Set();
+      this._onInitWeb = new Set();
     },
     setSocketio: function(socketio) {
       var self = this;
@@ -15,26 +15,26 @@
         self.ybWeb = WebSocketIO.Client(socketio);
         
         if (self.ybWeb.isSeeded()) {
-          self._notifyInit(self.ybWeb);
+          self._notifyInitWeb(self.ybWeb);
         } else {
           self.ybWeb.onSeed(function() {
-            self._notifyInit(self.ybWeb);
+            self._notifyInitWeb(self.ybWeb);
           });
         }
       });
     },
-    onInit: function(callback) {
+    onInitWeb: function(callback) {
       if (this.ybWeb && this.ybWeb.isSeeded()) {
         callback(this.ybWeb);
       } else {
-        this._onInit.add(callback);
+        this._onInitWeb.add(callback);
       }
     },
-    _notifyInit: function(web) {
-      this._onInit.forEach(function(callback) {
+    _notifyInitWeb: function(web) {
+      this._onInitWeb.forEach(function(callback) {
         callback(web);
       });
-      this._onInit.clear();
+      this._onInitWeb.clear();
     },
   }
 </script>
