@@ -101,21 +101,30 @@
   <template>
     <paper-button id="logoutButton" on-tap="logout">Log out</paper-button>
     
-    <div id="user">
-      <iron-icon id="userIcon" icon="social:person"></iron-icon>
-      <span id="username">{{username}}</span>
-    </div>
+    <div id="container">
     
-    <yb-web-status id="webStatus"></yb-web-status>
-    
-    <div id="surfaces">
-    </div>
-    
-    <paper-button id="createSurfaceButton" on-tap="createSurface">create surface</paper-button>
-    
-    <div id="surfaceList">
+      <div id="user">
+        <iron-icon id="userIcon" icon="social:person"></iron-icon>
+        <span id="username">{{username}}</span>
+      </div>
+      
+      <yb-web-status id="webStatus"></yb-web-status>
+      
+      <div id="surfaces">
+        <template is="dom-repeat" items="{{_surfaces}}">
+          <div node$="{{item.node}}" class="surface-list-entry">
+            <span class="surface-status">surface</span>
+            <paper-button on-tap="_deleteSurface" class="surface-list-delete-button">
+              <iron-icon icon="icons:delete"></iron-icons>
+            </paper-button>
+          </div>
+        </template>
+      </div>
+      
+      <paper-button id="createSurfaceButton" on-tap="_createSurface">create surface</paper-button>
       
     </div>
+    
   </template>
   
   <script>
@@ -123,18 +132,16 @@
       Polymer({
         is: 'yb-user',
         behaviors: [ErrorOverlay, Web_SocketIO_Behavior, UserBehavior],
-        properties: {
-          username: {
-            type: String,
-          }
-        },
         ready: function() {
           var self = this;
+          self._surfaces = [];
           self.onInitUser(function(web) {
+            self.set('username', self._userSession.username);
             require(['user-web', 'core/node'], function(UserWeb, Node) {
               var userWeb = UserWeb(web, Node.fromHex(self._userSession.usernode));
-              self.onSurfaces(userWeb.getSurfaces(), []);
-              userWeb.onSurfaces(self.onSurfaces.bind(self));
+              self._onSurfaces(userWeb.getSurfaces(), []);
+              userWeb.onSurfaces(self._onSurfaces.bind(self));
+              self._userWeb = userWeb;
             });
           });
         },
@@ -145,7 +152,22 @@
             page('/login');
           });
         },
-        createSurface: function() {
+        _onSurfaces: function(added, removed) {
+          var self = this;
+          
+          require(['core/node', 'core/node-set'], function(Node, NodeSet) {
+          
+            added.forEach(function(surface) {
+              self.push('_surfaces', {node: Node.toHex(surface)});
+            });
+            
+            removed = NodeSet(removed);
+            self.set('_surfaces', self._surfaces.filter(function(surface) {
+              return !removed.has(Node.fromHex(surface.node));
+            }));
+          });
+        },
+        _createSurface: function() {
           var self = this;
           if (self.ybWeb) {
             require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {
@@ -157,27 +179,16 @@
             });
           }
         },
-        onSurfaces: function(added, removed) {
+        _deleteSurface: function(event, detail, sender) {
           var self = this;
-          
-          require(['core/node'], function(Node) {
-          
-            added.forEach(function(surface) {
-              var surfaceElement = document.createElement('div');
-              surfaceElement.classList.add('yb-user');
-              surfaceElement.classList.add('surface-status');
-              surfaceElement.textContent = 'surface';
-              surfaceElement.setAttribute('node', Node.toHex(surface));
-              self.$.surfaces.appendChild(surfaceElement);
-            });
-            
-            removed.forEach(function(surface) {
-              var surfaceElement = self.$.surfaces.querySelector("div[node='" + Node.toHex(surface) + "']");
-              if (surfaceElement) {
-                self.$.surfaces.removeChild(surfaceElement);
-              }
-            });
-            
+          require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {
+            var batch = Batch(self.ybWeb);
+            var surface = Node.fromHex(event.model.item.node);
+            var surfaceWeb = SurfaceWeb(batch, surface);
+            surfaceWeb.destroy();
+            var userWeb = UserWeb(batch, Node.fromHex(self._userSession.usernode));
+            userWeb.removeSurface(surface);
+            batch.apply();
           });
         },
       });

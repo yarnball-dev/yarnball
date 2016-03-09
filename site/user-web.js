@@ -92,7 +92,7 @@ define(['core/node', 'core/batch', 'core/web', 'core/node-set'], function(Node, 
       }
     });
     
-    if (newSurfaces.length > 0 || removedSurfaces.length > 0) {
+    if (newSurfaces.size() > 0 || removedSurfaces.size() > 0) {
       self._notifySurfaces(newSurfaces, removedSurfaces);
     }
   }

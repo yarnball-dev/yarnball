@@ -1,43 +1,52 @@
 :host
-  #user
+
+  #container
     width: 500px
     margin-left:  auto
     margin-right: auto
-    margin-top:    30px
-    margin-bottom: 10px
-    display: flex
-    justify-content: center
-    font-size: 50px
-    color: #888
-    #userIcon
-      width:  70px
-      height: 70px
+    margin-top: 30px
+
+    #user
+      margin-top:    10px
+      margin-bottom: 10px
+      display: flex
+      justify-content: center
+      font-size: 50px
+      color: #888
+      #userIcon
+        width:  70px
+        height: 70px
   
-  #webStatus
-    width: 500px
-    margin-left:  auto
-    margin-right: auto
+    #surfaces
+      .surface-list-entry
+        margin-top:    5px
+        margin-bottom: 5px
+        display: flex
+        flex-direction: row
+        .surface-status
+          padding: 5px
+          background-color: #ddd
+          flex-grow: 1
+        .surface-list-delete-button
+          width:      40px
+          min-width:  40px
+          height:     40px
+          color: #888
+          padding: 8px
+        .surface-list-delete-button:hover,
+        .surface-list-delete-button:focus
+          background-color: #FF9191
+          color: #fff
   
-  #surfaces
-    width: 500px
-    margin-left:  auto
-    margin-right: auto
-    .surface-status
-      width: 500px
-      margin-top:    5px
-      margin-bottom: 5px
-      background-color: #ddd
-      padding: 5px
-  
-  #createSurfaceButton
-    display: block
-    width: 500px
-    margin-left:  auto
-    margin-right: auto
-    margin-top: 15px
-    text-transform: none
-    background-color: #ddd
-    color: #888
+    #createSurfaceButton
+      display: block
+      margin-top: 15px
+      text-transform: none
+      background-color: #FFA500
+      color: #fff
+    #createSurfaceButton:hover,
+    #createSurfaceButton:focus
+      background-color: #FFC458
 
   #logoutButton
     display: inline-block
@@ -54,25 +63,7 @@
     border: 1px solid #ddd
     background-color: #fff
     color: #888
-  #logoutButton:hover
+  #logoutButton:hover,
+  #logoutButton:focus
     background-color: #8C8C8C
     color: #fff
-  
-  #pageError
-    display: none
-
-:host.page-error
-  #pageError
-    position: absolute
-    left:   0
-    top:    0
-    right:  0
-    bottom: 0
-    z-index: 1
-    display: flex
-    align-items: center
-    justify-content: center
-    background-color: rgba(255, 255, 255, 0.85)
-    color: red
-    #pageErrorMessage
-      font-size: 25px

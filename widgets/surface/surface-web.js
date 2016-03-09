@@ -18,6 +18,7 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
   
   var Surface    = Node.fromHex('d78f5b59815a669cb45c022de57d2980');
   var Is         = Node.fromHex('52f9cf0e223d559931856acc98400f21');
+  var Owns       = Node.fromHex('4c8e8ee79a2c4c6e4bd68d9db324d9f4');
   var Widget     = Node.fromHex('31e32c8610ff671d93a4d664d26b21f8');
   var NodeWidget = Node.fromHex('9c9eebc2fa256211d901aef59489923e');
   var Represents = Node.fromHex('262fb8be7b32196d8da05337c2116afa');
@@ -31,12 +32,43 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
   var XAxis    = Node.fromHex('7dba86e48248ff4c115012ff46fe41fe');
   var YAxis    = Node.fromHex('233b57fa8d66698978054e9bd8b116f4');
   
+  SurfaceWeb.prototype.destroy = function() {
+    var self = this;
+    
+    var batch = Batch(self._web);
+    
+    batch.setLinks([], [{from: self._base, via: Is, to: Surface}]);
+    
+    var widgets = self.getWidgets();
+    widgets.forEach(function(widget) {
+      self.removeWidget(widget, batch);
+    });
+    
+    batch.apply();
+  }
+  
+  SurfaceWeb.prototype.getWidgets = function() {
+    var self = this;
+    var ownedObjects = self._web.query(self._base, Owns, null);
+    return ownedObjects.filter(function(ownedObject) {
+      return self._web.hasLink(ownedObject, Is, Widget);
+    });
+  }
+  
   SurfaceWeb.prototype.getNodeWidgets = function() {
-    return this._web.query(null, Is, NodeWidget);
+    var self = this;
+    var ownedObjects = self._web.query(self._base, Owns, null);
+    return ownedObjects.filter(function(ownedObject) {
+      return self._web.hasLink(ownedObject, Is, NodeWidget);
+    });
   }
   
   SurfaceWeb.prototype.getConnectors = function() {
-    return this._web.query(null, Is, Connector);
+    var self = this;
+    var ownedObjects = self._web.query(self._base, Owns, null);
+    return ownedObjects.filter(function(ownedObject) {
+      return self._web.hasLink(ownedObject, Is, Connector);
+    });
   }
   
   SurfaceWeb.prototype.addWidget = function(widget) {
@@ -50,11 +82,18 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
     
     var WidgetProperties = Map_(batch, widget.widgetId);
     
-    batch.setLinks([{
-      from: widget.widgetId,
-      via: Is,
-      to: Widget,
-    }], []);
+    batch.setLinks([
+      {
+        from: widget.widgetId,
+        via: Is,
+        to: Widget,
+      },
+      {
+        from: this._base,
+        via: Owns,
+        to: widget.widgetId,
+      },
+    ], []);
     
     if (widget.widgetType === 'yb-node') {
       batch.setLinks([{
@@ -89,8 +128,15 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
     batch.apply();
   }
   
-  SurfaceWeb.prototype.removeWidget = function(Widget_) {
-    var batch = Batch(this._web);
+  SurfaceWeb.prototype.removeWidget = function(Widget_, batch) {
+    var usingExternalBatch = Boolean(batch);
+    batch = batch || Batch(this._web);
+    
+    batch.setLinks([], [{
+      from: this._base,
+      via: Owns,
+      to: Widget_,
+    }]);
     
     var WidgetProperties = Map_(batch, Widget_);
     
@@ -123,7 +169,9 @@ define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Ba
       WidgetProperties.delete(To);
     }
     
-    batch.apply();
+    if (!usingExternalBatch) {
+      batch.apply();
+    }
   }
   
   SurfaceWeb.prototype.hasWidget = function(Widget_) {

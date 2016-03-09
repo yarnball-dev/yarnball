@@ -146,7 +146,7 @@ define(['./node', './link', './node-set', './node-multimap', './node-link-multim
   }
   
   Web.prototype.getLinksForNode = function(node) {
-    return this._nodesToLinks.get(node);
+    return this.nodesToLinks.get([node]);
   }
   
   Web.prototype.clear = function() {

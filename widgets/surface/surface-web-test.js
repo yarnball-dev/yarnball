@@ -13,6 +13,9 @@ test('surface-web test', function(t) {
     surfaceWeb = SurfaceWeb(web);
   }, 'surface-web constructor does not throw.');
   
+  var initialLinkCount = web.getLinkCount();
+  var initialNodeCount = web.getNodeCount();
+  
   var nodeWidget1 = {
     widgetId: Node(),
     nodeId: Node.makeHex(),
@@ -87,8 +90,13 @@ test('surface-web test', function(t) {
   t.notOk(surfaceWeb.hasWidget(nodeWidget1.widgetId), 'hasWidget() should return false for a node-widget removed with removeWidget()');
   t.notOk(surfaceWeb.hasWidget(connector.widgetId), 'hasWidget() should return false for a connector removed with removeWidget()');
   
-  t.equal(web.getLinkCount(), 0, 'Link count in web should return to previous state after calling removeWidget() on all widgets.');
-  t.equal(web.getNodeCount(), 0, 'Node count in web should return to previous state after calling removeWidget() on all widgets.');
+  t.equal(web.getLinkCount(), initialLinkCount, 'Link count in web should return to previous state after calling removeWidget() on all widgets.');
+  t.equal(web.getNodeCount(), initialNodeCount, 'Node count in web should return to previous state after calling removeWidget() on all widgets.');
+  
+  surfaceWeb.destroy();
+  
+  t.equal(web.getLinkCount(), 0, 'Link count in web should return to zero after calling destroy() on the surface.');
+  t.equal(web.getNodeCount(), 0, 'Node count in web should return to zero after calling destroy() on the surface.');
   
   t.end();
 });
