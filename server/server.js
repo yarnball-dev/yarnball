@@ -14,7 +14,7 @@ if (yargs.argv['serve-static']) {
   app.use(express.static('../site'));
 }
 
-var users = Users('./users.db', './users/');
+var users = Users('./users.db', './users/', './links.txt', './node_names.txt');
 var users_socketio = Users_SocketIO(users, socketio);
 users_socketio.setup()
 

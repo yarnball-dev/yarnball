@@ -6,10 +6,12 @@ var WebDB   = require('core/web_db');
 var WebFile = require('core/web_file');
 var jwt     = require('jsonwebtoken');
 
-function Users(databasePath, userDataPath) {
+function Users(databasePath, userDataPath, initialLinksPath, initialNamesPath) {
   this._db = Level(databasePath);
   this._userDataPath = userDataPath;
   this._userWebs = new Map();
+  this._initialLinksPath = initialLinksPath;
+  this._initialNamesPath = initialNamesPath;
 }
 
 Users.isValidUsername = function(string) {
@@ -96,26 +98,19 @@ Users.prototype.createUser = function(username, passwordHash) {
         username: username,
         passwordHash: passwordHash
       }
-      self._db.put('usernode:' + Node.toHex(userNode), JSON.stringify(user), function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(userNode);
+      self._db.batch(
+        [
+          {type: 'put', key: 'usernode:' + Node.toHex(userNode), value: JSON.stringify(user)},
+          {type: 'put', key: 'username:' + username,             value: Node.toHex(userNode)},
+        ],
+        function(error) {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(userNode);
+          }
         }
-      });
-    });
-  })
-  
-  // Create username entry
-  .then(function(userNode) {
-    return new Promise(function(resolve, reject) {
-      self._db.put('username:' + username, Node.toHex(userNode), function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(userNode);
-        }
-      });
+      );
     });
   });
 }
@@ -223,7 +218,7 @@ Users.prototype.getUserWeb = function(usernode) {
       }).on('exit', function() {
         var userWebDir = Path.join(userDir, 'db');
         var userWeb = WebDB(userWebDir);
-        var defaultWeb = WebFile('./node_names.txt', './links.txt');
+        var defaultWeb = WebFile(self._initialNamesPath, self._initialLinksPath);
         userWeb.merge(defaultWeb, function() {
           self._userWebs.set(Node.toHex(usernode), userWeb);
           resolve(userWeb);
@@ -237,8 +232,8 @@ Users.prototype.close = function(callback) {
   this._db.close(callback);
 }
 
-function Users_(databasePath, userDataPath) {
-  return new Users(databasePath, userDataPath);
+function Users_(databasePath, userDataPath, initialLinksPath, initialNamesPath) {
+  return new Users(databasePath, userDataPath, initialLinksPath, initialNamesPath);
 }
 Users_.isValidUsername  = Users.isValidUsername;
 Users_.tokenCertificate = Users.tokenCertificate;

@@ -15,7 +15,7 @@ test('users test', function(t) {
     // Create users object
     var users = null;
     t.doesNotThrow(function() {
-      users = Users('/tmp/yarnball-users-test/db', '/tmp/yarnball-users-test/users');
+      users = Users('/tmp/yarnball-users-test/db', '/tmp/yarnball-users-test/users', './server/links.txt', './server/node_names.txt');
     }, 'Calling Users() constructor should not throw.');
     
     var peach  = null;
