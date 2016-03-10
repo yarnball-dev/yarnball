@@ -1,5 +1,6 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
+<link rel="import" href="../web/web.html">
 <link rel="import" href="web-status-styles.html">
 
 <dom-module id="yb-web-status">
@@ -22,33 +23,17 @@
       
       Polymer({
         is: 'yb-web-status',
+        behaviors: [WebConsumer],
         ready: function() {
-          this.nodesCount = this.$.nodesCount;
-          this.linksCount = this.$.linksCount;
-        },
-        attached: function() {
           var self = this;
-          var parentWebElement = self.getParentWebElement();
-          if (parentWebElement) {
-            parentWebElement.onInitWeb(function(web) {
-              self.nodesCount.textContent = web.getNodeCount();
-              self.linksCount.textContent = web.getLinkCount();
-              web.onLinks(function() {
-                self.nodesCount.textContent = web.getNodeCount();
-                self.linksCount.textContent = web.getLinkCount();
-              });
+          self.getWeb().then(function(web) {
+            self.$.nodesCount.textContent = web.getNodeCount();
+            self.$.linksCount.textContent = web.getLinkCount();
+            web.onLinks(function() {
+              self.$.nodesCount.textContent = web.getNodeCount();
+              self.$.linksCount.textContent = web.getLinkCount();
             });
-          }
-        },
-        getParentWebElement: function() {
-          var parent = this.parentNode;
-          while (parent) {
-            if (parent.isYbWeb) {
-              return parent;
-            }
-            parent = parent.parentNode;
-          }
-          return null;
+          });
         },
       });
     })();

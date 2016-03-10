@@ -13,7 +13,8 @@
 <link rel="import" href="user-styles.html">
 
 <script>
-  UserBehavior = {
+  UserWebSource = [Web_SocketIO_Behavior,
+  {
     properties: {
       usernode: {
         type: String,
@@ -22,9 +23,6 @@
     },
     setUserSession: function(userSession) {
       this._userSession = userSession;
-    },
-    created: function() {
-      this._onInitUser = new Set();
     },
     initUser: function() {
       var self = this;
@@ -55,9 +53,6 @@
           var socketio = SocketIO('/' + self.usernode, socketioOptions);
           
           socketio.on('connect', function() {
-            self.onInitWeb(function(web) {
-              self._notifyInitUser(web);
-            });
             self.setSocketio(socketio);
           });
           
@@ -76,21 +71,12 @@
         throw error;
       }
     },
-    onInitUser: function(callback) {
-      this._onInitUser.add(callback);
-    },
-    _notifyInitUser: function(web) {
-      Array.from(this._onInitUser).forEach(function(callback) {
-        callback(web);
-      });
-      this._onInitUser.clear();
-    },
     attached: function() {
       if (!this._initUserStarted) {
         this.initUser();
       }
     },
-  }
+  }]
 </script>
 
 <dom-module id="yb-user">
@@ -131,11 +117,11 @@
     (function() {
       Polymer({
         is: 'yb-user',
-        behaviors: [ErrorOverlay, Web_SocketIO_Behavior, UserBehavior],
+        behaviors: [UserWebSource, ErrorOverlay],
         ready: function() {
           var self = this;
           self._surfaces = [];
-          self.onInitUser(function(web) {
+          self.getWeb().then(function(web) {
             self.set('username', self._userSession.username);
             require(['user-web', 'core/node'], function(UserWeb, Node) {
               var userWeb = UserWeb(web, Node.fromHex(self._userSession.usernode));
@@ -169,26 +155,28 @@
         },
         _createSurface: function() {
           var self = this;
-          if (self.ybWeb) {
+          self.getWeb().then(function(web) {
             require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {
-              var batch = Batch(self.ybWeb);
+              var batch = Batch(web);
               var surface = SurfaceWeb(batch);
               var userWeb = UserWeb(batch, Node.fromHex(self._userSession.usernode));
               userWeb.addSurface(surface._base);
               batch.apply();
             });
-          }
+          });
         },
         _deleteSurface: function(event, detail, sender) {
           var self = this;
-          require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {
-            var batch = Batch(self.ybWeb);
-            var surface = Node.fromHex(event.model.item.node);
-            var surfaceWeb = SurfaceWeb(batch, surface);
-            surfaceWeb.destroy();
-            var userWeb = UserWeb(batch, Node.fromHex(self._userSession.usernode));
-            userWeb.removeSurface(surface);
-            batch.apply();
+          self.getWeb().then(function(web) {
+            require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {
+              var batch = Batch(web);
+              var surface = Node.fromHex(event.model.item.node);
+              var surfaceWeb = SurfaceWeb(batch, surface);
+              surfaceWeb.destroy();
+              var userWeb = UserWeb(batch, Node.fromHex(self._userSession.usernode));
+              userWeb.removeSurface(surface);
+              batch.apply();
+            });
           });
         },
       });

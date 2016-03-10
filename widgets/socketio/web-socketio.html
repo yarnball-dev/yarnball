@@ -2,39 +2,42 @@
 
 <script>
   Web_SocketIO_Behavior = {
+    properties: {
+      'is-yb-web': {
+        type: Boolean,
+        value: true,
+        reflectToAttribute: true,
+      }
+    },
     created: function() {
-      this.isYbWeb = true;
-      this._socketio;
-      this._onInitWeb = new Set();
+      var self = this;
+      self._socketio = null;
+      self._webPromise = new Promise(function(resolve, reject) {
+        self._webPromise_resolve = resolve;
+      });
     },
     setSocketio: function(socketio) {
       var self = this;
       self._socketio = socketio;
       
       require(['core/web-socketio'], function(WebSocketIO) {
-        self.ybWeb = WebSocketIO.Client(socketio);
+        var web = WebSocketIO.Client(socketio);
         
-        if (self.ybWeb.isSeeded()) {
-          self._notifyInitWeb(self.ybWeb);
+        if (web.isSeeded()) {
+          self._web = web;
+          self._webPromise = null;
+          self._webPromise_resolve(web);
         } else {
-          self.ybWeb.onSeed(function() {
-            self._notifyInitWeb(self.ybWeb);
+          web.onSeed(function() {
+            self._web = web;
+            self._webPromise = null;
+            self._webPromise_resolve(web);
           });
         }
       });
     },
-    onInitWeb: function(callback) {
-      if (this.ybWeb && this.ybWeb.isSeeded()) {
-        callback(this.ybWeb);
-      } else {
-        this._onInitWeb.add(callback);
-      }
-    },
-    _notifyInitWeb: function(web) {
-      this._onInitWeb.forEach(function(callback) {
-        callback(web);
-      });
-      this._onInitWeb.clear();
+    getWeb: function() {
+      return this._webPromise || Promise.resolve(this._web);
     },
   }
 </script>
@@ -47,7 +50,6 @@
       behaviors: [Web_SocketIO_Behavior],
       Polymer({
         is: 'yb-web-socketio',
-
       });
     })();
   </script>

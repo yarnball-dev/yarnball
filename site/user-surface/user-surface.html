@@ -17,14 +17,14 @@
   
   <template>
     <yb-web-status id="webStatus"></yb-web-status>
-    <yb-surface id="surface"></yb-surface>
+    <yb-surface id="surface" node="2b3d67e4119e97849aa394beec11ec83"></yb-surface>
   </template>
   
   <script>
     (function() {
       Polymer({
         is: 'yb-user-surface',
-        behaviors: [ErrorOverlay, Web_SocketIO_Behavior, UserBehavior],
+        behaviors: [UserWebSource, ErrorOverlay],
         properties: {
           usernode: {
             type: String,

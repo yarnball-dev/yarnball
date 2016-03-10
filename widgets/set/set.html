@@ -69,6 +69,15 @@
           self.widgetBody   = self.$.widgetBody;
           self.setContent   = self.$.setContent;
           
+          self.getWeb().then(function(web) {
+            require(['core/node'], function(Node) {
+              self.Node = Node;
+              self.refreshSet();
+              self.onLinks = self.onLinks.bind(self);
+              web.onLinks(self.onLinks);
+            });
+          });
+          
           self.setContent.dropRequestHandler = function(widgets) {
             if (!self.isFilterValid()) {
               return [];
@@ -154,17 +163,10 @@
             });
           });
         },
-        onWebInit: function(web) {
-          var self = this;
-          require(['core/node'], function(Node) {
-            self.Node = Node;
-            self.refreshSet();
-            self.onLinks = self.onLinks.bind(self);
-            web.onLinks(self.onLinks);
-          });
-        },
         detached: function() {
-          this.web.removeLinksListener(this.onLinks);
+          if (this._web) {
+            this._web.removeLinksListener(this.onLinks);
+          }
         },
         onLinks: function(linksAdded, linksRemoved) {
           this.updateSet(linksAdded, linksRemoved);
@@ -213,22 +215,19 @@
           
           self.setContent.set('enabled', self.isFilterValid());
           
-          if (self.web) {
-          
-            var nodeIdKeys = new Set(self.filterLinks(self.web.getLinks()).map(function(nodeId) {
-              return self.Node.toMapKey(nodeId);
-            }));
-            self.nodeWidgetsInSet.forEach(function(nodeWidget, nodeIdKey) {
-              if (!nodeIdKeys.has(nodeIdKey)) {
-                self.removeNodeWidget(self.Node.fromMapKey(nodeIdKey));
-              }
-            });
-            nodeIdKeys.forEach(function(nodeIdKey) {
-              if (!self.nodeWidgetsInSet.has(nodeIdKey)) {
-                self.addNodeWidget(self.Node.fromMapKey(nodeIdKey));
-              }
-            });
-          }
+          var nodeIdKeys = new Set(self.filterLinks(self._web.getLinks()).map(function(nodeId) {
+            return self.Node.toMapKey(nodeId);
+          }));
+          self.nodeWidgetsInSet.forEach(function(nodeWidget, nodeIdKey) {
+            if (!nodeIdKeys.has(nodeIdKey)) {
+              self.removeNodeWidget(self.Node.fromMapKey(nodeIdKey));
+            }
+          });
+          nodeIdKeys.forEach(function(nodeIdKey) {
+            if (!self.nodeWidgetsInSet.has(nodeIdKey)) {
+              self.addNodeWidget(self.Node.fromMapKey(nodeIdKey));
+            }
+          });
         },
         updateSet: function(linksAdded, linksRemoved) {
         
@@ -254,7 +253,7 @@
                 to:   self.to   ? self.Node.fromHex(self.to)   : nodeId,
               }
             });
-            self.web.setLinks(links, []);
+            self._web.setLinks(links, []);
           }
         },
         removeNodes: function(nodeIds) {
@@ -267,7 +266,7 @@
                 to:   self.to   ? self.Node.fromHex(self.to)   : nodeId,
               }
             });
-            self.web.setLinks([], links);
+            self._web.setLinks([], links);
           }
         },
         addNodeWidget: function(nodeId) {
@@ -319,7 +318,7 @@
               }
             }
           });
-          self.web.setLinks(links, []);
+          self._web.setLinks(links, []);
         },
       });
     })();

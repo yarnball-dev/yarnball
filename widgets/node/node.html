@@ -49,30 +49,32 @@
           this.connectorsTo   = new Set();
         },
         ready: function() {
-          this.nameElement = this.$.nameElement;
-          this.nameInput   = this.$.nameInput;
-          
-          this.classList.add('widget-handle');
-        },
-        onWebInit: function(web) {
           var self = this;
-          require(['core/node'], function(Node) {
           
-            self.id_ = Node.fromHex(self.nodeId);
-            if (web.hasName(self.id_)) {
-              self.updateName(web.getName(self.id_));
-            }
+          self.nameElement = this.$.nameElement;
+          self.nameInput   = this.$.nameInput;
+          
+          self.classList.add('widget-handle');
+          
+          self.getWeb().then(function(web) {
+            require(['core/node'], function(Node) {
             
-            web.onNames(function(namesAdded, namesRemoved) {
-              namesAdded.forEach(function(node) {
-                if (Node.equal(node.id, self.id_)) {
-                  self.updateName(node.name);
-                }
-              });
-              namesRemoved.forEach(function(node) {
-                if (Node.equal(node, self.id_)) {
-                  self.updateName('');
-                }
+              self.id_ = Node.fromHex(self.nodeId);
+              if (web.hasName(self.id_)) {
+                self.updateName(web.getName(self.id_));
+              }
+              
+              web.onNames(function(namesAdded, namesRemoved) {
+                namesAdded.forEach(function(node) {
+                  if (Node.equal(node.id, self.id_)) {
+                    self.updateName(node.name);
+                  }
+                });
+                namesRemoved.forEach(function(node) {
+                  if (Node.equal(node, self.id_)) {
+                    self.updateName('');
+                  }
+                });
               });
             });
           });
@@ -146,15 +148,16 @@
           this.finishEditing();
         },
         onNameInput: function(event) {
+          var self = this;
           var newName = this.nameInput.value;
-          this.updateName(newName);
+          self.updateName(newName);
           if (newName) {
-            if (this.web.getName(this.id_) !== newName) {
-              this.web.addNames([{id: this.id_, name: newName}]);
+            if (self._web.getName(self.id_) !== newName) {
+              self._web.addNames([{id: self.id_, name: newName}]);
             }
           } else {
-            if (this.web.hasName(this.id_)) {
-              this.web.removeNames([this.id_]);
+            if (self._web.hasName(self.id_)) {
+              self._web.removeNames([self.id_]);
             }
           }
         },

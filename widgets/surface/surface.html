@@ -6,6 +6,11 @@
 <link rel="import" href="../../bower_components/paper-item/paper-item.html">
 <link rel="import" href="../../bower_components/paper-item/paper-icon-item.html">
 
+<link rel="import" href="../error-overlay/error-overlay.html">
+<link rel="import" href="../error-overlay/error-overlay-styles.html">
+
+<link rel="import" href="../web/web.html">
+
 <link rel="import" href="../node/node.html">
 <link rel="import" href="../node/node-factory.html">
 
@@ -24,6 +29,7 @@
 <dom-module id="yb-surface">
 
   <style include="surface-styles"></style>
+  <style include="error-overlay-styles"></style>
 
   <template>
   
@@ -108,6 +114,7 @@
         properties: {
           node: {
             type: String,
+            reflectToAttribute: true,
           },
           tabindex: {
             value: '0',
@@ -115,6 +122,8 @@
           },
         },
         behaviors: [
+          WebConsumer,
+          ErrorOverlay,
           Polymer.IronA11yKeysBehavior,
         ],
         created: function() {
@@ -206,29 +215,19 @@
             document.addEventListener('MSFullscreenChange',     self.handleMSFullscreenEvent);
           }
         },
-        getParentWebElement: function() {
-          var parent = this.parentNode;
-          while (parent) {
-            if (parent.isYbWeb) {
-              return parent;
-            }
-            parent = parent.parentNode;
-          }
-          return null;
-        },
         attached: function() {
           var self = this;
           
-          var parentWebElement = self.getParentWebElement();
-          if (!parentWebElement) {
-            throw 'Surface has no parent web element.';
+          if (!self.node) {
+            var error = 'Cannot initialize surface, surface node not given.';
+            self.showErrorOverlay(error);
+            throw error;
           }
           
-          parentWebElement.onInitWeb(function(web) {
+          self.getWeb().then(function(web) {
           
             require(['core/node', 'widgets/surface/surface-web'], function(Node, SurfaceWeb) {
             
-              self.web = web;
               self.SurfaceWeb = SurfaceWeb;
               
               if (self.node) {
@@ -248,7 +247,11 @@
           });
         },
         detached: function() {
-          this.web.removeLinksListener(this.onLinks);
+          var self = this;
+          
+          if (self._web) {
+            self._web.removeLinksListener(self.onLinks);
+          }
           
           if (self.requestFullscreen) {
             document.removeEventListener('fullscreenchange',       self.handleFullscreenEvent);
@@ -346,7 +349,7 @@
           }
           var operation = new operation();
           operation.surface     = this;
-          operation.batch = this.Batch(this.web);
+          operation.batch = this.Batch(this._web);
           operation.surfaceWeb  = this.SurfaceWeb(operation.batch, this.node);
           this.currentOperation = operation;
           var args = Array.prototype.slice.call(arguments, 1);
@@ -1365,7 +1368,7 @@
           
           var nodeWidgets = new Set(nodeWidgets);
           
-          self.web.getLinks().forEach(function(link) {
+          self._web.getLinks().forEach(function(link) {
           
             var triples = self.getBestNodeWidgetTriplesForLink(link, nodeWidgets);
             
@@ -1381,7 +1384,7 @@
         getLinksBetweenNodeWidgets: function(nodeWidgets) {
           var self = this;
           var nodeWidgetTriples = [];
-          self.web.getLinks().forEach(function(link) {
+          self._web.getLinks().forEach(function(link) {
             var triples = self.getBestNodeWidgetTriplesForLink(link, nodeWidgets);
             nodeWidgetTriples = nodeWidgetTriples.concat(triples);
           });

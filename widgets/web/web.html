@@ -1,28 +1,56 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 
 <script>
-  WebBehavior = {
-    created: function() {
-      var self = this;
-      self.isYbWeb = true;
-      self._onInitWeb = new Set();
-      require(['core/web'], function(Web) {
-        self.ybWeb = Web();
-        self._notifyInitWeb(self.ybWeb);
-      });
-    },
-    onInitWeb: function(callback) {
-      if (this.ybWeb) {
-        callback(this.ybWeb);
-      } else {
-        this._onInitWeb.add(callback);
+  WebSource = {
+    properties: {
+      'is-yb-web': {
+        type: Boolean,
+        value: true,
+        reflectToAttribute: true,
       }
     },
-    _notifyInitWeb: function(web) {
-      this._onInitWeb.forEach(function(callback) {
-        callback(web);
+    created: function() {
+      var self = this;
+      self._webPromise = new Promise(function(resolve, reject) {
+        require(['core/web'], function(Web) {
+          self._web = Web();
+          resolve(self._web);
+          self._webPromise = null;
+        });
       });
-      this._onInitWeb.clear();
+    },
+    getWeb: function() {
+      return this._webPromise || Promise.resolve(this._web);
+    },
+  }
+  
+  WebConsumer = {
+    created: function() {
+      var self = this;
+      self._web = null;
+      self._webPromise = new Promise(function(resolve, reject) {
+        self._webPromise_resolve = resolve;
+      });
+    },
+    getParentWebElement: function() {
+      return this.closest('[is-yb-web]');
+    },
+    attached: function() {
+      var self = this;
+      if (!self._web) {
+        var parentWebWebElement = self.getParentWebElement();
+        if (parentWebWebElement) {
+          parentWebWebElement.getWeb().then(function(web) {
+            self._web = web;
+            self._webPromise = null;
+            self._webPromise_resolve(web);
+            self._webPromise_resolve = null;
+          });
+        }
+      }
+    },
+    getWeb: function() {
+      return this._webPromise || Promise.resolve(this._web);
     },
   }
 </script>
@@ -32,10 +60,9 @@
   <script>
     (function() {
       'use strict';
-      
       Polymer({
         is: 'yb-web',
-        behaviors: [WebBehavior],
+        behaviors: [WebSource],
       });
     })();
   </script>
