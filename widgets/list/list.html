@@ -140,7 +140,7 @@
         },
         onWebInit: function(web) {
           var self = this;
-          require(['core/node', 'core/ordered_set'], function(Node, OrderedSet) {
+          require(['yarnball/core/node', 'yarnball/core/ordered_set'], function(Node, OrderedSet) {
             self.Node = Node;
             self.OrderedSet = OrderedSet;
             self.onLinks = self.onLinks.bind(self);

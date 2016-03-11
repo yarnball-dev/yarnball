@@ -155,7 +155,7 @@
           
           self.currentOperation = null;
           
-          require(['core/node', 'core/link', 'core/batch', 'widgets/zindex-manager'], function(Node, Link, Batch, zindex_manager) {
+          require(['yarnball/core/node', 'yarnball/core/link', 'yarnball/core/batch', '../zindex-manager'], function(Node, Link, Batch, zindex_manager) {
             self.Node = Node;
             self.Link = Link;
             self.Batch = Batch;
@@ -180,17 +180,17 @@
           // Install operations
           require(
             [
-              'widgets/surface/pan-operation',
-              'widgets/surface/zoom-operation',
-              'widgets/surface/selection-operation',
-              'widgets/surface/box-selection-operation',
-              'widgets/surface/drag-operation',
-              'widgets/surface/new-widget-operation',
-              'widgets/surface/remove-widgets-operation',
-              'widgets/surface/new-connector-drag-operation',
-              'widgets/surface/new-connectors-operation',
-              'widgets/surface/clone-widgets-operation',
-              'widgets/surface/rename-operation',
+              './pan-operation',
+              './zoom-operation',
+              './selection-operation',
+              './box-selection-operation',
+              './drag-operation',
+              './new-widget-operation',
+              './remove-widgets-operation',
+              './new-connector-drag-operation',
+              './new-connectors-operation',
+              './clone-widgets-operation',
+              './rename-operation',
             ],
             function() {
               var operations = Array.from(arguments);
@@ -226,7 +226,7 @@
           
           self.getWeb().then(function(web) {
           
-            require(['core/node', 'widgets/surface/surface-web'], function(Node, SurfaceWeb) {
+            require(['yarnball/core/node', './surface-web'], function(Node, SurfaceWeb) {
             
               self.SurfaceWeb = SurfaceWeb;
               
