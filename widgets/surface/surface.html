@@ -155,7 +155,7 @@
           
           self.currentOperation = null;
           
-          require(['yarnball/core/node', 'yarnball/core/link', 'yarnball/core/batch', '../zindex-manager'], function(Node, Link, Batch, zindex_manager) {
+          require(['yarnball/core/node', 'yarnball/core/link', 'yarnball/core/batch', 'yarnball/widgets/zindex-manager'], function(Node, Link, Batch, zindex_manager) {
             self.Node = Node;
             self.Link = Link;
             self.Batch = Batch;
@@ -180,17 +180,17 @@
           // Install operations
           require(
             [
-              './pan-operation',
-              './zoom-operation',
-              './selection-operation',
-              './box-selection-operation',
-              './drag-operation',
-              './new-widget-operation',
-              './remove-widgets-operation',
-              './new-connector-drag-operation',
-              './new-connectors-operation',
-              './clone-widgets-operation',
-              './rename-operation',
+              'yarnball/widgets/surface/pan-operation',
+              'yarnball/widgets/surface/zoom-operation',
+              'yarnball/widgets/surface/selection-operation',
+              'yarnball/widgets/surface/box-selection-operation',
+              'yarnball/widgets/surface/drag-operation',
+              'yarnball/widgets/surface/new-widget-operation',
+              'yarnball/widgets/surface/remove-widgets-operation',
+              'yarnball/widgets/surface/new-connector-drag-operation',
+              'yarnball/widgets/surface/new-connectors-operation',
+              'yarnball/widgets/surface/clone-widgets-operation',
+              'yarnball/widgets/surface/rename-operation',
             ],
             function() {
               var operations = Array.from(arguments);
