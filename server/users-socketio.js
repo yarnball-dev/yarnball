@@ -61,8 +61,12 @@ Users_SocketIO.prototype._hasUsername = function(username, callback) {
 Users_SocketIO.prototype._getUsernodeForName = function(username, callback) {
   this._users.getUsernodeForName(username)
   
-  .then(function(usernode) {
-    callback(Node.toHex(usernode));
+  .then(function(result) {
+    if (result) {
+      callback(Node.toHex(result));
+    } else {
+      callback(null);
+    }
   })
   
   .catch(function(error) {

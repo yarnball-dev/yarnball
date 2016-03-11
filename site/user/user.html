@@ -18,7 +18,7 @@
     properties: {
       usernode: {
         type: String,
-        readOnly: true,
+        reflectToAttribute: true,
       },
     },
     setUserSession: function(userSession) {
@@ -99,7 +99,7 @@
       <div id="surfaces">
         <template is="dom-repeat" items="{{_surfaces}}">
           <div node$="{{item.node}}" class="surface-list-entry">
-            <span class="surface-status">surface</span>
+            <paper-button class="surface-status" on-tap="_goToSurface">surface</paper-button>
             <paper-button on-tap="_deleteSurface" class="surface-list-delete-button">
               <iron-icon icon="icons:delete"></iron-icons>
             </paper-button>
@@ -165,7 +165,13 @@
             });
           });
         },
-        _deleteSurface: function(event, detail, sender) {
+        _goToSurface: function(event, detail) {
+          var self = this;
+          require(['bower_components/page/page'], function(page) {
+            page(self._userSession.username + '/' + event.model.item.node);
+          });
+        },
+        _deleteSurface: function(event, detail) {
           var self = this;
           self.getWeb().then(function(web) {
             require(['widgets/surface/surface-web', 'user-web', 'core/batch', 'core/node'], function(SurfaceWeb, UserWeb, Batch, Node) {

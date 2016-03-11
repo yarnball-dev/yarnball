@@ -4,7 +4,6 @@
 
 <link rel="import" href="/user/user.html">
 
-<link rel="import" href="/widgets/socketio/web-socketio.html">
 <link rel="import" href="/widgets/surface/surface.html">
 
 <link rel="import" href="/widgets/error-overlay/error-overlay.html">
@@ -17,7 +16,7 @@
   
   <template>
     <yb-web-status id="webStatus"></yb-web-status>
-    <yb-surface id="surface" node="2b3d67e4119e97849aa394beec11ec83"></yb-surface>
+    <yb-surface id="surface" node="{{surface}}"></yb-surface>
   </template>
   
   <script>
@@ -26,13 +25,10 @@
         is: 'yb-user-surface',
         behaviors: [UserWebSource, ErrorOverlay],
         properties: {
-          usernode: {
+          surface: {
             type: String,
-            readOnly: true,
+            reflectToAttribute: true,
           },
-        },
-        setUserSession: function(userSession) {
-          this._userSession = userSession;
         },
       });
     })();

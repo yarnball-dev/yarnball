@@ -66,7 +66,7 @@
           var userPage = userPages.get(usernode);
           if (!userPage) {
             userPage = document.createElement('yb-user');
-            userPage._setUsernode(usernode);
+            userPage.set('usernode', usernode);
             if ('userSession' in window.localStorage) {
               var userSession = JSON.parse(window.localStorage.userSession);
               if ('usernode' in userSession && 'username' in userSession && 'token' in userSession) {
@@ -81,26 +81,27 @@
           mainPages.select(usernode);
         }
         
-        function goToUserSurfacePage(usernode) {
-          var userSurfacePage = userSurfacePages.get(usernode);
+        function goToUserSurfacePage(usernode, surface) {
+          var userSurfacePage = userSurfacePages.get(surface);
           if (!userSurfacePage) {
             userSurfacePage = document.createElement('yb-user-surface');
-            userSurfacePage._setUsernode(usernode);
+            userSurfacePage.set('usernode', usernode);
+            userSurfacePage.set('surface', surface);
             if ('userSession' in window.localStorage) {
               var userSession = JSON.parse(window.localStorage.userSession);
               if ('usernode' in userSession && 'username' in userSession && 'token' in userSession) {
                 userSurfacePage.setUserSession(userSession);
               }
             }
-            userSurfacePage.setAttribute('page-name', usernode + '/surface');
+            userSurfacePage.setAttribute('page-name', usernode + '/' + surface);
             Polymer.dom(mainPages).appendChild(userSurfacePage);
-            userSurfacePages.set(usernode, userSurfacePage);
+            userSurfacePages.set(surface, userSurfacePage);
           }
           
-          mainPages.select(usernode + '/surface');
+          mainPages.select(usernode + '/' + surface);
         }
       
-        require(['bower_components/page/page', 'socket.io-client/socket.io'], function(page, SocketIO) {
+        require(['bower_components/page/page', 'socket.io-client/socket.io', 'core/node'], function(page, SocketIO, Node) {
         
           page('/', function(context) {
             mainPages.select('landing-page');
@@ -128,15 +129,26 @@
               
               var socketioUsers = SocketIO();
               socketioUsers.on('connect', function() {
-                socketioUsers.emit('getUsernodeForName', pathBase, function(usernode) {
-                  if (usernode) {
-                    if (pathElements.length === 1) {
-                      goToUserPage(usernode);
-                    } else if (pathElements.length === 2 && pathElements[1] === 'surface') {
-                      goToUserSurfacePage(usernode);
-                    }
-                  } else {
+                socketioUsers.emit('getUsernodeForName', pathBase, function(result) {
+                  if (!result) {
                     // TODO: Show 404
+                    return;
+                  }
+                
+                  if (typeof result === 'object' && 'error' in result) {
+                    console.error(result.error);
+                    // TODO: Show error page
+                    return;
+                  }
+                  
+                  var usernode = result;
+                  if (pathElements.length === 1) {
+                    goToUserPage(usernode);
+                  } else if (pathElements.length === 2) {
+                    if (Node.isHex(pathElements[1])) {
+                      var surface = pathElements[1];
+                      goToUserSurfacePage(usernode, surface);
+                    }
                   }
                 });
               });
