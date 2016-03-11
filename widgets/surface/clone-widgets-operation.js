@@ -1,4 +1,4 @@
-define(['core/node'], function(Node) {
+define(['yarnball/core/node'], function(Node) {
   
   function CloneWidgetsOperation() {
     

@@ -1,4 +1,4 @@
-define(['core/map', 'core/number'], function(Map_, Number) {
+define(['yarnball/core/map', 'yarnball/core/number'], function(Map_, Number) {
   
   function DragOperation() {
     

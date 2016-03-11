@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['core/node', 'core/batch', 'core/map', 'core/number'], function(Node, Batch, Map_, Number) {
+define(['yarnball/core/node', 'yarnball/core/batch', 'yarnball/core/map', 'yarnball/core/number'], function(Node, Batch, Map_, Number) {
   
   function SurfaceWeb(web, base) {
     this._web  = web;
