@@ -315,17 +315,17 @@
         searchPanelHandleClicked: function() {
           if (this.searchPanel.classList.contains('hidden')) {
             this.searchPanel.classList.remove('hidden');
-            this.$.allNodesList.searchTextbox.focus();
-            this.$.allNodesList.searchTextbox.select();
+            this.$.allNodesList.$.searchTextbox.focus();
+            this.$.allNodesList.$.searchTextbox.select();
           } else {
             this.searchPanel.classList.add('hidden');
           }
         },
         toggleSearchPanel: function() {
-          if (document.activeElement !== this.$.allNodesList.searchTextbox) {
+          if (document.activeElement !== this.$.allNodesList.$.searchTextbox) {
             this.searchPanel.classList.remove('hidden');
-            this.$.allNodesList.searchTextbox.focus();
-            this.$.allNodesList.searchTextbox.select();
+            this.$.allNodesList.$.searchTextbox.focus();
+            this.$.allNodesList.$.searchTextbox.select();
           } else {
             this.searchPanel.classList.add('hidden');
             this.focus();
