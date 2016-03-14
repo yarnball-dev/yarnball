@@ -150,12 +150,12 @@ define(['./web', './node', './link'], function(Web, Node, Link) {
     
     // Seed client
     connection.on('requestSeed', function() {
-      self._web.getLinks(function(links) {
+      self._web.getLinks().then(function(links) {
         var serializedLinks = Link.serialize(links);
         connection.emit('seedLinks', Buffer(serializedLinks));
       });
       
-      self._web.getNames(function(names) {
+      self._web.getNames().then(function(names) {
         var dataToSend = Array.from(names, function(node) {
           return [
             Buffer(node.id),
