@@ -44,19 +44,19 @@
     
     </div>
     
-    <paper-button id="fullscreenButton" on-tap="toggleFullscreen">
+    <paper-button class="edge-button" id="fullscreenButton" on-tap="toggleFullscreen">
       <iron-icon icon="icons:fullscreen" item-icon></iron-icon>
     </paper-button>
     
     <div id="searchPanel" class="panel hidden">
-      <div class="panel-handle" on-tap="searchPanelHandleClicked">
+      <div class="edge-button panel-handle" on-tap="searchPanelHandleClicked">
         <iron-icon icon="icons:search" item-icon></iron-icon>
       </div>
       <yb-all-nodes on-search-query-changed="searchQueryChanged" id="allNodesList"></yb-all-nodes>
     </div>
     
     <div id="createPanel" class="panel hidden">
-      <div class="panel-handle" on-tap="createPanelHandleClicked">
+      <div class="edge-button panel-handle" on-tap="createPanelHandleClicked">
         <iron-icon icon="icons:add" item-icon></iron-icon>
       </div>
       <div>
