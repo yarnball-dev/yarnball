@@ -1,5 +1,7 @@
 <link rel="import" href="../../../polymer/polymer.html">
 
+<link rel="import" href="context-menus.html">
+
 <link rel="import" href="../../../iron-dropdown/iron-dropdown.html">
 <link rel="import" href="../../../paper-button/paper-button.html">
 <link rel="import" href="../../../paper-menu/paper-menu.html">
@@ -66,21 +68,6 @@
       </div>
     </div>
     
-    <iron-dropdown id="backgroundDropdown" horizontal-align="left" vertical-align="top">
-      <div class="dropdown-content">
-        <paper-menu>
-          <paper-icon-item on-tap="menuItem_CreateNode">
-            <iron-icon icon="icons:add" item-icon></iron-icon>
-            Add Node
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_CreateSet">
-            <iron-icon icon="icons:add" item-icon></iron-icon>
-            Add Set
-          </paper-icon-item>
-        </paper-menu>
-      </div>
-    </iron-dropdown>
-    
     <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
       <div class="dropdown-content">
         <paper-menu>
@@ -129,6 +116,7 @@
           ErrorOverlay,
           Yarnball.FullscreenBehavior,
           Polymer.IronA11yKeysBehavior,
+          Yarnball._SurfaceBackgroundMenu,
         ],
         created: function() {
           var self = this;
@@ -450,7 +438,6 @@
         
           var self = this;
         
-          self.closeBackgroundMenu();
           self.closeSelectionMenu();
           
           self.focus();
@@ -481,15 +468,7 @@
             if (!event.ctrlKey) {
               self.deselect();
             }
-          
-            self.lastMenuPosition = mouseEvent.positionView;
-          
-            var surfaceRect = self.getBoundingClientRect();
-          
-            self.openBackgroundMenu({
-              x: event.pageX - surfaceRect.left,
-              y: event.pageY - surfaceRect.top,
-            });
+
             return false;
           }
         },
@@ -1530,15 +1509,6 @@
             window.addEventListener('mouseup', windowMouseup);
           }
         },
-        openBackgroundMenu: function(position) {
-          this.$.backgroundDropdown.style.position = 'absolute';
-          this.$.backgroundDropdown.style.left = position.x + 'px';
-          this.$.backgroundDropdown.style.top  = position.y + 'px';
-          this.$.backgroundDropdown.style.display = 'block';
-        },
-        closeBackgroundMenu: function() {
-          this.$.backgroundDropdown.style.display = 'none';
-        },
         openSelectionMenu: function(event) {
           this.closeBackgroundMenu();
           
@@ -1550,16 +1520,6 @@
         },
         closeSelectionMenu() {
           this.$.selectionDropdown.style.display = 'none';
-        },
-        menuItem_CreateNode: function() {
-          this.closeBackgroundMenu();
-          var newWidget = this.createNodeWidget();
-          this.attachWidget(newWidget, this.lastMenuPosition);
-        },
-        menuItem_CreateSet: function() {
-          this.closeBackgroundMenu();
-          var setWidget = this.createSetWidget();
-          this.attachWidget(setWidget, this.lastMenuPosition);
         },
         menuItem_DeleteSelected: function() {
           this.closeSelectionMenu();

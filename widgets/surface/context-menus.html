@@ -1,0 +1,95 @@
+<link rel="import" href="../../../polymer/polymer.html">
+
+<dom-module id="yb-surface-background-menu">
+  <template>
+    <paper-menu>
+      <paper-icon-item on-tap="createNodeWidget">
+        <iron-icon icon="icons:add" item-icon></iron-icon>
+        Add Node
+      </paper-icon-item>
+      <paper-icon-item on-tap="createSetWidget">
+        <iron-icon icon="icons:add" item-icon></iron-icon>
+        Add Set
+      </paper-icon-item>
+    </paper-menu>
+  </template>
+  <style>
+    :host.hidden {
+      display: none;
+    }
+    :host {
+      display: block;
+      position: absolute;
+      z-index: 4;
+      background-color: white;
+      border-radius: 3px;
+      box-shadow: 0px 2px 6px #ccc;
+    }
+    :host paper-item,
+    :host paper-icon-item {
+      cursor: pointer;
+    }
+    :host paper-item:hover,
+    :host paper-icon-item:hover {
+      background: #E2F4FF;
+    }
+  </style>
+  <script>
+    (function() {
+      Polymer({
+        is: 'yb-surface-background-menu',
+        ready: function() {
+          this.classList.add('hidden');
+        },
+        createNodeWidget: function() {
+          this.surface.closeBackgroundMenu();
+          var nodeWidget = this.surface.createNodeWidget();
+          var operation = this.surface.beginOperation(this.surface.NewWidgetOperation, nodeWidget, this.surface.lastBackgroundMenuPosition);
+          this.surface.selectWidgets([nodeWidget]);
+        },
+        createSetWidget: function() {
+          this.surface.closeBackgroundMenu();
+          var setWidget = this.surface.createSetWidget();
+          var operation = this.surface.beginOperation(this.surface.NewWidgetOperation, setWidget, this.surface.lastBackgroundMenuPosition);
+          this.surface.selectWidgets([setWidget]);
+        },
+      });
+    })();
+  </script>
+</dom-module>
+
+<script>
+  window.Yarnball = window.Yarnball || {};
+  
+  window.Yarnball._SurfaceBackgroundMenu = {
+    ready: function() {
+      // Create background menu
+      var backgroundMenu = document.createElement('yb-surface-background-menu');
+      backgroundMenu.surface = this;
+      this.backgroundMenu = backgroundMenu;
+      this.appendChild(backgroundMenu);
+      
+      this.$.background.addEventListener('mousedown', this.onBackgroundMousedown.bind(this));
+    },
+    onBackgroundMousedown: function(event) {
+      this.closeBackgroundMenu();
+      if (event.button === 2) {
+        var mouseEvent = this.translateMouseEvent(event);
+        this.lastBackgroundMenuPosition = mouseEvent.positionView;
+        var surfaceRect = this.getBoundingClientRect();
+        this.openBackgroundMenu({
+          x: event.pageX - surfaceRect.left,
+          y: event.pageY - surfaceRect.top,
+        });
+      }
+    },
+    openBackgroundMenu: function(position) {
+      this.backgroundMenu.style.left = position.x + 'px';
+      this.backgroundMenu.style.top  = position.y + 'px';
+      this.backgroundMenu.classList.remove('hidden');
+    },
+    closeBackgroundMenu: function() {
+      this.backgroundMenu.classList.add('hidden');
+    },
+  }
+</script>
