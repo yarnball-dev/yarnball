@@ -2,11 +2,7 @@
 
 <link rel="import" href="context-menus.html">
 
-<link rel="import" href="../../../iron-dropdown/iron-dropdown.html">
 <link rel="import" href="../../../paper-button/paper-button.html">
-<link rel="import" href="../../../paper-menu/paper-menu.html">
-<link rel="import" href="../../../paper-item/paper-item.html">
-<link rel="import" href="../../../paper-item/paper-icon-item.html">
 
 <link rel="import" href="../error-overlay/error-overlay.html">
 <link rel="import" href="../error-overlay/error-overlay-styles.html">
@@ -68,33 +64,6 @@
       </div>
     </div>
     
-    <iron-dropdown id="selectionDropdown" horizontal-align="left" vertical-align="top">
-      <div class="dropdown-content">
-        <paper-menu>
-          <paper-icon-item on-tap="menuItem_CopySelected">
-            <iron-icon icon="icons:content-copy" item-icon></iron-icon>
-            Copy
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_RevealLinks">
-            <iron-icon icon="icons:visibility" item-icon></iron-icon>
-            Reveal Links
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_HideLinks">
-            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
-            Hide Links
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_HideSelected">
-            <iron-icon icon="icons:visibility-off" item-icon></iron-icon>
-            Hide
-          </paper-icon-item>
-          <paper-icon-item on-tap="menuItem_DeleteSelected">
-            <iron-icon icon="icons:delete" item-icon></iron-icon>
-            Delete
-          </paper-icon-item>
-        </paper-menu>
-      </div>
-    </iron-dropdown>
-      
   </template>
   
   <script>
@@ -117,6 +86,7 @@
           Yarnball.FullscreenBehavior,
           Polymer.IronA11yKeysBehavior,
           Yarnball._SurfaceBackgroundMenu,
+          Yarnball._SurfaceSelectionMenu,
         ],
         created: function() {
           var self = this;
@@ -282,7 +252,6 @@
           }
         },
         listeners: {
-          contextmenu: 'oncontextmenu',
           widgetAttached: 'widgetAttached',
           widgetDetached: 'widgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
@@ -430,16 +399,10 @@
             }
           );
         },
-        oncontextmenu: function(event) {
-          event.preventDefault();
-          return false;
-        },
         backgroundMousedown: function(event) {
         
           var self = this;
         
-          self.closeSelectionMenu();
-          
           self.focus();
           
           var mouseEvent = self.translateMouseEvent(event);
@@ -976,11 +939,7 @@
             }
           
             self._setupNodeWidgetHighlighting(widget);
-            self._setupNodeWidgetMenu(widget);
             
-          } else if (widget.widgetType === 'yb-set') {
-            
-            self._setupSetWidgetMenu(widget);
           }
           
           if (self.isTopLevelWidget(widget)) {
@@ -1299,15 +1258,6 @@
           });
           return nodeWidgetTriples;
         },
-        _setupNodeWidgetMenu: function(nodeWidget) {
-          var self = this;
-          
-          nodeWidget.addEventListener('contextMenu', function(event) {
-            if (!self.hasOperation()) {
-              self.openSelectionMenu(event.detail);
-            }
-          });
-        },
         createConnector: function(nodeWidgets, options) {
         
           var self = this;
@@ -1468,17 +1418,6 @@
           
           return setWidget;
         },
-        _setupSetWidgetMenu: function(setWidget) {
-          var self = this;
-          setWidget.addEventListener('contextMenu', function(event) {
-            var handles = new Set(setWidget.getHandles());
-            if (handles.has(event.detail.target)) {
-              if (!self.hasOperation()) {
-                self.openSelectionMenu(event.detail);
-              }
-            }
-          });
-        },
         dragdropAreaAttached: function(event) {
           this.dragdropAreas.add(event.detail);
         },
@@ -1507,55 +1446,6 @@
               window.removeEventListener('mouseup', windowMouseup);
             }
             window.addEventListener('mouseup', windowMouseup);
-          }
-        },
-        openSelectionMenu: function(event) {
-          this.closeBackgroundMenu();
-          
-          var surfaceRect = this.getBoundingClientRect();
-          this.$.selectionDropdown.style.position = 'absolute';
-          this.$.selectionDropdown.style.left = (event.pageX - surfaceRect.left) + 'px';
-          this.$.selectionDropdown.style.top  = (event.pageY - surfaceRect.top)  + 'px';
-          this.$.selectionDropdown.style.display = 'block';
-        },
-        closeSelectionMenu() {
-          this.$.selectionDropdown.style.display = 'none';
-        },
-        menuItem_DeleteSelected: function() {
-          this.closeSelectionMenu();
-          if (this.canBeginOperation()) {
-            this.beginOperation(this.RemoveWidgetsOperation, this.getSelectedWidgetsTopLevel(), {removeRepresented: true});
-          }
-        },
-        menuItem_HideSelected: function() {
-          this.closeSelectionMenu();
-          if (this.canBeginOperation()) {
-            this.beginOperation(this.RemoveWidgetsOperation, this.getSelectedWidgetsTopLevel());
-          }
-        },
-        menuItem_CopySelected: function() {
-          this.closeSelectionMenu();
-          var offset = 10;
-          var operation = this.beginOperation(this.CloneWidgetsOperation, this.getSelectedWidgets(), offset);
-          this.selectWidgets(operation.newWidgets);
-        },
-        menuItem_RevealLinks: function() {
-          this.closeSelectionMenu();
-          if (this.canBeginOperation()) {
-            this.beginOperation(this.NewConnectorsOperation, this.getLinksBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node')));
-          }
-        },
-        menuItem_HideLinks: function() {
-          var self = this;
-          this.closeSelectionMenu();
-          if (this.canBeginOperation()) {
-            var connectors = this.getSelectedWidgetsOfType('yb-connector');
-            this.getConnectorsBetweenNodeWidgets(this.getSelectedWidgetsOfType('yb-node')).forEach(function(connector) {
-              if (connector.active) {
-                connectors.add(connector);
-              }
-            });
-            this.beginOperation(this.RemoveWidgetsOperation, connectors);
           }
         },
       });
