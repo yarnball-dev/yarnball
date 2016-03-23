@@ -763,11 +763,19 @@
           
           var connector = self.createConnector(triple, {active: false});
           
-          var animationFinished = connector.highlight(options);
+          var animation = connector.highlight(options);
           
-          animationFinished.then(function() {
+          function animationFinished() {
             self.removeWidget(connector);
-          });
+          }
+          
+          if ('finished' in animation) {
+            animation.finished.then(animationFinished);
+          } else if ('onfinish' in animation) {
+            animation.onfinish = animationFinished;
+          } else {
+            animationFinished();
+          }
         },
         createNodeWidget: function(id, widgetId) {
           
