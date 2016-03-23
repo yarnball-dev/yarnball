@@ -1,6 +1,8 @@
 <link rel="import" href="../../../polymer/polymer.html">
 
 <link rel="import" href="context-menus.html">
+<link rel="import" href="search-panel.html">
+<link rel="import" href="create-panel.html">
 
 <link rel="import" href="../../../paper-button/paper-button.html">
 
@@ -12,17 +14,9 @@
 <link rel="import" href="../web/web.html">
 
 <link rel="import" href="../node/node.html">
-<link rel="import" href="../node/node-factory.html">
-
 <link rel="import" href="../connector/connector.html">
-
 <link rel="import" href="../set/set.html">
-<link rel="import" href="../set/set-factory.html">
-
 <link rel="import" href="../list/list.html">
-<link rel="import" href="../list/list-factory.html">
-
-<link rel="import" href="../all-nodes/all-nodes.html">
 
 <link rel="import" href="surface-styles.html">
 
@@ -30,39 +24,18 @@
 
   <style include="surface-styles"></style>
   <style include="error-overlay-styles"></style>
-  <style include="fullscreen-styles"></style>
+  <style include="fullscreen-style"></style>
 
   <template>
   
     <div id="viewRoot">
-    
       <div id="background" on-mousedown="backgroundMousedown"></div>
-    
       <div id="boxSelection" class="hidden"></div>
-    
     </div>
     
     <paper-button class="edge-button" id="fullscreenButton" on-tap="toggleFullscreen">
       <iron-icon icon="icons:fullscreen" item-icon></iron-icon>
     </paper-button>
-    
-    <div id="searchPanel" class="panel hidden">
-      <div class="edge-button panel-handle" on-tap="searchPanelHandleClicked">
-        <iron-icon icon="icons:search" item-icon></iron-icon>
-      </div>
-      <yb-all-nodes on-search-query-changed="searchQueryChanged" id="allNodesList"></yb-all-nodes>
-    </div>
-    
-    <div id="createPanel" class="panel hidden">
-      <div class="edge-button panel-handle" on-tap="createPanelHandleClicked">
-        <iron-icon icon="icons:add" item-icon></iron-icon>
-      </div>
-      <div>
-        <yb-node-factory> </yb-node-factory>
-        <yb-set-factory>  </yb-set-factory>
-        <yb-list-factory> </yb-list-factory>
-      </div>
-    </div>
     
   </template>
   
@@ -87,6 +60,8 @@
           Polymer.IronA11yKeysBehavior,
           Yarnball._SurfaceBackgroundMenu,
           Yarnball._SurfaceSelectionMenu,
+          Yarnball._SurfaceSearchPanel,
+          Yarnball._SurfaceCreatePanel,
         ],
         created: function() {
           var self = this;
@@ -133,8 +108,6 @@
           
           self.viewRoot     = self.$.viewRoot;
           self.background   = self.$.background;
-          self.searchPanel  = self.$.searchPanel;
-          self.createPanel  = self.$.createPanel;
           self.boxSelection = self.$.boxSelection;
           
           self.setView(self.viewTranslate, self.viewScale, self.viewOrigin);
@@ -200,31 +173,6 @@
             self._web.removeLinksListener(self.onLinks);
           }
         },
-        searchPanelHandleClicked: function() {
-          if (this.searchPanel.classList.contains('hidden')) {
-            this.searchPanel.classList.remove('hidden');
-            this.$.allNodesList.$.searchTextbox.focus();
-            this.$.allNodesList.$.searchTextbox.select();
-          } else {
-            this.searchPanel.classList.add('hidden');
-          }
-        },
-        toggleSearchPanel: function() {
-          if (document.activeElement !== this.$.allNodesList.$.searchTextbox) {
-            this.searchPanel.classList.remove('hidden');
-            this.$.allNodesList.$.searchTextbox.focus();
-            this.$.allNodesList.$.searchTextbox.select();
-          } else {
-            this.searchPanel.classList.add('hidden');
-            this.focus();
-          }
-        },
-        createPanelHandleClicked: function() {
-          this.toggleCreatePanel();
-        },
-        toggleCreatePanel: function() {
-          this.createPanel.classList.toggle('hidden');
-        },
         hasOperation: function() {
           return this.currentOperation !== null;
         },
@@ -256,7 +204,6 @@
           widgetDetached: 'widgetDetached',
           dragdropAreaAttached: 'dragdropAreaAttached',
           dragdropAreaDetached: 'dragdropAreaDetached',
-          dragStart: 'handleDragStart',
         },
         translateMouseEvent: function(event) {
           var targetBoundingClientRect = event.target.getBoundingClientRect();
@@ -443,10 +390,6 @@
           'pageup':             'handleKey_PageUp',
           'pagedown':           'handleKey_PageDown',
           'ctrl+enter':         'handleKey_CtrlEnter',
-          'ctrl+f':             'handleKey_CtrlF',
-          'f1':                 'handleKey_F1',
-          'ctrl+g':             'handleKey_CtrlG',
-          'f2':                 'handleKey_F2',
           'up down left right': 'handleKey_ArrowKeys',
           'enter':              'handleKey_Enter',
           'space':              'handleKey_Space',
@@ -499,26 +442,6 @@
           this.toggleFullscreen();
           return false;
         },
-        handleKey_CtrlF: function(event) {
-          event.preventDefault();
-          this.toggleSearchPanel();
-          return false;
-        },
-        handleKey_F1: function(event) {
-          event.preventDefault();
-          this.toggleSearchPanel();
-          return false;
-        },
-        handleKey_CtrlG: function(event) {
-          event.preventDefault();
-          this.toggleCreatePanel();
-          return false;
-        },
-        handleKey_F2: function(event) {
-          event.preventDefault();
-          this.toggleCreatePanel();
-          return false;
-        },
         handleKey_ArrowKeys: function(event) {
           if (!this.hasOperation() && document.activeElement === this) {
             var keyToDirection = {
@@ -549,14 +472,6 @@
             });
             this.beginOperation(this.RemoveWidgetsOperation, connectors);
           }
-        },
-        searchQueryChanged: function(event) {
-          var self = this;
-          var query = event.detail;
-          var matchingNodeWidgets = Array.from(self.getWidgetsOfType('yb-node')).filter(function(nodeWidget) {
-            return query && nodeWidget.name && nodeWidget.name.toLowerCase().includes(query.toLowerCase()) && !self.searchPanel.contains(nodeWidget);
-          });
-          self.selectWidgets(matchingNodeWidgets);
         },
         getElementViewRect: function(element) {
           var elementClientRect = element.getBoundingClientRect();
@@ -1423,30 +1338,6 @@
         },
         dragdropAreaDetached: function(event) {
           this.dragdropAreas.delete(event.detail);
-        },
-        handleDragStart: function(event) {
-          var self = this;
-          if (self.createPanel.contains(event.target)) {
-            var factoryWidget = event.target;
-            function backgroundMouseenter(event) {
-              self.background.removeEventListener('mouseenter', backgroundMouseenter);
-              var newWidget = factoryWidget.create();
-              var mouseEventTranslated = self.translateMouseEvent(event);
-              var widgetPosition = {
-                x: mouseEventTranslated.positionView.x - 28,
-                y: mouseEventTranslated.positionView.y - 28,
-              }
-              self.beginOperation(self.NewWidgetOperation, newWidget, widgetPosition);
-              self.selectWidgets([newWidget]);
-              self.beginOperation(self.DragOperation, event);
-            }
-            self.background.addEventListener('mouseenter', backgroundMouseenter);
-            function windowMouseup(event) {
-              self.background.removeEventListener('mouseenter', backgroundMouseenter);
-              window.removeEventListener('mouseup', windowMouseup);
-            }
-            window.addEventListener('mouseup', windowMouseup);
-          }
         },
       });
     })();

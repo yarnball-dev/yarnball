@@ -1,38 +1,24 @@
 <dom-module id="surface-styles">
   <template>
     <style>
+      
       :host {
         display: block;
         position: relative;
         overflow: hidden;
         background-color: #fff;
         
-        user-select: none;
-        -moz-user-select: none;
-        /* Firefox */
-        -ms-user-select: none;
-        /* Internet Explorer */
-        -khtml-user-select: none;
-        /* KHTML browsers (e.g. Konqueror) */
+                user-select: none;
+           -moz-user-select: none;
+            -ms-user-select: none;
+         -khtml-user-select: none;
         -webkit-user-select: none;
-        /* Chrome, Safari, and Opera */
-      }
-      
-      :host .edge-button {
-        display: flex;
-        justify-content: center;
-        align-items:     center;
-        background-color: #56a0f9;
-        color: #fff;
-      }
-      :host .edge-button:hover {
-        background-color: #7CB8FF;
       }
       
       :host #fullscreenButton {
         position: absolute;
-        top:   8px;
-        right: 8px;
+        top:     8px;
+        right:   8px;
         padding: 8px;
         width:  50px;
         height: 50px;
@@ -43,105 +29,69 @@
         height: 40px;
       }
         
-        :host .panel {
-          position: absolute;
-          top: 80px;
-          border: 1px solid #ddd;
-          background-color: #fff;
-          transition: left 0.2s ease-in-out, right 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-          box-shadow: 1px 1px 25px rgba(0, 0, 0, 0.2);
-        }
-        :host .panel.hidden {
-          box-shadow: none;
-        }
-        :host .panel .panel-handle {
-          position: absolute;
-          width: 50px;
-          height: 90px;
-          cursor: pointer;
-        }
-        :host .panel .panel-handle iron-icon {
-          margin: 5px;
-          width: 40px;
-          height: 40px;
-        }
-        :host #searchPanel {
-          left: 0;
-          bottom: 5px;
-          width: 250px; }
-          :host #searchPanel .panel-handle {
-            right: -52px;
-            top: -1px;
-            border-top-right-radius: 4px;
-            border-bottom-right-radius: 4px; }
-        :host #searchPanel.hidden {
-          left: -251px; }
-        :host #createPanel {
-          right: 0;
-          bottom: 5px;
-          width: 250px; }
-          :host #createPanel .panel-handle {
-            left: -52px;
-            top: -1px;
-            border-top-left-radius: 4px;
-            border-bottom-left-radius: 4px; }
-        :host #createPanel.hidden {
-          right: -251px; }
+      :host #viewRoot {
+        position: absolute;
+        width:  100%;
+        height: 100%;
+      }
+      :host #background {
+        position: absolute;
+        left:   0;
+        top:    0;
+        right:  0;
+        bottom: 0;
+        margin: -10000px;
+        border: 1px solid red;
+      }
           
-        :host #viewRoot {
-          position: absolute;
-          width: 100%;
-          height: 100%; }
-        :host #background {
-          position: absolute;
-          left: 0;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          margin: -10000px;
-          border: 1px solid red; }
-          
-        :host #boxSelection {
-          display: block;
-          position: absolute;
-          background-color: #E2F4FF;
-          opacity: 0.5;
-          pointer-events: none;
-          z-index: 3; }
-        :host #boxSelection.hidden {
-          display: none; }
-        :host yb-connector {
-          position: absolute;
-          left: 0;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          z-index: 1;
-          margin: -10000px; }
-        :host yb-connector.inactive /deep/ .connector-path {
-          pointer-events: none !important; }
-        :host yb-node {
-          margin: 0;
-          z-index: 2; }
-        :host yb-node.dragging {
-          margin: 0;
-          z-index: 3; }
-        :host yb-set {
-          z-index: 2;
-          margin: 0; }
+      :host #boxSelection {
+        display: block;
+        position: absolute;
+        background-color: #E2F4FF;
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 3;
+      }
+      :host #boxSelection.hidden {
+        display: none;
+      }
+      
+      :host yb-connector {
+        position: absolute;
+        left:   0;
+        top:    0;
+        right:  0;
+        bottom: 0;
+        z-index: 1;
+        margin: -10000px;
+      }
+      :host yb-connector.inactive /deep/ .connector-path {
+        pointer-events: none !important;
+      }
+        
+      :host yb-node {
+        margin: 0;
+        z-index: 2;
+      }
+      :host yb-node.dragging {
+        margin: 0;
+        z-index: 3;
+      }
+      
+      :host yb-set {
+        z-index: 2;
+        margin: 0;
+      }
 
       :host.mouse-captured /deep/ * {
         pointer-events: none !important;
       }
-
       :host.mouse-captured #background {
         pointer-events: all !important;
       }
-
       :host.dragging-widgets /deep/ .dragdrop-area.drop-ready {
         pointer-events: all !important;
       }
-
       :host.dragging-connectors yb-node {
         pointer-events: all !important;
       }
