@@ -1,5 +1,7 @@
 <link rel="import" href="../../../polymer/polymer.html">
 
+<link rel="import" href="../../../paper-button/paper-button.html">
+
 <link rel="import" href="panel.html">
 
 <link rel="import" href="../node/node-factory.html">
@@ -11,9 +13,9 @@
 <dom-module id="yb-surface-create-panel">
   <style include="surface-panel-style"></style>
   <template>
-    <div class="edge-button panel-handle" on-tap="handleClicked">
+    <paper-button class="edge-button panel-handle" on-tap="handleClicked">
       <iron-icon icon="icons:add" item-icon></iron-icon>
-    </div>
+    </paper-button>
     <div>
       <yb-node-factory> </yb-node-factory>
       <yb-set-factory>  </yb-set-factory>
@@ -28,8 +30,8 @@
     }
     :host .panel-handle {
       left: -50px;
-      border-top-left-radius:    4px;
-      border-bottom-left-radius: 4px;
+      border-top-right-radius:    0;
+      border-bottom-right-radius: 0;
     }
     :host.hidden {
       right: -251px;

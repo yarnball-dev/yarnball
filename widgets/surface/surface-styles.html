@@ -15,12 +15,26 @@
         -webkit-user-select: none;
       }
       
+      :host /deep/ .edge-button {
+        display: flex;
+        justify-content: center;
+        align-items:     center;
+        background-color: #56a0f9;
+        color: #fff;
+        min-width: initial;
+        padding: 0;
+        margin: 0;
+      }
+      :host /deep/ .edge-button:hover {
+        background-color: #7CB8FF;
+      }
+      
       :host #fullscreenButton {
         position: absolute;
         top:     8px;
         right:   8px;
         padding: 8px;
-        width:  50px;
+        width:  80px;
         height: 50px;
         margin: 0;
       }
