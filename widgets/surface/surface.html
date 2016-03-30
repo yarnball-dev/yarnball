@@ -29,7 +29,7 @@
   <template>
   
     <div id="viewRoot">
-      <div id="background" on-mousedown="backgroundMousedown"></div>
+      <div id="background" on-mousedown="backgroundMousedown" on-dblclick="backgroundDblclick"></div>
       <div id="boxSelection" class="hidden"></div>
     </div>
     
@@ -379,6 +379,19 @@
             }
 
             return false;
+          }
+        },
+        backgroundDblclick: function(event) {
+          var mouseEvent = this.translateMouseEvent(event);
+          
+          if (this.canBeginOperation()) {
+            var nodeWidget = this.createNodeWidget();
+            var position = {
+              x: mouseEvent.positionView.x - 28,
+              y: mouseEvent.positionView.y - 28,
+            }
+            var operation = this.beginOperation(this.NewWidgetOperation, nodeWidget, position);
+            this.selectWidgets([nodeWidget]);
           }
         },
         keyBindings: {
