@@ -396,7 +396,7 @@
           'backspace':          'handleKey_Backspace',
           'del delete':         'handleKey_Del',
           'ctrl+a':             'handleKey_CtrlA',
-          'ctrl+d':             'handleKey_CtrlD',
+          'ctrl+shift+a ctrl+d':'handleKey_Deselect',
           'pageup':             'handleKey_PageUp',
           'pagedown':           'handleKey_PageDown',
           'ctrl+enter':         'handleKey_CtrlEnter',
@@ -426,7 +426,7 @@
             return false;
           }
         },
-        handleKey_CtrlD: function(event) {
+        handleKey_Deselect: function(event) {
           if (!this.hasOperation() && document.activeElement === this) {
             event.preventDefault();
             this.deselect();
