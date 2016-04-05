@@ -180,12 +180,12 @@
           return !this.hasOperation() && this.SurfaceWeb;
         },
         beginOperation: function(operation /* ... */) {
-          if (this.currentOperation != null) {
+          if (this.currentOperation !== null) {
             return null;
           }
           var operation = new operation();
           operation.surface     = this;
-          operation.batch = this.Batch(this._web);
+          operation.batch       = this.Batch(this._web);
           operation.surfaceWeb  = this.SurfaceWeb(operation.batch, this.node);
           this.currentOperation = operation;
           var args = Array.prototype.slice.call(arguments, 1);
@@ -289,7 +289,9 @@
             window.removeEventListener('mousemove', mousemove);
             window.removeEventListener('mouseup',   mouseup);
             
-            document.body.style.cursor = cusorBeforeMouseCapture;
+            if ('cursor' in options) {
+              document.body.style.cursor = cusorBeforeMouseCapture;
+            }
           
             self.classList.remove('mouse-captured');
             
