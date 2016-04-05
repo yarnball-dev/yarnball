@@ -2,7 +2,7 @@
 // See https://www.npmjs.com/package/amdefine
 if (typeof define !== 'function') { var define = require('amdefine')(module); }
 
-define(['yarnball/core/node', 'yarnball/core/batch', 'yarnball/core/map', 'yarnball/core/number'], function(Node, Batch, Map_, Number) {
+define(['yarnball/core/node', 'yarnball/core/batch', 'yarnball/core/map', 'yarnball/core/str', 'yarnball/core/number'], function(Node, Batch, Map_, Str, Number) {
   
   function SurfaceWeb(web, base) {
     this._web  = web;
@@ -18,6 +18,7 @@ define(['yarnball/core/node', 'yarnball/core/batch', 'yarnball/core/map', 'yarnb
   
   var Surface    = Node.fromHex('d78f5b59815a669cb45c022de57d2980');
   var Is         = Node.fromHex('52f9cf0e223d559931856acc98400f21');
+  var Name       = Node.fromHex('8216770e8c1ccfb5c58ba2573fd0bf46');
   var Owns       = Node.fromHex('4c8e8ee79a2c4c6e4bd68d9db324d9f4');
   var Widget     = Node.fromHex('31e32c8610ff671d93a4d664d26b21f8');
   var NodeWidget = Node.fromHex('9c9eebc2fa256211d901aef59489923e');
@@ -39,12 +40,44 @@ define(['yarnball/core/node', 'yarnball/core/batch', 'yarnball/core/map', 'yarnb
     
     batch.setLinks([], [{from: self._base, via: Is, to: Surface}]);
     
+    var existingName = batch.queryOne(this._base, Name, null);
+    if (existingName) {
+      Str(this._web, existingName).clear();
+      batch.setLinks([], [{from: this._base, via: Name, to: existingName}]);
+    }
+    
     var widgets = self.getWidgets();
     widgets.forEach(function(widget) {
       self.removeWidget(widget, batch);
     });
     
     batch.apply();
+  }
+  
+  SurfaceWeb.prototype.setName = function(name) {
+    var batch = Batch(this._web);
+    
+    var existingName = batch.queryOne(this._base, Name, null);
+    if (existingName) {
+      Str(batch, existingName).clear();
+      batch.setLinks([], [{from: this._base, via: Name, to: existingName}]);
+    }
+    
+    var nameStr = Str(this._web);
+    nameStr.set(name);
+    var newName = nameStr.getBase();
+    batch.setLinks([{from: this._base, via: Name, to: newName}], []);
+    
+    batch.apply();
+  }
+  
+  SurfaceWeb.prototype.getName = function() {
+    var name = this._web.queryOne(this._base, Name, null);
+    if (name) {
+      return Str(this._web, name).get();
+    } else {
+      return null;
+    }
   }
   
   SurfaceWeb.prototype.getWidgets = function() {

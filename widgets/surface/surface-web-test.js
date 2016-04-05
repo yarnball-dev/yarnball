@@ -1,7 +1,7 @@
 var SurfaceWeb = require('./surface-web');
-var Node       = require('core/node');
-var Web        = require('core/web');
-var Batch      = require('core/batch');
+var Node       = require('yarnball/core/node');
+var Web        = require('yarnball/core/web');
+var Batch      = require('yarnball/core/batch');
 var test       = require('tape');
 
 test('surface-web test', function(t) {
@@ -12,6 +12,12 @@ test('surface-web test', function(t) {
   t.doesNotThrow(function() {
     surfaceWeb = SurfaceWeb(web);
   }, 'surface-web constructor does not throw.');
+  
+  t.doesNotThrow(function() {
+    surfaceWeb.setName('wiggle');
+  }, 'setName() should not throw.');
+  
+  t.equal(surfaceWeb.getName(), 'wiggle', 'getName() should return string passed to setName()');
   
   var initialLinkCount = web.getLinkCount();
   var initialNodeCount = web.getNodeCount();
