@@ -163,6 +163,7 @@
           
               self.surfaceWeb = SurfaceWeb(web, self.node);
               self.surfaceWeb.initializeSurface(self);
+              self.panZoomToShowAll();
             });
           });
         },
@@ -348,6 +349,31 @@
             }
           );
         },
+        panZoomToShowAll: function() {
+          if (this.widgetsTopLevel.size === 0) {
+            return;
+          }
+          var widgetBounds = this.getAllWidgetsBounds();
+          var surfaceRect = this.getBoundingClientRect();
+          var widgetsCenter = {
+            x: widgetBounds.left + (widgetBounds.width  / 2),
+            y: widgetBounds.top  + (widgetBounds.height / 2),
+          }
+          var scaleToFit = null;
+          if ((widgetBounds.width / widgetBounds.height) > (surfaceRect.width / surfaceRect.height)) {
+            scaleToFit = surfaceRect.width / widgetBounds.width;
+          } else {
+            scaleToFit = surfaceRect.height / widgetBounds.height;
+          }
+          this.setView(
+            {
+              x: -(widgetsCenter.x - (surfaceRect.width  / 2)),
+              y: -(widgetsCenter.y - (surfaceRect.height / 2)),
+            },
+            Math.min(2, scaleToFit * 0.9),
+            widgetsCenter
+          );
+        },
         backgroundMousedown: function(event) {
         
           var self = this;
@@ -409,6 +435,7 @@
           'enter':              'handleKey_Enter',
           'space':              'handleKey_Space',
           'ctrl+space':         'handleKey_CtrlSpace',
+          'home':               'handleKey_Home',
         },
         handleKey_Backspace: function(event) {
           if (this.canBeginOperation() && document.activeElement === this) {
@@ -488,6 +515,9 @@
             this.beginOperation(this.RemoveWidgetsOperation, connectors);
           }
         },
+        handleKey_Home: function() {
+          this.panZoomToShowAll();
+        },
         getElementViewRect: function(element) {
           var elementClientRect = element.getBoundingClientRect();
           var viewRootClientRect = this.viewRoot.getBoundingClientRect();
@@ -499,6 +529,24 @@
             width:  elementClientRect.width / this.viewScale,
             height: elementClientRect.height / this.viewScale,
           }
+        },
+        getAllWidgetsBounds: function() {
+          var self = this;
+          var bounds = {left: null, top: null, right: null, bottom: null};
+          self.widgetsTopLevel.forEach(function(widget) {
+            if (widget.widgetType !== 'yb-connector') {
+              var widgetBounds = self.getElementViewRect(widget);
+              bounds.left   = bounds.left   === null ? widgetBounds.left   : Math.min(bounds.left,   widgetBounds.left);
+              bounds.top    = bounds.top    === null ? widgetBounds.top    : Math.min(bounds.top,    widgetBounds.top);
+              bounds.right  = bounds.right  === null ? widgetBounds.right  : Math.max(bounds.right,  widgetBounds.right);
+              bounds.bottom = bounds.bottom === null ? widgetBounds.bottom : Math.max(bounds.bottom, widgetBounds.bottom);
+            }
+          });
+          if (bounds.left !== null && bounds.right !== null) {
+            bounds.width  = bounds.right  - bounds.left;
+            bounds.height = bounds.bottom - bounds.top;
+          }
+          return bounds;
         },
         getWidgetsTopLevel: function() {
           return new Set(this.widgetsTopLevel);
